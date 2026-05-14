@@ -1,0 +1,34 @@
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
+
+import type { Database } from "@/types/database.types";
+
+// Server client for Server Components, Route Handlers, and Server Actions.
+// Reads + writes session cookies from the request via next/headers.
+// Token refresh on each request is handled by the middleware.
+export function createSupabaseServerClient() {
+  const cookieStore = cookies();
+
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // Server Components cannot set cookies; safe to swallow because
+            // the middleware refreshes the session on every request and
+            // writes any updated cookies there.
+          }
+        },
+      },
+    }
+  );
+}
