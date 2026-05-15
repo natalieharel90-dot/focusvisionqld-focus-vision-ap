@@ -17,6 +17,7 @@ type IconKey =
   | "messages"
   | "triage"
   | "analytics"
+  | "reports"
   | "feedback"
   | "bulkpush"
   | "settings"
@@ -27,6 +28,7 @@ type NavItem = {
   label: string;
   icon: IconKey;
   tier1Only?: boolean;
+  tier12Only?: boolean;
   analyticsOnly?: boolean;
 };
 
@@ -52,6 +54,8 @@ const ICON_PATHS: Record<IconKey, string> = {
     '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   audit:
     '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>',
+  reports:
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 18v-4"/><path d="M12 18v-7"/><path d="M16 18v-2"/>',
 };
 
 // Order follows the prototype's dash sidebar. Schedule / Alerts / Reports
@@ -64,6 +68,7 @@ const NAV: ReadonlyArray<NavItem> = [
   { href: "/inbox", label: "Messages", icon: "messages" },
   { href: "/triage", label: "Triage", icon: "triage" },
   { href: "/analytics", label: "Analytics", icon: "analytics", analyticsOnly: true },
+  { href: "/reports", label: "Reports", icon: "reports", tier12Only: true },
   { href: "/reviews", label: "Feedback", icon: "feedback" },
   { href: "/bulk-push", label: "Bulk push", icon: "bulkpush" },
   { href: "/audit", label: "Audit log", icon: "audit", tier1Only: true },
@@ -124,6 +129,7 @@ export function Sidebar({
   const canViewAnalytics = accessTier === 1 || staffRole === "surgeon";
   const visibleNav = NAV.filter((item) => {
     if (item.tier1Only && accessTier !== 1) return false;
+    if (item.tier12Only && accessTier !== 1 && accessTier !== 2) return false;
     if (item.analyticsOnly && !canViewAnalytics) return false;
     return true;
   });

@@ -695,6 +695,47 @@ export type Database = {
           },
         ]
       }
+      generated_reports: {
+        Row: {
+          auto_generated: boolean
+          data: Json | null
+          generated_at: string
+          generated_by_staff_id: string | null
+          id: string
+          include_identifiers: boolean
+          parameters: Json
+          report_type: string
+        }
+        Insert: {
+          auto_generated?: boolean
+          data?: Json | null
+          generated_at?: string
+          generated_by_staff_id?: string | null
+          id?: string
+          include_identifiers?: boolean
+          parameters?: Json
+          report_type: string
+        }
+        Update: {
+          auto_generated?: boolean
+          data?: Json | null
+          generated_at?: string
+          generated_by_staff_id?: string | null
+          id?: string
+          include_identifiers?: boolean
+          parameters?: Json
+          report_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_reports_generated_by_staff_id_fkey"
+            columns: ["generated_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       manual_flags: {
         Row: {
           alert_level: Database["public"]["Enums"]["manual_flag_level"]
@@ -1347,6 +1388,41 @@ export type Database = {
           },
         ]
       }
+      report_schedules: {
+        Row: {
+          enabled: boolean
+          include_identifiers: boolean
+          parameters: Json
+          report_type: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          include_identifiers?: boolean
+          parameters?: Json
+          report_type: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          include_identifiers?: boolean
+          parameters?: Json
+          report_type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_schedules_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       routing_rules: {
         Row: {
           created_at: string
@@ -1868,8 +1944,10 @@ export type Database = {
       ensure_todays_doses: { Args: { p_patient_id: string }; Returns: number }
       fire_bulk_push: { Args: { p_push_id: string }; Returns: undefined }
       fire_due_bulk_pushes: { Args: never; Returns: undefined }
+      generate_scheduled_reports: { Args: never; Returns: undefined }
       is_staff: { Args: never; Returns: boolean }
       mark_thread_read: { Args: { p_thread_id: string }; Returns: undefined }
+      prune_old_reports: { Args: never; Returns: undefined }
       record_patient_audit: {
         Args: { p_event_type: string; p_new_value: Json }
         Returns: undefined

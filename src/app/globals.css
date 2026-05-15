@@ -92,3 +92,27 @@ body {
 [data-dark] .fv-dash-sidebar {
   background: var(--fv-bg-soft);
 }
+
+/* Report print view — print only the .fv-report document, hiding the
+   dashboard chrome, and give the printed page sensible margins. */
+@page {
+  margin: 18mm;
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .fv-report,
+  .fv-report * {
+    visibility: visible;
+  }
+  .fv-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .fv-no-print {
+    display: none !important;
+  }
+}

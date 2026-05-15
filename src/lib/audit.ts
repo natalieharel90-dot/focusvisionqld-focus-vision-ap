@@ -46,7 +46,8 @@ export type StaffAuditEventType =
   | "settings.doctor_updated"
   | "settings.facility_updated"
   | "settings.message_template_updated"
-  | "settings.content_item_updated";
+  | "settings.content_item_updated"
+  | "report.generated";
 
 type ExtraAuditFields = {
   patient_id?: string | null;
