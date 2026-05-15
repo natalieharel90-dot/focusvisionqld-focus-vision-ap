@@ -45,6 +45,41 @@ export default async function DashboardLayout({
   const { theme, dark } = resolveThemePreference(staff);
   const showSparkle = shouldShowSparkle(staff.sparkle ?? false, false);
 
+  // Sidebar nav badges — live counts of work waiting in each area.
+  const headCount = { count: "exact" as const, head: true };
+  const [newPatientsRes, unreadRes, flagsRes, alertRes, feedbackRes] =
+    await Promise.all([
+      supabase
+        .from("patient_setup_tasks")
+        .select("patient_id", headCount)
+        .neq("status", "activated"),
+      supabase
+        .from("messages")
+        .select("id", headCount)
+        .eq("sender_type", "patient")
+        .is("read_at", null),
+      supabase
+        .from("manual_flags")
+        .select("id", headCount)
+        .is("resolved_at", null),
+      supabase
+        .from("check_ins")
+        .select("id", headCount)
+        .neq("staff_alert_level", "none")
+        .is("reviewed_at", null),
+      supabase
+        .from("feedback")
+        .select("id", headCount)
+        .is("acknowledged_at", null),
+    ]);
+
+  const navBadges: Record<string, number> = {
+    "/new-patients": newPatientsRes.count ?? 0,
+    "/inbox": unreadRes.count ?? 0,
+    "/triage": (flagsRes.count ?? 0) + (alertRes.count ?? 0),
+    "/reviews": feedbackRes.count ?? 0,
+  };
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: buildThemeCss() }} />
@@ -62,6 +97,7 @@ export default async function DashboardLayout({
         dark={dark}
         sparkle={staff.sparkle ?? false}
         bonusUnlocked={staff.bonus_pack_unlocked ?? false}
+        navBadges={navBadges}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-end border-b border-fv-bg-soft bg-fv-bg-card px-6 py-2">

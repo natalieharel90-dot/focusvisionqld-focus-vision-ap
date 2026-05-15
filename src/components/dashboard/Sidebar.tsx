@@ -70,6 +70,14 @@ const NAV: ReadonlyArray<NavItem> = [
   { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
+// Badge pill colours, matching the prototype's dash sidebar.
+const BADGE_COLOR: Record<string, string> = {
+  "/new-patients": "#D8A82A",
+  "/inbox": "#D04A3A",
+  "/triage": "#D67E3B",
+  "/reviews": "#4FA38A",
+};
+
 function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -101,6 +109,7 @@ export function Sidebar({
   dark,
   sparkle,
   bonusUnlocked,
+  navBadges,
 }: {
   staffName: string;
   staffRole: string;
@@ -109,6 +118,7 @@ export function Sidebar({
   dark: boolean;
   sparkle: boolean;
   bonusUnlocked: boolean;
+  navBadges: Record<string, number>;
 }) {
   const pathname = usePathname();
   const canViewAnalytics = accessTier === 1 || staffRole === "surgeon";
@@ -147,7 +157,15 @@ export function Sidebar({
                   }`}
                 >
                   <NavIcon icon={item.icon} />
-                  {item.label}
+                  <span className="flex-1">{item.label}</span>
+                  {navBadges[item.href] ? (
+                    <span
+                      className="rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white"
+                      style={{ background: BADGE_COLOR[item.href] ?? "#D04A3A" }}
+                    >
+                      {navBadges[item.href]}
+                    </span>
+                  ) : null}
                 </Link>
               </li>
             );
