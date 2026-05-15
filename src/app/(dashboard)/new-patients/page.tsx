@@ -1,15 +1,18 @@
 import Link from "next/link";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { initials } from "@/lib/bulk-push";
 import {
+  CHECKLIST_ITEMS,
   cardMatchesFilters,
   formatDuration,
   isVisibleInKanban,
   medianTimeToActivateMs,
   parseChecklist,
+  type Checklist,
   type SetupStatus,
 } from "@/lib/setup-tasks";
-import { SetupTaskBoard, type SetupCard } from "./SetupTaskBoard";
+import { completeSetupItemAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +21,72 @@ type SearchParams = Record<string, string | string[] | undefined>;
 function first(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
 }
+
+function fmtDate(value: string | null): string {
+  if (!value) return "TBC";
+  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-AU", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function fmtSignedUp(value: string): string {
+  return new Date(value).toLocaleDateString("en-AU", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+type Card = {
+  taskId: string;
+  patientId: string;
+  patientName: string;
+  email: string | null;
+  phone: string | null;
+  status: SetupStatus;
+  checklist: Checklist;
+  signedUpAt: string;
+  activatedAt: string | null;
+  surgeonName: string | null;
+  procedureType: string | null;
+  surgeryDate: string | null;
+};
+
+// Awaiting/partial first (action needed), then activated, then unverified.
+const STATUS_ORDER: Record<SetupStatus, number> = {
+  awaiting_setup: 0,
+  partial: 1,
+  activated: 2,
+  mfa_pending: 3,
+};
+
+const STATUS_META: Record<
+  SetupStatus,
+  { pill: string; pillCls: string; border: string }
+> = {
+  awaiting_setup: {
+    pill: "Awaiting clinical setup",
+    pillCls: "bg-amber-100 text-amber-800",
+    border: "border-l-amber-400",
+  },
+  partial: {
+    pill: "Partial",
+    pillCls: "bg-amber-100 text-amber-800",
+    border: "border-l-amber-400",
+  },
+  activated: {
+    pill: "Activated",
+    pillCls: "bg-green-100 text-green-800",
+    border: "border-l-green-500",
+  },
+  mfa_pending: {
+    pill: "MFA pending",
+    pillCls: "bg-fv-bg-soft text-fv-text-secondary",
+    border: "border-l-fv-border",
+  },
+};
 
 export default async function NewPatientsPage({
   searchParams,
@@ -33,25 +102,24 @@ export default async function NewPatientsPage({
     nameSearch: first(searchParams.q) || null,
   };
 
-  // Whole table — one row per patient, small enough to fetch + filter in
-  // memory. The 7-day and 30-day windows are applied client-side via the
-  // pure helpers.
   const { data: tasks } = await supabase
     .from("patient_setup_tasks")
-    .select(
-      "id, patient_id, status, checklist, activated_at, created_at"
-    );
+    .select("id, patient_id, status, checklist, activated_at, created_at");
   const taskRows = tasks ?? [];
-
   const patientIds = taskRows.map((t) => t.patient_id);
 
   const [patientsResult, proceduresResult, surgeonsResult] =
     patientIds.length > 0
       ? await Promise.all([
-          supabase.from("patients").select("id, name").in("id", patientIds),
+          supabase
+            .from("patients")
+            .select("id, name, email, phone")
+            .in("id", patientIds),
           supabase
             .from("procedures")
-            .select("patient_id, surgeon_id, procedure_type, surgery_date, status")
+            .select(
+              "patient_id, surgeon_id, procedure_type, surgery_date, status"
+            )
             .in("patient_id", patientIds)
             .eq("status", "active")
             .order("surgery_date", { ascending: false }),
@@ -62,7 +130,14 @@ export default async function NewPatientsPage({
             .order("name"),
         ])
       : [
-          { data: [] as { id: string; name: string }[] },
+          {
+            data: [] as {
+              id: string;
+              name: string;
+              email: string;
+              phone: string | null;
+            }[],
+          },
           {
             data: [] as {
               patient_id: string;
@@ -75,10 +150,9 @@ export default async function NewPatientsPage({
           { data: [] as { id: string; name: string }[] },
         ];
 
-  const patientName = new Map(
-    (patientsResult.data ?? []).map((p) => [p.id, p.name])
+  const patientById = new Map(
+    (patientsResult.data ?? []).map((p) => [p.id, p])
   );
-  // Most-recent active procedure per patient (query ordered desc).
   const procByPatient = new Map<
     string,
     { surgeon_id: string; procedure_type: string; surgery_date: string }
@@ -96,8 +170,6 @@ export default async function NewPatientsPage({
     (surgeonsResult.data ?? []).map((s) => [s.id, s.name])
   );
 
-  // Median time-to-activate (last 30 days) — computed over ALL tasks,
-  // before the kanban 7-day visibility filter.
   const medianMs = medianTimeToActivateMs(
     taskRows.map((t) => ({
       created_at: t.created_at,
@@ -105,24 +177,25 @@ export default async function NewPatientsPage({
     }))
   );
 
-  // Build cards, then apply the kanban 7-day rule + the filter bar.
-  const allCards: SetupCard[] = taskRows.map((t) => {
-    const proc = procByPatient.get(t.patient_id);
-    return {
-      id: t.id,
-      patientId: t.patient_id,
-      patientName: patientName.get(t.patient_id) ?? "Unknown patient",
-      status: t.status as SetupStatus,
-      checklist: parseChecklist(t.checklist),
-      activatedAt: t.activated_at,
-      surgeonId: proc?.surgeon_id ?? null,
-      surgeonName: proc ? (surgeonName.get(proc.surgeon_id) ?? null) : null,
-      procedureType: proc?.procedure_type ?? null,
-      surgeryDate: proc?.surgery_date ?? null,
-    };
-  });
-
-  const cards = allCards
+  const cards: Card[] = taskRows
+    .map((t) => {
+      const patient = patientById.get(t.patient_id);
+      const proc = procByPatient.get(t.patient_id);
+      return {
+        taskId: t.id,
+        patientId: t.patient_id,
+        patientName: patient?.name ?? "Unknown patient",
+        email: patient?.email ?? null,
+        phone: patient?.phone ?? null,
+        status: t.status as SetupStatus,
+        checklist: parseChecklist(t.checklist),
+        signedUpAt: t.created_at,
+        activatedAt: t.activated_at,
+        surgeonName: proc ? surgeonName.get(proc.surgeon_id) ?? null : null,
+        procedureType: proc?.procedure_type ?? null,
+        surgeryDate: proc?.surgery_date ?? null,
+      };
+    })
     .filter((c) =>
       isVisibleInKanban({ status: c.status, activated_at: c.activatedAt })
     )
@@ -130,11 +203,17 @@ export default async function NewPatientsPage({
       cardMatchesFilters(
         {
           patient_name: c.patientName,
-          surgeon_id: c.surgeonId,
+          surgeon_id:
+            procByPatient.get(c.patientId)?.surgeon_id ?? null,
           surgery_date: c.surgeryDate,
         },
         filters
       )
+    )
+    .sort(
+      (a, b) =>
+        STATUS_ORDER[a.status] - STATUS_ORDER[b.status] ||
+        Date.parse(b.signedUpAt) - Date.parse(a.signedUpAt)
     );
 
   const countByStatus: Record<SetupStatus, number> = {
@@ -145,50 +224,72 @@ export default async function NewPatientsPage({
   };
   for (const c of cards) countByStatus[c.status] += 1;
 
+  const stats = [
+    {
+      label: "Awaiting setup",
+      value: String(countByStatus.awaiting_setup + countByStatus.partial),
+      sub: "Action required",
+      accent: true,
+    },
+    {
+      label: "Set up this week",
+      value: String(countByStatus.activated),
+      sub: "Activated, last 7 days",
+      accent: false,
+    },
+    {
+      label: "Avg time to activate",
+      value: medianMs === null ? "—" : formatDuration(medianMs),
+      sub: "Median, last 30 days",
+      accent: false,
+    },
+    {
+      label: "Awaiting verification",
+      value: String(countByStatus.mfa_pending),
+      sub: "MFA pending",
+      accent: false,
+    },
+  ];
+
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
+    <main className="mx-auto max-w-5xl px-6 py-8">
       <h1 className="text-2xl font-semibold text-fv-text-primary">
-        New patients
+        New patients · awaiting setup
       </h1>
       <p className="mt-1 text-sm text-fv-text-secondary">
-        Onboarding queue. Cards move automatically as the setup checklist
-        completes; activated patients drop off after 7 days.
+        Patients who have signed up via the app but haven&apos;t been
+        activated yet. Confirm details and assign a surgeon + procedure to
+        start their recovery journey.
       </p>
 
-      {/* KPI strip */}
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {(
-          [
-            ["mfa_pending", "MFA pending"],
-            ["awaiting_setup", "Awaiting setup"],
-            ["partial", "Partial"],
-            ["activated", "Activated"],
-          ] as const
-        ).map(([status, label]) => (
+      {/* Stat cards — 4 across, wrapping to 2×2 on narrow screens */}
+      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {stats.map((s) => (
           <div
-            key={status}
-            className="rounded-xl bg-fv-bg-card p-4 shadow-sm"
+            key={s.label}
+            className={`rounded-xl bg-fv-bg-card p-4 shadow-sm ${
+              s.accent ? "border-l-4 border-l-amber-400" : ""
+            }`}
           >
-            <div className="text-2xl font-semibold text-fv-text-primary">
-              {countByStatus[status]}
+            <div className="text-xs font-semibold uppercase tracking-wide text-fv-text-secondary">
+              {s.label}
             </div>
-            <div className="text-xs text-fv-text-secondary">{label}</div>
+            <div
+              className={`mt-1 text-2xl font-semibold ${
+                s.accent ? "text-amber-700" : "text-fv-text-primary"
+              }`}
+            >
+              {s.value}
+            </div>
+            <div className="text-xs text-fv-text-secondary">{s.sub}</div>
           </div>
         ))}
-        <div className="rounded-xl bg-fv-bg-accent-soft p-4 shadow-sm">
-          <div className="text-2xl font-semibold text-fv-accent-strong">
-            {medianMs === null ? "—" : formatDuration(medianMs)}
-          </div>
-          <div className="text-xs text-fv-text-secondary">
-            Median time to activate (30d)
-          </div>
-        </div>
       </div>
 
       {/* Filter bar */}
       <form
         method="get"
-        className="mt-5 grid grid-cols-2 gap-3 rounded-xl bg-fv-bg-card p-4 shadow-sm sm:grid-cols-4"
+        className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-fv-bg-card p-4 shadow-sm sm:grid-cols-4"
       >
         <label className="flex flex-col gap-1 text-xs">
           <span className="font-semibold text-fv-text-secondary">Surgeon</span>
@@ -261,9 +362,184 @@ export default async function NewPatientsPage({
         </p>
       ) : null}
 
-      <div className="mt-5">
-        <SetupTaskBoard cards={cards} />
+      {/* Patient queue — single vertical column */}
+      <div className="mt-5 flex flex-col gap-4">
+        {cards.length === 0 ? (
+          <p className="rounded-xl bg-fv-bg-card p-8 text-center text-sm text-fv-text-secondary shadow-sm">
+            No patients in the onboarding queue.
+          </p>
+        ) : (
+          cards.map((card) => {
+            const meta = STATUS_META[card.status];
+            const allDone = CHECKLIST_ITEMS.every(
+              (i) => card.checklist[i.key].done
+            );
+            return (
+              <article
+                key={card.taskId}
+                className={`rounded-xl border-l-4 bg-fv-bg-card p-5 shadow-sm ${meta.border}`}
+              >
+                <header className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex items-center gap-3.5">
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-fv-bg-accent-soft text-sm font-semibold text-fv-accent-strong">
+                      {card.status === "mfa_pending"
+                        ? "??"
+                        : initials(card.patientName)}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-base font-semibold text-fv-text-primary">
+                        {card.patientName}
+                      </div>
+                      <div className="mt-0.5 text-xs text-fv-text-secondary">
+                        {[
+                          card.email,
+                          card.phone,
+                          `Signed up ${fmtSignedUp(card.signedUpAt)}`,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </div>
+                    </div>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${meta.pillCls}`}
+                  >
+                    {meta.pill}
+                  </span>
+                </header>
+
+                {/* Setup checklist */}
+                <div className="mt-3.5 rounded-lg bg-fv-bg-soft/60 p-3.5">
+                  <div className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-fv-text-secondary">
+                    Setup checklist
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {CHECKLIST_ITEMS.map((item) => {
+                      const entry = card.checklist[item.key];
+                      return (
+                        <div
+                          key={item.key}
+                          className="flex items-center justify-between gap-2 text-xs"
+                        >
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span
+                              className={
+                                entry.done
+                                  ? "font-bold text-green-600"
+                                  : "font-bold text-red-500"
+                              }
+                            >
+                              {entry.done ? "✓" : "✕"}
+                            </span>
+                            <span className="truncate text-fv-text-primary">
+                              {item.label}
+                            </span>
+                          </span>
+                          {!entry.done ? (
+                            <form action={completeSetupItemAction}>
+                              <input
+                                type="hidden"
+                                name="task_id"
+                                value={card.taskId}
+                              />
+                              <input
+                                type="hidden"
+                                name="item_key"
+                                value={item.key}
+                              />
+                              <button
+                                type="submit"
+                                className="shrink-0 rounded-md border border-fv-border px-2 py-0.5 text-[11px] font-semibold text-fv-accent-strong hover:bg-fv-bg-soft"
+                              >
+                                {item.action}
+                              </button>
+                            </form>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {card.status === "mfa_pending" ? (
+                  <p className="mt-3 text-xs leading-relaxed text-fv-text-secondary">
+                    Patient hasn&apos;t completed the MFA step. No staff
+                    action is needed — once they finish verification (or
+                    abandon after 24h) they auto-clear from this queue.
+                  </p>
+                ) : null}
+
+                {card.status === "activated" && allDone ? (
+                  <p className="mt-3 rounded-md bg-green-50 px-3 py-2 text-xs text-green-800">
+                    ✓ Setup complete · activated{" "}
+                    {card.activatedAt ? fmtSignedUp(card.activatedAt) : "—"}.
+                    This card leaves the queue 7 days after activation.
+                  </p>
+                ) : null}
+
+                <footer className="mt-3.5 flex items-center justify-between gap-3 border-t border-fv-bg-soft pt-3 text-xs text-fv-text-secondary">
+                  <span>
+                    {card.surgeonName ?? "Surgeon TBC"} ·{" "}
+                    {card.procedureType
+                      ? card.procedureType.toUpperCase()
+                      : "Procedure TBC"}{" "}
+                    · Surgery {fmtDate(card.surgeryDate)}
+                  </span>
+                  <Link
+                    href={`/patients/${card.patientId}`}
+                    className="shrink-0 font-semibold text-fv-accent-strong hover:underline"
+                  >
+                    View patient record →
+                  </Link>
+                </footer>
+              </article>
+            );
+          })
+        )}
       </div>
+
+      {/* How setup works */}
+      <section className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-blue-900">
+          <svg
+            aria-hidden
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-4 w-4"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          How new patient setup works
+        </h2>
+        <ul className="mt-2 flex flex-col gap-1.5 text-sm leading-relaxed text-blue-950/80">
+          <li>
+            📱 <strong>Patient signs up via the app</strong> with email +
+            phone. After MFA they appear here in the New patients queue.
+          </li>
+          <li>
+            🔍 <strong>Staff confirm identity</strong> against existing
+            patient records (matched by email or phone, or manually linked).
+          </li>
+          <li>
+            👤 <strong>Pick surgeon and procedure</strong> — the template
+            auto-populates medications, appointments and recovery content.
+          </li>
+          <li>
+            ✏️ <strong>Edit per-patient as needed</strong> — different
+            astigmatism, atypical case, custom notes, etc.
+          </li>
+          <li>
+            ✅ <strong>Activate</strong> — the patient moves into the active
+            Patients list and gets a welcome notification.
+          </li>
+        </ul>
+      </section>
     </main>
   );
 }
