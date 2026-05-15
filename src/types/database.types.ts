@@ -1197,8 +1197,10 @@ export type Database = {
           date_of_birth: string | null
           email: string
           emergency_contact: Json | null
+          first_name: string
           health_fund: Json | null
           id: string
+          last_name: string
           medicare_number: string | null
           name: string
           paired_clinic_record_id: string | null
@@ -1212,10 +1214,12 @@ export type Database = {
           date_of_birth?: string | null
           email: string
           emergency_contact?: Json | null
+          first_name?: string
           health_fund?: Json | null
           id: string
+          last_name?: string
           medicare_number?: string | null
-          name: string
+          name?: string
           paired_clinic_record_id?: string | null
           phone?: string | null
           phone_verified?: boolean
@@ -1227,8 +1231,10 @@ export type Database = {
           date_of_birth?: string | null
           email?: string
           emergency_contact?: Json | null
+          first_name?: string
           health_fund?: Json | null
           id?: string
+          last_name?: string
           medicare_number?: string | null
           name?: string
           paired_clinic_record_id?: string | null

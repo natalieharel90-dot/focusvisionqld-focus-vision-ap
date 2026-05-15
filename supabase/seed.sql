@@ -121,34 +121,37 @@ where u.id in (
 )
 on conflict (provider_id, provider) do nothing;
 
+-- name is a generated column (first_name || ' ' || last_name) — insert the
+-- parts, not name. Surnames span Anglo, Vietnamese, Chinese, hyphenated and
+-- space-separated forms so name handling is exercised across cultures.
 insert into public.patients (
-  id, email, phone, phone_verified, name, date_of_birth,
+  id, email, phone, phone_verified, first_name, last_name, date_of_birth,
   emergency_contact, allergies
 ) values
   ('a0000001-0000-0000-0000-000000000001',
    'patient.one@example.dev', '+61400000001', true,
-   'Test Patient One', '1984-03-12',
-   '{"name":"Mark One","relationship":"Spouse","phone":"+61400900001"}'::jsonb,
+   'Sarah', 'Thompson', '1984-03-12',
+   '{"name":"Mark Thompson","relationship":"Spouse","phone":"+61400900001"}'::jsonb,
    '{}'),
   ('a0000002-0000-0000-0000-000000000002',
    'patient.two@example.dev', '+61400000002', true,
-   'Test Patient Two', '1971-09-04',
-   '{"name":"Anna Two","relationship":"Sister","phone":"+61400900002"}'::jsonb,
+   'An', 'Nguyen', '1971-09-04',
+   '{"name":"Linh Nguyen","relationship":"Sister","phone":"+61400900002"}'::jsonb,
    '{"sulfonamides"}'),
   ('a0000003-0000-0000-0000-000000000003',
    'patient.three@example.dev', '+61400000003', true,
-   'Test Patient Three', '1996-12-29',
-   '{"name":"Lee Three","relationship":"Parent","phone":"+61400900003"}'::jsonb,
+   'Wei', 'Chen', '1996-12-29',
+   '{"name":"Hui Chen","relationship":"Parent","phone":"+61400900003"}'::jsonb,
    '{}'),
   ('a0000004-0000-0000-0000-000000000004',
    'patient.four@example.dev', '+61400000004', true,
-   'Test Patient Four', '1958-06-18',
-   '{"name":"Priya Four","relationship":"Daughter","phone":"+61400900004"}'::jsonb,
+   'Emily', 'Garcia-Lopez', '1958-06-18',
+   '{"name":"Priya Garcia-Lopez","relationship":"Daughter","phone":"+61400900004"}'::jsonb,
    '{"penicillin"}'),
   ('a0000005-0000-0000-0000-000000000005',
    'patient.five@example.dev', '+61400000005', true,
-   'Test Patient Five', '1989-01-22',
-   '{"name":"Sam Five","relationship":"Partner","phone":"+61400900005"}'::jsonb,
+   'Mohammed', 'Al Rashid', '1989-01-22',
+   '{"name":"Sam Al Rashid","relationship":"Partner","phone":"+61400900005"}'::jsonb,
    '{}')
 on conflict (id) do nothing;
 

@@ -25,6 +25,7 @@ export type StaffAuditEventType =
   | "settings.template_updated"
   | "settings.template_archived"
   | "patient.created"
+  | "patient.details_updated"
   | "patient.template_applied"
   | "audit.viewed"
   | "audit.exported"

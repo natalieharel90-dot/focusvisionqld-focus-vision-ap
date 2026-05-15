@@ -20,7 +20,8 @@ function back(message: string): never {
 }
 
 export async function createPatientAction(formData: FormData) {
-  const name = String(formData.get("name") ?? "").trim();
+  const firstName = String(formData.get("first_name") ?? "").trim();
+  const lastName = String(formData.get("last_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const phone = String(formData.get("phone") ?? "").trim() || null;
   const dob = String(formData.get("date_of_birth") ?? "").trim() || null;
@@ -28,7 +29,7 @@ export async function createPatientAction(formData: FormData) {
   const surgeryDate = String(formData.get("surgery_date") ?? "").trim();
   const templateId = String(formData.get("template_id") ?? "").trim();
 
-  if (!name) back("Patient name is required.");
+  if (!firstName) back("Patient first name is required.");
   if (!email) back("Email is required.");
   if (!EYE_SIDES.includes(eye)) back("Pick which eye(s).");
   if (!surgeryDate) back("Surgery date is required.");
@@ -64,7 +65,8 @@ export async function createPatientAction(formData: FormData) {
     id: patientId,
     email,
     phone,
-    name,
+    first_name: firstName,
+    last_name: lastName,
     date_of_birth: dob,
   });
   if (patientError) back(patientError.message);
@@ -115,7 +117,8 @@ export async function createPatientAction(formData: FormData) {
     entity_type: "patient",
     entity_id: patientId,
     new_value: {
-      name,
+      first_name: firstName,
+      last_name: lastName,
       email,
       procedure_type: template.procedure_type,
     },

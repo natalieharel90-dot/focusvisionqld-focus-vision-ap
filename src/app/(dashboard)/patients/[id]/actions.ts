@@ -42,6 +42,64 @@ function parseCsvList(raw: string): string[] {
     .filter((s) => s.length > 0);
 }
 
+// ───── Patient details ────────────────────────────────────────────────────
+
+export async function updatePatientDetailsAction(formData: FormData) {
+  const patientId = readPatientId(formData);
+  const first_name = String(formData.get("first_name") ?? "").trim();
+  const last_name = String(formData.get("last_name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim() || null;
+  const date_of_birth =
+    String(formData.get("date_of_birth") ?? "").trim() || null;
+  const allergies = parseCsvList(String(formData.get("allergies") ?? ""));
+
+  if (!first_name) backWithError(patientId, "First name is required.");
+  if (!email) backWithError(patientId, "Email is required.");
+  if (!email.includes("@")) backWithError(patientId, "Enter a valid email.");
+
+  const supabase = createSupabaseServerClient();
+
+  const { data: before } = await supabase
+    .from("patients")
+    .select("*")
+    .eq("id", patientId)
+    .single();
+  if (!before) backWithError(patientId, "Patient not found.");
+
+  // A changed phone number is no longer verified — SMS MFA must re-confirm
+  // it before the patient app trusts it again.
+  const phoneChanged = (before.phone ?? null) !== phone;
+  const phone_verified = phoneChanged ? false : before.phone_verified;
+
+  const { data: after, error } = await supabase
+    .from("patients")
+    .update({
+      first_name,
+      last_name,
+      email,
+      phone,
+      phone_verified,
+      date_of_birth,
+      allergies,
+    })
+    .eq("id", patientId)
+    .select()
+    .single();
+
+  if (error) backWithError(patientId, error.message);
+
+  await recordStaffAudit(supabase, "patient.details_updated", {
+    patient_id: patientId,
+    entity_type: "patient",
+    entity_id: patientId,
+    old_value: before,
+    new_value: after,
+  });
+
+  revalidatePath(`/patients/${patientId}`);
+}
+
 // ───── Procedures ─────────────────────────────────────────────────────────
 
 export async function addProcedureAction(formData: FormData) {

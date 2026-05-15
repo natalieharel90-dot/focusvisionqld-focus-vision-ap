@@ -75,10 +75,23 @@ export default async function NewPatientPage({
           action={createPatientAction}
           className="mt-6 flex flex-col gap-4"
         >
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-fv-text-primary">Full name</span>
-            <input type="text" name="name" required className={inputCls} />
-          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-fv-text-primary">
+                First name
+              </span>
+              <input
+                type="text"
+                name="first_name"
+                required
+                className={inputCls}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-fv-text-primary">Surname</span>
+              <input type="text" name="last_name" className={inputCls} />
+            </label>
+          </div>
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-fv-text-primary">Email</span>
             <input type="email" name="email" required className={inputCls} />

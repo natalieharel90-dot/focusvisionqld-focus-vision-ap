@@ -11,6 +11,7 @@ import {
   resolveFlagAction,
   setPatientFeatureOverrideAction,
   stopMedicationAction,
+  updatePatientDetailsAction,
   uploadDocumentAction,
 } from "./actions";
 import { FlagPatientModal } from "./FlagPatientModal";
@@ -264,7 +265,7 @@ export default async function PatientDetailPage({
             <dt className="text-xs text-fv-text-secondary">Phone</dt>
             <dd className="text-fv-text-primary">
               {patient.phone ?? "—"}
-              {patient.phone_verified ? "" : " (unverified)"}
+              {patient.phone && !patient.phone_verified ? " (unverified)" : ""}
             </dd>
           </div>
           <div>
@@ -280,6 +281,92 @@ export default async function PatientDetailPage({
             </dd>
           </div>
         </dl>
+
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm font-semibold text-fv-accent-strong">
+            Edit details
+          </summary>
+          <form
+            action={updatePatientDetailsAction}
+            className="mt-3 grid grid-cols-2 gap-3 text-sm"
+          >
+            <HiddenPatientId id={patient.id} />
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-fv-text-secondary">
+                First name
+              </span>
+              <input
+                type="text"
+                name="first_name"
+                required
+                defaultValue={patient.first_name}
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-fv-text-secondary">Surname</span>
+              <input
+                type="text"
+                name="last_name"
+                defaultValue={patient.last_name}
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-fv-text-secondary">Email</span>
+              <input
+                type="email"
+                name="email"
+                required
+                defaultValue={patient.email}
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-fv-text-secondary">Phone</span>
+              <input
+                type="tel"
+                name="phone"
+                defaultValue={patient.phone ?? ""}
+                placeholder="+61400000000"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-fv-text-secondary">
+                Date of birth
+              </span>
+              <input
+                type="date"
+                name="date_of_birth"
+                defaultValue={patient.date_of_birth ?? ""}
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-fv-text-secondary">
+                Allergies (comma-separated)
+              </span>
+              <input
+                type="text"
+                name="allergies"
+                defaultValue={patient.allergies.join(", ")}
+                placeholder="Penicillin, Latex"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
+              />
+            </label>
+            <p className="col-span-2 text-xs text-fv-text-secondary">
+              Changing the phone number marks it unverified until the patient
+              re-confirms it by SMS.
+            </p>
+            <button
+              type="submit"
+              className="col-span-2 mt-1 self-start rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+            >
+              Save details
+            </button>
+          </form>
+        </details>
       </Card>
 
       <Card
