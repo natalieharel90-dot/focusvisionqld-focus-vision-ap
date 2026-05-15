@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import type { Database } from "@/types/database.types";
+import type { Database, Json } from "@/types/database.types";
+import { initials } from "@/lib/bulk-push";
 import {
   addAppointmentAction,
   addMedicationAction,
@@ -37,10 +38,24 @@ type ManualFlag = Database["public"]["Tables"]["manual_flags"]["Row"];
 type DocumentRow = Database["public"]["Tables"]["documents"]["Row"];
 type StaffUser = Database["public"]["Tables"]["staff_users"]["Row"];
 
+// 90-day post-op window — the recovery progress bar and the analytics
+// completion view both treat day 90 as the end of active recovery.
+const RECOVERY_WINDOW = 90;
+
 function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null;
   const surgery = new Date(`${dateStr}T00:00:00Z`).getTime();
   return Math.floor((Date.now() - surgery) / (1000 * 60 * 60 * 24));
+}
+
+function age(dob: string | null): number | null {
+  if (!dob) return null;
+  const d = new Date(`${dob}T00:00:00Z`);
+  const now = new Date();
+  let years = now.getUTCFullYear() - d.getUTCFullYear();
+  const m = now.getUTCMonth() - d.getUTCMonth();
+  if (m < 0 || (m === 0 && now.getUTCDate() < d.getUTCDate())) years -= 1;
+  return years;
 }
 
 function fmtDate(value: string | null): string {
@@ -60,6 +75,15 @@ function fmtDateTime(value: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+// Reads a string field out of a jsonb column (emergency_contact / health_fund).
+function jsonField(value: Json | null | undefined, key: string): string | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const v = (value as Record<string, Json>)[key];
+    return typeof v === "string" && v.trim() ? v : null;
+  }
+  return null;
 }
 
 function zoneClasses(zone: string | null): string {
@@ -88,36 +112,136 @@ function flagClasses(level: string | null): string {
   }
 }
 
-// ─── Card primitives ──────────────────────────────────────────────────────
+function procedureStatus(p: Procedure): { label: string; cls: string } {
+  if (p.status === "completed") {
+    return { label: "Completed", cls: "bg-fv-bg-soft text-fv-text-secondary" };
+  }
+  if (p.status === "cancelled") {
+    return { label: "Cancelled", cls: "bg-fv-bg-soft text-fv-text-secondary" };
+  }
+  const day = daysSince(p.surgery_date);
+  if (day !== null && day < 0) {
+    return { label: "Scheduled", cls: "bg-blue-100 text-blue-800" };
+  }
+  return {
+    label: `In recovery · Day ${day ?? "?"}`,
+    cls: "bg-green-100 text-green-800",
+  };
+}
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+// ─── Primitives ────────────────────────────────────────────────────────────
+
+const inputCls =
+  "rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5 text-sm";
+const fieldLabel = "text-xs text-fv-text-secondary";
+
+function Avatar({ name }: { name: string }) {
   return (
-    <h2 className="mb-3 mt-8 text-xs font-bold uppercase tracking-wider text-fv-text-secondary first:mt-0">
-      {children}
-    </h2>
+    <span className="grid h-[60px] w-[60px] shrink-0 place-items-center rounded-full bg-fv-bg-accent-soft text-lg font-semibold text-fv-accent-strong">
+      {initials(name)}
+    </span>
   );
 }
 
-function Card({
+function Pill({ label, cls }: { label: string; cls: string }) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${cls}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function Panel({
   title,
+  action,
+  badge,
+  id,
   children,
 }: {
   title: React.ReactNode;
+  action?: React.ReactNode;
+  badge?: React.ReactNode;
+  id?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-4 overflow-hidden rounded-xl bg-fv-bg-card shadow-sm">
-      <header className="flex items-center justify-between border-b border-fv-bg-soft px-5 py-3">
-        <h3 className="text-sm font-semibold text-fv-text-primary">{title}</h3>
+    <section
+      id={id}
+      className="overflow-hidden rounded-xl bg-fv-bg-card shadow-sm"
+    >
+      <header className="flex items-center justify-between gap-3 border-b border-fv-bg-soft px-5 py-3">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-fv-text-primary">
+            {title}
+          </h3>
+          {badge}
+        </div>
+        {action}
       </header>
       <div className="p-5">{children}</div>
     </section>
   );
 }
 
+const SECTION_ICONS = {
+  heart:
+    '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>',
+  chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  phone:
+    '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  graph:
+    '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+  doc: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+};
+
+const SECTION_COLORS = {
+  green: "bg-green-100 text-green-600",
+  blue: "bg-blue-100 text-blue-600",
+  amber: "bg-amber-100 text-amber-600",
+  purple: "bg-purple-100 text-purple-600",
+};
+
+function SectionHeader({
+  label,
+  icon,
+  color,
+}: {
+  label: string;
+  icon: keyof typeof SECTION_ICONS;
+  color: keyof typeof SECTION_COLORS;
+}) {
+  return (
+    <div className="mb-1 mt-3 flex items-center gap-2 first:mt-0">
+      <span
+        className={`grid h-7 w-7 place-items-center rounded-lg ${SECTION_COLORS[color]}`}
+      >
+        <svg
+          aria-hidden
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-[15px] w-[15px]"
+          dangerouslySetInnerHTML={{ __html: SECTION_ICONS[icon] }}
+        />
+      </span>
+      <h2 className="text-xs font-bold uppercase tracking-wider text-fv-text-primary">
+        {label}
+      </h2>
+    </div>
+  );
+}
+
 function HiddenPatientId({ id }: { id: string }) {
   return <input type="hidden" name="patient_id" value={id} />;
 }
+
+const summaryBtn =
+  "cursor-pointer rounded-md border border-fv-border px-3 py-1 text-xs font-semibold text-fv-accent-strong";
 
 // ─── Page ──────────────────────────────────────────────────────────────────
 
@@ -130,6 +254,10 @@ export default async function PatientDetailPage({
 }) {
   const supabase = createSupabaseServerClient();
   const patientId = params.id;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const [
     patientResult,
@@ -212,961 +340,1070 @@ export default async function PatientDetailPage({
   );
   const activeProcedure = procedures.find((p) => p.status === "active");
   const nextAppointment = selectNextAppointment(appointments, new Date());
+  const upcomingAppointments = appointments.filter(
+    (a) => a.status === "to_book" || a.status === "confirmed"
+  );
   const activeMeds = medications.filter((m) => m.stopped_at === null);
   const stoppedMeds = medications.filter((m) => m.stopped_at !== null);
   const openFlags = flags.filter((f) => f.resolved_at === null);
   const resolvedFlags = flags.filter((f) => f.resolved_at !== null);
+  const currentStaffName = user ? staffById.get(user.id)?.name ?? null : null;
+
+  // Patient status pill — derived, no schema field. Flagged wins; otherwise
+  // a patient with no active procedure is treated as discharged.
+  const hasActiveProcedure = procedures.some((p) => p.status === "active");
+  const status =
+    openFlags.length > 0
+      ? { label: "Flagged", cls: "bg-orange-100 text-orange-800" }
+      : !hasActiveProcedure
+        ? { label: "Discharged", cls: "bg-fv-bg-soft text-fv-text-secondary" }
+        : { label: "On track", cls: "bg-green-100 text-green-800" };
+
+  const recoveryDay = activeProcedure
+    ? daysSince(activeProcedure.surgery_date)
+    : null;
+  const progressPct =
+    recoveryDay === null
+      ? 0
+      : Math.max(0, Math.min(100, (recoveryDay / RECOVERY_WINDOW) * 100));
+  const recordId =
+    patient.paired_clinic_record_id ?? `FV-${patient.id.slice(0, 8).toUpperCase()}`;
+  const patientAge = age(patient.date_of_birth);
+
+  const metaParts = [
+    patientAge !== null ? `${patientAge} yrs` : null,
+    patient.email,
+    patient.phone ?? null,
+    `ID #${recordId}`,
+  ].filter(Boolean);
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
-      {/* Header */}
-      <div className="mb-6 flex items-end justify-between gap-4">
-        <div>
-          <Link
-            href="/patients"
-            className="text-xs font-semibold text-fv-text-secondary hover:underline"
-          >
-            ← Patients
-          </Link>
-          <h1 className="mt-1 text-2xl font-semibold text-fv-text-primary">
-            {patient.name}
-          </h1>
-          {activeProcedure ? (
-            <p className="mt-1 text-sm text-fv-text-secondary">
-              Day {daysSince(activeProcedure.surgery_date) ?? "?"} ·{" "}
-              {activeProcedure.procedure_type.toUpperCase()} ·{" "}
-              {activeProcedure.eye} ·{" "}
-              {staffById.get(activeProcedure.surgeon_id)?.name ?? "—"}
-            </p>
-          ) : (
-            <p className="mt-1 text-sm text-fv-text-secondary">
-              No active procedure
-            </p>
-          )}
-        </div>
-      </div>
+    <main className="mx-auto max-w-[1400px] px-6 py-8">
+      <Link
+        href="/patients"
+        className="text-xs font-semibold text-fv-text-secondary hover:underline"
+      >
+        ← Patients
+      </Link>
 
       {searchParams.error ? (
-        <p className="mb-4 rounded-md bg-red-50 px-4 py-2 text-sm text-red-700">
+        <p className="mt-3 rounded-md bg-red-50 px-4 py-2 text-sm text-red-700">
           {searchParams.error}
         </p>
       ) : null}
 
-      {/* ─── CLINICAL ─── */}
-      <SectionLabel>Clinical</SectionLabel>
-
-      <Card title="Patient details">
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-          <div>
-            <dt className="text-xs text-fv-text-secondary">Email</dt>
-            <dd className="text-fv-text-primary">{patient.email}</dd>
+      {/* ─── Detail header (full width) ─── */}
+      <section className="mt-3 flex flex-wrap items-center gap-4 rounded-xl bg-fv-bg-card p-5 shadow-sm">
+        <Avatar name={patient.name} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold text-fv-text-primary">
+              {patient.name}
+            </h1>
+            <Pill label={status.label} cls={status.cls} />
           </div>
-          <div>
-            <dt className="text-xs text-fv-text-secondary">Phone</dt>
-            <dd className="text-fv-text-primary">
-              {patient.phone ?? "—"}
-              {patient.phone && !patient.phone_verified ? " (unverified)" : ""}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-fv-text-secondary">Date of birth</dt>
-            <dd className="text-fv-text-primary">
-              {fmtDate(patient.date_of_birth)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-fv-text-secondary">Allergies</dt>
-            <dd className="text-fv-text-primary">
-              {patient.allergies.length > 0 ? patient.allergies.join(", ") : "—"}
-            </dd>
-          </div>
-        </dl>
-
-        <details className="mt-4">
-          <summary className="cursor-pointer text-sm font-semibold text-fv-accent-strong">
-            Edit details
-          </summary>
-          <form
-            action={updatePatientDetailsAction}
-            className="mt-3 grid grid-cols-2 gap-3 text-sm"
-          >
-            <HiddenPatientId id={patient.id} />
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">
-                First name
-              </span>
-              <input
-                type="text"
-                name="first_name"
-                required
-                defaultValue={patient.first_name}
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Surname</span>
-              <input
-                type="text"
-                name="last_name"
-                defaultValue={patient.last_name}
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Email</span>
-              <input
-                type="email"
-                name="email"
-                required
-                defaultValue={patient.email}
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Phone</span>
-              <input
-                type="tel"
-                name="phone"
-                defaultValue={patient.phone ?? ""}
-                placeholder="+61400000000"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">
-                Date of birth
-              </span>
-              <input
-                type="date"
-                name="date_of_birth"
-                defaultValue={patient.date_of_birth ?? ""}
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">
-                Allergies (comma-separated)
-              </span>
-              <input
-                type="text"
-                name="allergies"
-                defaultValue={patient.allergies.join(", ")}
-                placeholder="Penicillin, Latex"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <p className="col-span-2 text-xs text-fv-text-secondary">
-              Changing the phone number marks it unverified until the patient
-              re-confirms it by SMS.
-            </p>
-            <button
-              type="submit"
-              className="col-span-2 mt-1 self-start rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-            >
-              Save details
-            </button>
-          </form>
-        </details>
-      </Card>
-
-      <Card
-        title={
-          <span className="flex items-center gap-2">
-            Procedures
-            <span className="rounded-full bg-fv-bg-soft px-2 py-0.5 text-xs font-medium text-fv-text-secondary">
-              {procedures.length}
-            </span>
-          </span>
-        }
-      >
-        {procedures.length === 0 ? (
-          <p className="text-sm text-fv-text-secondary">No procedures yet.</p>
-        ) : (
-          <ul className="mb-4 space-y-2">
-            {procedures.map((p) => (
-              <li
-                key={p.id}
-                className="flex items-center justify-between rounded-md bg-fv-bg-soft px-3 py-2 text-sm"
-              >
-                <div>
-                  <div className="font-medium text-fv-text-primary">
-                    {p.procedure_type.toUpperCase()} ·{" "}
-                    <span className="capitalize">{p.eye}</span>
-                  </div>
-                  <div className="text-xs text-fv-text-secondary">
-                    {fmtDate(p.surgery_date)} ·{" "}
-                    {staffById.get(p.surgeon_id)?.name ?? "—"} · {p.status}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <details className="mt-2">
-          <summary className="cursor-pointer text-sm font-semibold text-fv-accent-strong">
-            + Add procedure
-          </summary>
-          <form
-            action={addProcedureAction}
-            className="mt-3 grid grid-cols-2 gap-3 text-sm"
-          >
-            <HiddenPatientId id={patient.id} />
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Type</span>
-              <input
-                type="text"
-                name="procedure_type"
-                placeholder="lasik / prk / smile / cataract / icl"
-                required
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Eye</span>
-              <select
-                name="eye"
-                required
-                defaultValue="both"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              >
-                <option value="left">Left</option>
-                <option value="right">Right</option>
-                <option value="both">Both</option>
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Surgeon</span>
-              <select
-                name="surgeon_id"
-                required
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              >
-                <option value="">Select…</option>
-                {staff
-                  .filter((s) => s.role === "surgeon")
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">
-                Surgery date
-              </span>
-              <input
-                type="date"
-                name="surgery_date"
-                required
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="col-span-2 flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">
-                Custom notes (optional)
-              </span>
-              <textarea
-                name="custom_notes"
-                rows={2}
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <button
-              type="submit"
-              className="col-span-2 mt-1 rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-            >
-              Add procedure
-            </button>
-          </form>
-        </details>
-      </Card>
-
-      <Card
-        title={
-          <span className="flex items-center gap-2">
-            Medications
-            <span className="rounded-full bg-fv-bg-soft px-2 py-0.5 text-xs font-medium text-fv-text-secondary">
-              {activeMeds.length} active
-              {stoppedMeds.length > 0 ? ` · ${stoppedMeds.length} stopped` : ""}
-            </span>
-          </span>
-        }
-      >
-        {activeMeds.length === 0 ? (
-          <p className="text-sm text-fv-text-secondary">
-            No active medications.
+          <p className="mt-1 text-sm text-fv-text-secondary">
+            {metaParts.join(" · ")}
           </p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <Link
+            href="/inbox"
+            className="rounded-md border border-fv-border px-4 py-2 text-sm font-semibold text-fv-text-primary hover:bg-fv-bg-soft/50"
+          >
+            Message
+          </Link>
+          <a
+            href="#patient-details"
+            className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          >
+            Edit details
+          </a>
+        </div>
+      </section>
+
+      {/* ─── Recovery progress (full width) ─── */}
+      <section className="mt-[14px] rounded-xl bg-gradient-to-br from-emerald-600 to-green-700 p-5 text-white shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wider text-white/70">
+          Recovery progress
+        </p>
+        {activeProcedure ? (
+          <>
+            <p className="mt-1 text-xl font-semibold">
+              Day {recoveryDay ?? "?"} of {RECOVERY_WINDOW} ·{" "}
+              {activeProcedure.procedure_type.toUpperCase()}
+            </p>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/25">
+              <div
+                className="h-full rounded-full bg-white"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+            <p className="mt-2 text-sm text-white/80">
+              Surgery: {fmtDate(activeProcedure.surgery_date)} · Next
+              follow-up:{" "}
+              {nextAppointment
+                ? nextAppointment.status === "to_book" ||
+                  !nextAppointment.scheduled_at
+                  ? "To be booked"
+                  : formatAppointmentDateTime(nextAppointment.scheduled_at)
+                : "To be booked"}
+            </p>
+          </>
         ) : (
-          <ul className="mb-4 space-y-2">
-            {activeMeds.map((m) => (
-              <li
-                key={m.id}
-                className="rounded-md border border-fv-bg-soft p-3 text-sm"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-medium text-fv-text-primary">
-                      {m.name}
-                    </div>
-                    <div className="text-xs text-fv-text-secondary">
-                      {m.dose} · {m.route} · {m.frequency}
-                      {m.scheduled_times.length > 0
-                        ? ` · ${m.scheduled_times.join(", ")}`
+          <p className="mt-1 text-xl font-semibold">No active procedure</p>
+        )}
+      </section>
+
+      {/* ─── Two-column grid — stacks below 1100px ─── */}
+      <div className="mt-[14px] grid grid-cols-1 gap-[14px] min-[1100px]:grid-cols-[1.4fr_1fr]">
+        {/* ── LEFT COLUMN ── */}
+        <div className="flex min-w-0 flex-col gap-[14px]">
+          <SectionHeader label="Clinical" icon="heart" color="green" />
+
+          {/* Patient details */}
+          <Panel
+            id="patient-details"
+            title="Patient details"
+            action={
+              <a href="#edit-details" className={summaryBtn}>
+                Edit
+              </a>
+            }
+          >
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+              <div>
+                <dt className={fieldLabel}>Full name</dt>
+                <dd className="text-fv-text-primary">{patient.name}</dd>
+              </div>
+              <div>
+                <dt className={fieldLabel}>Date of birth</dt>
+                <dd className="text-fv-text-primary">
+                  {fmtDate(patient.date_of_birth)}
+                </dd>
+              </div>
+              <div>
+                <dt className={fieldLabel}>Medicare</dt>
+                <dd className="text-fv-text-primary">
+                  {patient.medicare_number ?? "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className={fieldLabel}>Private health</dt>
+                <dd className="text-fv-text-primary">
+                  {jsonField(patient.health_fund, "fund") ??
+                    jsonField(patient.health_fund, "name") ??
+                    jsonField(patient.health_fund, "provider") ??
+                    "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className={fieldLabel}>Emergency contact</dt>
+                <dd className="text-fv-text-primary">
+                  {jsonField(patient.emergency_contact, "name") ? (
+                    <>
+                      {jsonField(patient.emergency_contact, "name")}
+                      {jsonField(patient.emergency_contact, "relationship")
+                        ? ` (${jsonField(
+                            patient.emergency_contact,
+                            "relationship"
+                          )})`
                         : ""}
-                    </div>
-                    <div className="mt-1 text-xs text-fv-text-secondary">
-                      {fmtDate(m.start_date)} →{" "}
-                      {m.end_date ? fmtDate(m.end_date) : "ongoing"}
-                      {m.taper_notes ? ` · ${m.taper_notes}` : ""}
-                    </div>
-                  </div>
-                  <details className="shrink-0">
-                    <summary className="cursor-pointer rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
-                      Stop
-                    </summary>
-                    <form
-                      action={stopMedicationAction}
-                      className="mt-2 flex flex-col gap-2"
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className={fieldLabel}>Allergies</dt>
+                <dd className="text-fv-text-primary">
+                  {patient.allergies.length > 0
+                    ? patient.allergies.join(", ")
+                    : "—"}
+                </dd>
+              </div>
+            </dl>
+
+            <details id="edit-details" className="mt-4">
+              <summary className="cursor-pointer text-sm font-semibold text-fv-accent-strong">
+                Edit details
+              </summary>
+              <form
+                action={updatePatientDetailsAction}
+                className="mt-3 grid grid-cols-2 gap-3 text-sm"
+              >
+                <HiddenPatientId id={patient.id} />
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>First name</span>
+                  <input
+                    type="text"
+                    name="first_name"
+                    required
+                    defaultValue={patient.first_name}
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Surname</span>
+                  <input
+                    type="text"
+                    name="last_name"
+                    defaultValue={patient.last_name}
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Email</span>
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    defaultValue={patient.email}
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Phone</span>
+                  <input
+                    type="tel"
+                    name="phone"
+                    defaultValue={patient.phone ?? ""}
+                    placeholder="+61400000000"
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Date of birth</span>
+                  <input
+                    type="date"
+                    name="date_of_birth"
+                    defaultValue={patient.date_of_birth ?? ""}
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Allergies (comma-separated)</span>
+                  <input
+                    type="text"
+                    name="allergies"
+                    defaultValue={patient.allergies.join(", ")}
+                    placeholder="Penicillin, Latex"
+                    className={inputCls}
+                  />
+                </label>
+                <p className="col-span-2 text-xs text-fv-text-secondary">
+                  Changing the phone number marks it unverified until the
+                  patient re-confirms it by SMS.
+                </p>
+                <button
+                  type="submit"
+                  className="col-span-2 mt-1 self-start rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                >
+                  Save details
+                </button>
+              </form>
+            </details>
+          </Panel>
+
+          {/* Procedures */}
+          <Panel
+            title="Procedures"
+            badge={
+              <span className="rounded-full bg-fv-bg-soft px-2 py-0.5 text-xs font-medium text-fv-text-secondary">
+                {procedures.length}
+              </span>
+            }
+          >
+            {procedures.length === 0 ? (
+              <p className="text-sm text-fv-text-secondary">
+                No procedures yet.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {procedures.map((p) => {
+                  const ps = procedureStatus(p);
+                  return (
+                    <li
+                      key={p.id}
+                      className="rounded-lg border border-fv-bg-soft p-3 text-sm"
                     >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-fv-text-primary">
+                          {p.procedure_type.toUpperCase()}
+                        </span>
+                        <Pill label={ps.label} cls={ps.cls} />
+                      </div>
+                      <div className="mt-1 text-xs text-fv-text-secondary">
+                        {staffById.get(p.surgeon_id)?.name ?? "—"} ·{" "}
+                        <span className="capitalize">{p.eye}</span> ·{" "}
+                        {fmtDate(p.surgery_date)}
+                      </div>
+                      {p.custom_notes ? (
+                        <p className="mt-2 rounded-md bg-fv-bg-soft px-2 py-1 text-xs text-fv-text-secondary">
+                          {p.custom_notes}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <details className="mt-3">
+              <summary className="block cursor-pointer rounded-lg border border-dashed border-fv-border px-3 py-2 text-center text-sm font-semibold text-fv-accent-strong">
+                + Add another procedure
+              </summary>
+              <form
+                action={addProcedureAction}
+                className="mt-3 grid grid-cols-2 gap-3 text-sm"
+              >
+                <HiddenPatientId id={patient.id} />
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Type</span>
+                  <input
+                    type="text"
+                    name="procedure_type"
+                    placeholder="lasik / prk / smile / cataract / icl"
+                    required
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Eye</span>
+                  <select
+                    name="eye"
+                    required
+                    defaultValue="both"
+                    className={inputCls}
+                  >
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                    <option value="both">Both</option>
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Surgeon</span>
+                  <select name="surgeon_id" required className={inputCls}>
+                    <option value="">Select…</option>
+                    {staff
+                      .filter((s) => s.role === "surgeon")
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Surgery date</span>
+                  <input
+                    type="date"
+                    name="surgery_date"
+                    required
+                    className={inputCls}
+                  />
+                </label>
+                <label className="col-span-2 flex flex-col gap-1">
+                  <span className={fieldLabel}>Custom notes (optional)</span>
+                  <textarea
+                    name="custom_notes"
+                    rows={2}
+                    className={inputCls}
+                  />
+                </label>
+                <button
+                  type="submit"
+                  className="col-span-2 mt-1 rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                >
+                  Add procedure
+                </button>
+              </form>
+            </details>
+          </Panel>
+
+          {/* Medications */}
+          <Panel
+            title="Medications"
+            badge={
+              <span className="rounded-full bg-fv-bg-soft px-2 py-0.5 text-xs font-medium text-fv-text-secondary">
+                {activeMeds.length} active
+              </span>
+            }
+            action={
+              <details className="relative">
+                <summary className={summaryBtn}>+ Add medication</summary>
+                <form
+                  action={addMedicationAction}
+                  className="absolute right-0 z-10 mt-2 grid w-[320px] grid-cols-2 gap-3 rounded-xl border border-fv-bg-soft bg-fv-bg-card p-4 text-sm shadow-lg"
+                >
+                  <HiddenPatientId id={patient.id} />
+                  <label className="col-span-2 flex flex-col gap-1">
+                    <span className={fieldLabel}>Name</span>
+                    <input
+                      type="text"
+                      name="name"
+                      required
+                      placeholder="Pred Forte 1%"
+                      className={inputCls}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>Dose</span>
+                    <input
+                      type="text"
+                      name="dose"
+                      required
+                      placeholder="1 drop"
+                      className={inputCls}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>Route</span>
+                    <input
+                      type="text"
+                      name="route"
+                      required
+                      placeholder="topical eye"
+                      className={inputCls}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>Frequency</span>
+                    <input
+                      type="text"
+                      name="frequency"
+                      required
+                      placeholder="4x daily"
+                      className={inputCls}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>Scheduled times</span>
+                    <input
+                      type="text"
+                      name="scheduled_times"
+                      placeholder="08:00, 12:00"
+                      className={inputCls}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>Start date</span>
+                    <input
+                      type="date"
+                      name="start_date"
+                      required
+                      className={inputCls}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>End date</span>
+                    <input type="date" name="end_date" className={inputCls} />
+                  </label>
+                  <button
+                    type="submit"
+                    className="col-span-2 mt-1 rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                  >
+                    Add medication
+                  </button>
+                </form>
+              </details>
+            }
+          >
+            {activeMeds.length === 0 ? (
+              <p className="text-sm text-fv-text-secondary">
+                No active medications.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {activeMeds.map((m) => (
+                  <li
+                    key={m.id}
+                    className="flex items-start justify-between gap-3 rounded-lg border border-fv-bg-soft p-3 text-sm"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium text-fv-text-primary">
+                        {m.name}
+                      </div>
+                      <div className="text-xs text-fv-text-secondary">
+                        {m.dose} · {m.route} · {m.frequency}
+                        {m.scheduled_times.length > 0
+                          ? ` · ${m.scheduled_times.join(", ")}`
+                          : ""}
+                      </div>
+                      <div className="mt-1 text-xs text-fv-text-secondary">
+                        {fmtDate(m.start_date)} →{" "}
+                        {m.end_date ? fmtDate(m.end_date) : "ongoing"}
+                      </div>
+                    </div>
+                    <details className="shrink-0">
+                      <summary className="cursor-pointer rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
+                        Remove
+                      </summary>
+                      <form
+                        action={stopMedicationAction}
+                        className="mt-2 flex flex-col gap-2"
+                      >
+                        <HiddenPatientId id={patient.id} />
+                        <input
+                          type="hidden"
+                          name="medication_id"
+                          value={m.id}
+                        />
+                        <select
+                          name="stop_reason"
+                          required
+                          className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-2 py-1 text-xs"
+                        >
+                          <option value="">Reason…</option>
+                          <option value="Course completed">
+                            Course completed
+                          </option>
+                          <option value="Patient allergy">
+                            Patient allergy
+                          </option>
+                          <option value="Side effects">Side effects</option>
+                          <option value="Prescription changed by surgeon">
+                            Prescription changed by surgeon
+                          </option>
+                          <option value="Patient declined">
+                            Patient declined
+                          </option>
+                          <option value="Other">Other</option>
+                        </select>
+                        <button
+                          type="submit"
+                          className="rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white"
+                        >
+                          Confirm stop
+                        </button>
+                      </form>
+                    </details>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {stoppedMeds.length > 0 ? (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs font-semibold text-fv-text-secondary">
+                  Stopped medications · history ({stoppedMeds.length})
+                </summary>
+                <ul className="mt-2 space-y-2">
+                  {stoppedMeds.map((m) => (
+                    <li
+                      key={m.id}
+                      className="rounded-md bg-fv-bg-soft p-3 text-sm opacity-75"
+                    >
+                      <div className="font-medium text-fv-text-primary line-through">
+                        {m.name} ({m.dose})
+                      </div>
+                      <div className="text-xs text-fv-text-secondary">
+                        Stopped {fmtDateTime(m.stopped_at)} by{" "}
+                        {staffById.get(m.stopped_by_staff_id ?? "")?.name ??
+                          "—"}{" "}
+                        · {m.stop_reason}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </Panel>
+
+          <SectionHeader label="Internal team" icon="chat" color="blue" />
+
+          {/* Internal staff notes */}
+          <Panel
+            title="Internal staff notes"
+            badge={
+              <span className="rounded-full bg-fv-bg-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fv-text-secondary">
+                Not visible to patient
+              </span>
+            }
+          >
+            {notes.length === 0 ? (
+              <p className="text-sm text-fv-text-secondary">No notes yet.</p>
+            ) : (
+              <ul className="space-y-3">
+                {notes.map((n) => {
+                  const author = staffById.get(n.author_staff_id);
+                  return (
+                    <li
+                      key={n.id}
+                      className="rounded-lg bg-fv-bg-soft p-3 text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-fv-bg-accent-soft text-[10px] font-semibold text-fv-accent-strong">
+                          {initials(author?.name ?? "?")}
+                        </span>
+                        <div className="min-w-0 text-xs text-fv-text-secondary">
+                          <span className="font-semibold text-fv-text-primary">
+                            {author?.name ?? "Unknown"}
+                          </span>
+                          {author?.role ? (
+                            <span className="capitalize"> · {author.role}</span>
+                          ) : null}
+                          {" · "}
+                          {fmtDateTime(n.created_at)}
+                        </div>
+                      </div>
+                      <div className="mt-2 whitespace-pre-wrap text-fv-text-primary">
+                        {n.body}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <form
+              action={addNoteAction}
+              className="mt-4 flex flex-col gap-2 text-sm"
+            >
+              <HiddenPatientId id={patient.id} />
+              <textarea
+                name="body"
+                rows={3}
+                placeholder="Internal observation, handoff, plan…"
+                required
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-2"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-fv-text-secondary">
+                  Posting as {currentStaffName ?? "you"}
+                </span>
+                <button
+                  type="submit"
+                  className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                >
+                  Post note
+                </button>
+              </div>
+            </form>
+          </Panel>
+
+          {/* Appointments */}
+          <Panel
+            id="appointments"
+            title="Appointments"
+            action={
+              <details className="relative">
+                <summary className={summaryBtn}>+ Schedule</summary>
+                <form
+                  action={addAppointmentAction}
+                  className="absolute right-0 z-10 mt-2 grid w-[320px] grid-cols-2 gap-3 rounded-xl border border-fv-bg-soft bg-fv-bg-card p-4 text-sm shadow-lg"
+                >
+                  <HiddenPatientId id={patient.id} />
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>Type</span>
+                    <input
+                      type="text"
+                      name="appointment_type"
+                      required
+                      placeholder="1-week, 1-month…"
+                      className={inputCls}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>When</span>
+                    <input
+                      type="datetime-local"
+                      name="scheduled_at"
+                      className={inputCls}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>Location</span>
+                    <select name="location" className={inputCls}>
+                      <option value="">—</option>
+                      <option value="in_clinic">In clinic</option>
+                      <option value="phone">Phone</option>
+                      <option value="video">Video</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>Clinician</span>
+                    <select name="clinician_id" className={inputCls}>
+                      <option value="">—</option>
+                      {staff.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="col-span-2 flex flex-col gap-1">
+                    <span className={fieldLabel}>Notes (optional)</span>
+                    <textarea name="notes" rows={2} className={inputCls} />
+                  </label>
+                  <button
+                    type="submit"
+                    className="col-span-2 mt-1 rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                  >
+                    Schedule
+                  </button>
+                </form>
+              </details>
+            }
+          >
+            {upcomingAppointments.length === 0 ? (
+              <p className="text-sm text-fv-text-secondary">
+                No upcoming appointments.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {upcomingAppointments.map((a) => (
+                  <li
+                    key={a.id}
+                    className="flex items-start justify-between gap-3 rounded-lg bg-fv-bg-soft px-3 py-2 text-sm"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium text-fv-text-primary">
+                        {appointmentTypeLabel(a.appointment_type)}
+                      </div>
+                      <div className="text-xs text-fv-text-secondary">
+                        {a.scheduled_at
+                          ? fmtDateTime(a.scheduled_at)
+                          : "To be booked"}
+                        {a.location
+                          ? ` · ${locationLabel(a.location)}`
+                          : ""}
+                        {a.clinician_id
+                          ? ` · ${staffById.get(a.clinician_id)?.name ?? "—"}`
+                          : ""}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs uppercase tracking-wide text-fv-text-secondary">
+                      {a.status}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {nextAppointment ? (
+              <div className="mt-3 border-t border-fv-bg-soft pt-3">
+                <NextAppointmentModal
+                  patientId={patient.id}
+                  appointment={nextAppointment}
+                  clinicians={staff.map((s) => ({ id: s.id, name: s.name }))}
+                />
+              </div>
+            ) : null}
+          </Panel>
+
+          <SectionHeader
+            label="Patient experience"
+            icon="phone"
+            color="purple"
+          />
+
+          {/* Patient app features */}
+          <Panel title="Patient app features">
+            <ul className="space-y-2">
+              {FEATURES.map((feature) => {
+                const flag = featureFlagByKey.get(feature.key);
+                const clinicDefault = featureDefaultByKey.get(feature.key);
+                const effective = resolveFeature(
+                  flag ? { enabled: flag.enabled } : null,
+                  clinicDefault === undefined
+                    ? null
+                    : { enabled: clinicDefault },
+                  feature.schemaDefault
+                );
+                return (
+                  <li
+                    key={feature.key}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-fv-bg-soft p-3 text-sm"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium text-fv-text-primary">
+                        {feature.label}
+                      </div>
+                      <div className="text-xs text-fv-text-secondary">
+                        {feature.description}
+                      </div>
+                    </div>
+                    <form action={setPatientFeatureOverrideAction}>
                       <HiddenPatientId id={patient.id} />
                       <input
                         type="hidden"
-                        name="medication_id"
-                        value={m.id}
+                        name="feature_key"
+                        value={feature.key}
                       />
-                      <select
-                        name="stop_reason"
-                        required
-                        className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-2 py-1 text-xs"
-                      >
-                        <option value="">Reason…</option>
-                        <option value="Course completed">
-                          Course completed
-                        </option>
-                        <option value="Patient allergy">
-                          Patient allergy
-                        </option>
-                        <option value="Side effects">Side effects</option>
-                        <option value="Prescription changed by surgeon">
-                          Prescription changed by surgeon
-                        </option>
-                        <option value="Patient declined">
-                          Patient declined
-                        </option>
-                        <option value="Other">Other</option>
-                      </select>
+                      <input
+                        type="hidden"
+                        name="enabled"
+                        value={(!effective).toString()}
+                      />
                       <button
                         type="submit"
-                        className="rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white"
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          effective
+                            ? "bg-fv-accent-strong text-white"
+                            : "border border-fv-border text-fv-text-secondary"
+                        }`}
                       >
-                        Confirm stop
+                        {effective ? "ON" : "OFF"}
                       </button>
                     </form>
-                  </details>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {stoppedMeds.length > 0 ? (
-          <details className="mb-4">
-            <summary className="cursor-pointer text-xs font-semibold text-fv-text-secondary">
-              Show {stoppedMeds.length} stopped
-            </summary>
-            <ul className="mt-2 space-y-2">
-              {stoppedMeds.map((m) => (
-                <li
-                  key={m.id}
-                  className="rounded-md bg-fv-bg-soft p-3 text-sm opacity-75"
-                >
-                  <div className="font-medium text-fv-text-primary line-through">
-                    {m.name} ({m.dose})
-                  </div>
-                  <div className="text-xs text-fv-text-secondary">
-                    Stopped {fmtDateTime(m.stopped_at)} by{" "}
-                    {staffById.get(m.stopped_by_staff_id ?? "")?.name ?? "—"} ·{" "}
-                    {m.stop_reason}
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
-          </details>
-        ) : null}
+          </Panel>
 
-        <details className="mt-2">
-          <summary className="cursor-pointer text-sm font-semibold text-fv-accent-strong">
-            + Add medication
-          </summary>
-          <form
-            action={addMedicationAction}
-            className="mt-3 grid grid-cols-2 gap-3 text-sm"
-          >
-            <HiddenPatientId id={patient.id} />
-            <label className="col-span-2 flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Name</span>
-              <input
-                type="text"
-                name="name"
-                required
-                placeholder="Pred Forte 1%"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Dose</span>
-              <input
-                type="text"
-                name="dose"
-                required
-                placeholder="1 drop"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Route</span>
-              <input
-                type="text"
-                name="route"
-                required
-                placeholder="topical eye"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Frequency</span>
-              <input
-                type="text"
-                name="frequency"
-                required
-                placeholder="4x daily"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">
-                Scheduled times
-              </span>
-              <input
-                type="text"
-                name="scheduled_times"
-                placeholder="08:00, 12:00, 16:00, 20:00"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Start date</span>
-              <input
-                type="date"
-                name="start_date"
-                required
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">
-                End date (optional)
-              </span>
-              <input
-                type="date"
-                name="end_date"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="col-span-2 flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">
-                Taper notes (optional)
-              </span>
-              <textarea
-                name="taper_notes"
-                rows={2}
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <button
-              type="submit"
-              className="col-span-2 mt-1 rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-            >
-              Add medication
-            </button>
-          </form>
-        </details>
-      </Card>
-
-      <Card
-        title={
-          <span className="flex items-center gap-2">
-            Appointments
-            <span className="rounded-full bg-fv-bg-soft px-2 py-0.5 text-xs font-medium text-fv-text-secondary">
-              {appointments.length}
-            </span>
-          </span>
-        }
-      >
-        {appointments.length === 0 ? (
-          <p className="text-sm text-fv-text-secondary">No appointments.</p>
-        ) : (
-          <ul className="mb-4 space-y-2">
-            {appointments.map((a) => (
-              <li
-                key={a.id}
-                className="rounded-md bg-fv-bg-soft px-3 py-2 text-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-fv-text-primary">
-                    {a.appointment_type}
-                  </span>
-                  <span className="text-xs uppercase tracking-wide text-fv-text-secondary">
-                    {a.status}
-                  </span>
-                </div>
-                <div className="text-xs text-fv-text-secondary">
-                  {a.scheduled_at ? fmtDateTime(a.scheduled_at) : "To be made"}
-                  {a.location ? ` · ${a.location.replace("_", " ")}` : ""}
-                  {a.clinician_id
-                    ? ` · ${staffById.get(a.clinician_id)?.name ?? "—"}`
-                    : ""}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-        <details className="mt-2">
-          <summary className="cursor-pointer text-sm font-semibold text-fv-accent-strong">
-            + Schedule appointment
-          </summary>
-          <form
-            action={addAppointmentAction}
-            className="mt-3 grid grid-cols-2 gap-3 text-sm"
-          >
-            <HiddenPatientId id={patient.id} />
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Type</span>
-              <input
-                type="text"
-                name="appointment_type"
-                required
-                placeholder="1-week, 1-month, custom…"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">When</span>
-              <input
-                type="datetime-local"
-                name="scheduled_at"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Location</span>
-              <select
-                name="location"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              >
-                <option value="">—</option>
-                <option value="in_clinic">In clinic</option>
-                <option value="phone">Phone</option>
-                <option value="video">Video</option>
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Clinician</span>
-              <select
-                name="clinician_id"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              >
-                <option value="">—</option>
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.role})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="col-span-2 flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">
-                Notes (optional)
-              </span>
-              <textarea
-                name="notes"
-                rows={2}
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <button
-              type="submit"
-              className="col-span-2 mt-1 rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-            >
-              Schedule
-            </button>
-          </form>
-        </details>
-      </Card>
-
-      {/* ─── INTERNAL TEAM ─── */}
-      <SectionLabel>Internal team</SectionLabel>
-
-      <Card title="Staff notes (internal · append-only)">
-        <form
-          action={addNoteAction}
-          className="mb-4 flex flex-col gap-2 text-sm"
-        >
-          <HiddenPatientId id={patient.id} />
-          <textarea
-            name="body"
-            rows={3}
-            placeholder="Internal observation, handoff, plan…"
-            required
-            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-2"
-          />
-          <button
-            type="submit"
-            className="self-end rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-          >
-            Post note
-          </button>
-        </form>
-
-        {notes.length === 0 ? (
-          <p className="text-sm text-fv-text-secondary">No notes yet.</p>
-        ) : (
-          <ul className="space-y-3">
-            {notes.map((n) => (
-              <li
-                key={n.id}
-                className="rounded-md bg-fv-bg-soft p-3 text-sm"
-              >
-                <div className="mb-1 text-xs text-fv-text-secondary">
-                  {staffById.get(n.author_staff_id)?.name ?? "Unknown"} ·{" "}
-                  {fmtDateTime(n.created_at)}
-                </div>
-                <div className="whitespace-pre-wrap text-fv-text-primary">
-                  {n.body}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <Card
-        title={
-          <span className="flex items-center gap-2">
-            Manual flags
-            {openFlags.length > 0 ? (
-              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800">
-                {openFlags.length} open
-              </span>
-            ) : null}
-          </span>
-        }
-      >
-        {openFlags.length === 0 && resolvedFlags.length === 0 ? (
-          <p className="mb-4 text-sm text-fv-text-secondary">No flags.</p>
-        ) : (
-          <ul className="mb-4 space-y-2">
-            {openFlags.map((f) => (
-              <li
-                key={f.id}
-                className={`flex items-start justify-between gap-3 rounded-md border p-3 text-sm ${flagClasses(
-                  f.alert_level
-                )}`}
-              >
-                <div>
-                  <div className="font-semibold capitalize">
-                    {f.alert_level}
-                  </div>
-                  <div>{f.reason}</div>
-                  <div className="mt-1 text-xs opacity-75">
-                    Raised by{" "}
-                    {staffById.get(f.raised_by_staff_id)?.name ?? "—"} ·{" "}
-                    {fmtDateTime(f.created_at)}
-                  </div>
-                </div>
-                <form action={resolveFlagAction}>
-                  <HiddenPatientId id={patient.id} />
-                  <input type="hidden" name="flag_id" value={f.id} />
-                  <button
-                    type="submit"
-                    className="rounded-md bg-fv-bg-card px-3 py-1 text-xs font-semibold text-fv-text-primary"
-                  >
-                    Resolve
-                  </button>
-                </form>
-              </li>
-            ))}
-            {resolvedFlags.map((f) => (
-              <li
-                key={f.id}
-                className="rounded-md bg-fv-bg-soft p-3 text-sm opacity-70"
-              >
-                <div className="font-medium capitalize text-fv-text-primary line-through">
-                  {f.alert_level} · {f.reason}
-                </div>
-                <div className="text-xs text-fv-text-secondary">
-                  Resolved {fmtDateTime(f.resolved_at)} by{" "}
-                  {staffById.get(f.resolved_by_staff_id ?? "")?.name ?? "—"}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="mt-2">
-          <FlagPatientModal patientId={patient.id} />
+          {/* Custom content for this patient */}
+          <Panel title="Custom content for this patient">
+            <p className="text-sm text-fv-text-secondary">
+              No content has been pinned for this patient. Recovery guidance
+              follows the clinic defaults for their procedure and surgeon.
+            </p>
+          </Panel>
         </div>
-      </Card>
 
-      <Card title="App features (per-patient)">
-        <p className="mb-3 text-xs text-fv-text-secondary">
-          Overriding a feature changes it for this patient only. Patients keep
-          the state snapshotted at activation unless overridden here.
-        </p>
-        <ul className="space-y-2">
-          {FEATURES.map((feature) => {
-            const flag = featureFlagByKey.get(feature.key);
-            const clinicDefault = featureDefaultByKey.get(feature.key);
-            const effective = resolveFeature(
-              flag ? { enabled: flag.enabled } : null,
-              clinicDefault === undefined ? null : { enabled: clinicDefault },
-              feature.schemaDefault
-            );
-            const badge = !flag
-              ? "Inherits clinic default"
-              : flag.changed_by_staff_id
-                ? `Set by ${
-                    staffById.get(flag.changed_by_staff_id)?.name ?? "staff"
-                  } · ${fmtDate(flag.changed_at)}`
-                : "Default at activation";
-            return (
-              <li
-                key={feature.key}
-                className="flex items-center justify-between rounded-md border border-fv-bg-soft p-3 text-sm"
-              >
-                <div>
-                  <div className="font-medium text-fv-text-primary">
-                    {feature.label}
-                  </div>
-                  <div className="text-xs text-fv-text-secondary">{badge}</div>
-                </div>
-                <form action={setPatientFeatureOverrideAction}>
-                  <HiddenPatientId id={patient.id} />
-                  <input type="hidden" name="feature_key" value={feature.key} />
-                  <input
-                    type="hidden"
-                    name="enabled"
-                    value={(!effective).toString()}
-                  />
-                  <button
-                    type="submit"
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      effective
-                        ? "bg-fv-accent-strong text-white"
-                        : "border border-fv-border text-fv-text-secondary"
-                    }`}
-                  >
-                    {effective ? "ON" : "OFF"}
-                  </button>
-                </form>
-              </li>
-            );
-          })}
-        </ul>
-      </Card>
+        {/* ── RIGHT COLUMN ── */}
+        <div className="flex min-w-0 flex-col gap-[14px]">
+          <SectionHeader
+            label="Recovery monitoring"
+            icon="graph"
+            color="amber"
+          />
 
-      {/* ─── RECOVERY MONITORING ─── */}
-      <SectionLabel>Recovery monitoring</SectionLabel>
-
-      <Card title="Next appointment">
-        {nextAppointment ? (
-          <div className="flex items-start justify-between gap-4">
-            <div className="text-sm">
-              <div className="font-medium text-fv-text-primary">
-                {appointmentTypeLabel(nextAppointment.appointment_type)}
-              </div>
-              <div className="text-fv-text-secondary">
-                {nextAppointment.status === "to_book" ||
-                !nextAppointment.scheduled_at
-                  ? "Time to be confirmed"
-                  : formatAppointmentDateTime(nextAppointment.scheduled_at)}
-              </div>
-              <div className="text-fv-text-secondary">
-                {locationLabel(nextAppointment.location)}
-                {nextAppointment.clinician_id
-                  ? ` · ${
-                      staffById.get(nextAppointment.clinician_id)?.name ?? "—"
-                    }`
-                  : ""}
-              </div>
-              {nextAppointment.location_address ? (
-                <div className="text-xs text-fv-text-secondary">
-                  {nextAppointment.location_address}
-                </div>
-              ) : null}
-              {nextAppointment.calendar_exported_at ? (
-                <div className="mt-1 text-xs text-fv-accent-strong">
-                  Patient has added this to their calendar.
-                </div>
-              ) : null}
-            </div>
-            <NextAppointmentModal
-              patientId={patient.id}
-              appointment={nextAppointment}
-              clinicians={staff.map((s) => ({ id: s.id, name: s.name }))}
-            />
-          </div>
-        ) : (
-          <p className="text-sm text-fv-text-secondary">
-            No upcoming appointment. Schedule one from the Appointments card
-            above.
-          </p>
-        )}
-      </Card>
-
-      <Card title="Daily check-in log">
-        {checkIns.length === 0 ? (
-          <p className="text-sm text-fv-text-secondary">
-            No check-ins submitted yet.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-fv-bg-soft text-xs uppercase tracking-wide text-fv-text-secondary">
-                <tr>
-                  <th className="px-3 py-2">Day</th>
-                  <th className="px-3 py-2">Vision</th>
-                  <th className="px-3 py-2">Pain</th>
-                  <th className="px-3 py-2">Light</th>
-                  <th className="px-3 py-2">Symptoms</th>
-                  <th className="px-3 py-2">Zone</th>
-                  <th className="px-3 py-2">Alert</th>
-                </tr>
-              </thead>
-              <tbody>
-                {checkIns.map((c) => (
-                  <tr
+          {/* Daily check-in log */}
+          <Panel
+            title="Daily check-in log"
+            badge={
+              <span className="rounded-full bg-fv-bg-soft px-2 py-0.5 text-xs font-medium text-fv-text-secondary">
+                {checkIns.length}
+              </span>
+            }
+          >
+            {checkIns.length === 0 ? (
+              <p className="text-sm text-fv-text-secondary">
+                No check-ins submitted yet.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {checkIns.slice(0, 14).map((c) => (
+                  <li
                     key={c.id}
-                    className="border-t border-fv-bg-soft text-fv-text-primary"
+                    className="flex items-center gap-3 rounded-lg border border-fv-bg-soft px-3 py-2 text-sm"
                   >
-                    <td className="px-3 py-2 tabular-nums">{c.recovery_day}</td>
-                    <td className="px-3 py-2 capitalize">{c.vision}</td>
-                    <td className="px-3 py-2 tabular-nums">{c.pain}/5</td>
-                    <td className="px-3 py-2 tabular-nums">
+                    <span className="w-12 shrink-0 font-semibold tabular-nums text-fv-text-primary">
+                      Day {c.recovery_day}
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${zoneClasses(
+                        c.patient_zone
+                      )}`}
+                    >
+                      {c.patient_zone}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xs text-fv-text-secondary">
+                      {c.vision} vision · pain {c.pain}/5 · light{" "}
                       {c.light_sensitivity}/5
-                    </td>
-                    <td className="px-3 py-2">
-                      {c.unusual_symptoms.length > 0
-                        ? c.unusual_symptoms.join(", ")
-                        : "—"}
-                    </td>
-                    <td className="px-3 py-2">
+                    </span>
+                    {c.staff_alert_level !== "none" ? (
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${zoneClasses(
-                          c.patient_zone
+                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${flagClasses(
+                          c.staff_alert_level
                         )}`}
                       >
-                        {c.patient_zone}
+                        {c.staff_alert_level}
                       </span>
-                    </td>
-                    <td className="px-3 py-2 capitalize">
-                      {c.staff_alert_level === "none"
-                        ? "—"
-                        : c.staff_alert_level}
-                    </td>
-                  </tr>
+                    ) : null}
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+              </ul>
+            )}
+          </Panel>
 
-      {/* ─── RECORDS ─── */}
-      <SectionLabel>Records</SectionLabel>
-
-      <Card title="Documents">
-        {documents.length === 0 ? (
-          <p className="mb-4 text-sm text-fv-text-secondary">
-            No documents on file.
-          </p>
-        ) : (
-          <ul className="mb-4 space-y-2">
-            {documents.map((d) => (
-              <li
-                key={d.id}
-                className="flex items-center justify-between rounded-md bg-fv-bg-soft px-3 py-2 text-sm"
-              >
-                <div>
-                  <div className="font-medium text-fv-text-primary">
-                    {d.title ?? d.filename}
-                  </div>
-                  <div className="text-xs text-fv-text-secondary">
-                    {d.category} · {d.filename} ·{" "}
-                    {staffById.get(d.uploaded_by ?? "")?.name ?? "—"} ·{" "}
-                    {fmtDateTime(d.uploaded_at)}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <details className="mt-2">
-          <summary className="cursor-pointer text-sm font-semibold text-fv-accent-strong">
-            + Upload document
-          </summary>
-          <form
-            action={uploadDocumentAction}
-            className="mt-3 grid grid-cols-2 gap-3 text-sm"
+          {/* Manual flags */}
+          <Panel
+            id="manual-flags"
+            title="Manual flags"
+            badge={
+              openFlags.length > 0 ? (
+                <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800">
+                  {openFlags.length} open
+                </span>
+              ) : undefined
+            }
           >
-            <HiddenPatientId id={patient.id} />
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">Category</span>
-              <select
-                name="category"
-                required
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              >
-                <option value="">Select…</option>
-                {DOCUMENT_CATEGORY_ORDER.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+            {openFlags.length === 0 && resolvedFlags.length === 0 ? (
+              <p className="mb-3 text-sm text-fv-text-secondary">No flags.</p>
+            ) : (
+              <ul className="mb-3 space-y-2">
+                {openFlags.map((f) => (
+                  <li
+                    key={f.id}
+                    className={`flex items-start justify-between gap-3 rounded-lg border p-3 text-sm ${flagClasses(
+                      f.alert_level
+                    )}`}
+                  >
+                    <div className="min-w-0">
+                      <div className="font-semibold capitalize">
+                        {f.alert_level}
+                      </div>
+                      <div>{f.reason}</div>
+                      <div className="mt-1 text-xs opacity-75">
+                        {staffById.get(f.raised_by_staff_id)?.name ?? "—"} ·{" "}
+                        {fmtDateTime(f.created_at)}
+                      </div>
+                    </div>
+                    <form action={resolveFlagAction}>
+                      <HiddenPatientId id={patient.id} />
+                      <input type="hidden" name="flag_id" value={f.id} />
+                      <button
+                        type="submit"
+                        className="shrink-0 rounded-md bg-fv-bg-card px-3 py-1 text-xs font-semibold text-fv-text-primary"
+                      >
+                        Resolve
+                      </button>
+                    </form>
+                  </li>
                 ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">
-                Title (optional)
+                {resolvedFlags.map((f) => (
+                  <li
+                    key={f.id}
+                    className="rounded-lg bg-fv-bg-soft p-3 text-sm opacity-70"
+                  >
+                    <div className="font-medium capitalize text-fv-text-primary line-through">
+                      {f.alert_level} · {f.reason}
+                    </div>
+                    <div className="text-xs text-fv-text-secondary">
+                      Resolved {fmtDateTime(f.resolved_at)} by{" "}
+                      {staffById.get(f.resolved_by_staff_id ?? "")?.name ?? "—"}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <FlagPatientModal patientId={patient.id} />
+          </Panel>
+
+          {/* Quick actions */}
+          <Panel title="Quick actions">
+            <div className="flex flex-col gap-2 text-sm">
+              {patient.phone ? (
+                <a
+                  href={`tel:${patient.phone}`}
+                  className="rounded-md border border-fv-bg-soft px-3 py-2 text-left font-medium text-fv-text-primary hover:bg-fv-bg-soft/50"
+                >
+                  📞 Call patient
+                </a>
+              ) : null}
+              <Link
+                href="/inbox"
+                className="rounded-md border border-fv-bg-soft px-3 py-2 text-left font-medium text-fv-text-primary hover:bg-fv-bg-soft/50"
+              >
+                💬 Send in-app message
+              </Link>
+              <a
+                href="#appointments"
+                className="rounded-md border border-fv-bg-soft px-3 py-2 text-left font-medium text-fv-text-primary hover:bg-fv-bg-soft/50"
+              >
+                📅 Schedule check-in
+              </a>
+              <a
+                href="#manual-flags"
+                className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-left font-medium text-amber-800 hover:bg-amber-100"
+              >
+                🚩 Manually flag for review
+              </a>
+              <a
+                href="#documents"
+                className="rounded-md border border-fv-bg-soft px-3 py-2 text-left font-medium text-fv-text-primary hover:bg-fv-bg-soft/50"
+              >
+                📄 Upload to documents
+              </a>
+            </div>
+          </Panel>
+
+          <SectionHeader label="Records" icon="doc" color="green" />
+
+          {/* Documents */}
+          <Panel
+            id="documents"
+            title="Documents"
+            badge={
+              <span className="rounded-full bg-fv-bg-soft px-2 py-0.5 text-xs font-medium text-fv-text-secondary">
+                {documents.length}
               </span>
-              <input
-                type="text"
-                name="title"
-                placeholder="Defaults to the filename"
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <label className="col-span-2 flex flex-col gap-1">
-              <span className="text-xs text-fv-text-secondary">File</span>
-              <input
-                type="file"
-                name="file"
-                required
-                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
-              />
-            </label>
-            <button
-              type="submit"
-              className="col-span-2 mt-1 rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-            >
-              Upload
-            </button>
-          </form>
-        </details>
-      </Card>
+            }
+            action={
+              <details className="relative">
+                <summary className={summaryBtn}>+ Upload</summary>
+                <form
+                  action={uploadDocumentAction}
+                  className="absolute right-0 z-10 mt-2 flex w-[300px] flex-col gap-3 rounded-xl border border-fv-bg-soft bg-fv-bg-card p-4 text-sm shadow-lg"
+                >
+                  <HiddenPatientId id={patient.id} />
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>Category</span>
+                    <select name="category" required className={inputCls}>
+                      <option value="">Select…</option>
+                      {DOCUMENT_CATEGORY_ORDER.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>Title (optional)</span>
+                    <input
+                      type="text"
+                      name="title"
+                      placeholder="Defaults to the filename"
+                      className={inputCls}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>File</span>
+                    <input
+                      type="file"
+                      name="file"
+                      required
+                      className={inputCls}
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                  >
+                    Upload
+                  </button>
+                </form>
+              </details>
+            }
+          >
+            {documents.length === 0 ? (
+              <p className="text-sm text-fv-text-secondary">
+                No documents on file.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {documents.map((d) => (
+                  <li
+                    key={d.id}
+                    className="rounded-lg bg-fv-bg-soft px-3 py-2 text-sm"
+                  >
+                    <div className="font-medium text-fv-text-primary">
+                      {d.title ?? d.filename}
+                    </div>
+                    <div className="text-xs text-fv-text-secondary">
+                      {d.category} · {fmtDate(d.uploaded_at)} ·{" "}
+                      {staffById.get(d.uploaded_by ?? "")?.name ?? "—"}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+        </div>
+      </div>
     </main>
   );
 }
