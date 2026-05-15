@@ -9,9 +9,20 @@ import {
   addNoteAction,
   addProcedureAction,
   resolveFlagAction,
+  setPatientFeatureOverrideAction,
   stopMedicationAction,
+  uploadDocumentAction,
 } from "./actions";
 import { FlagPatientModal } from "./FlagPatientModal";
+import { NextAppointmentModal } from "./NextAppointmentModal";
+import { DOCUMENT_CATEGORY_ORDER } from "@/lib/documents";
+import { FEATURES, resolveFeature } from "@/lib/feature-flags";
+import {
+  appointmentTypeLabel,
+  formatAppointmentDateTime,
+  locationLabel,
+  selectNextAppointment,
+} from "@/lib/appointments";
 
 export const dynamic = "force-dynamic";
 
@@ -129,6 +140,8 @@ export default async function PatientDetailPage({
     flagsResult,
     documentsResult,
     staffResult,
+    featureFlagsResult,
+    featureDefaultsResult,
   ] = await Promise.all([
     supabase.from("patients").select("*").eq("id", patientId).maybeSingle(),
     supabase
@@ -167,6 +180,11 @@ export default async function PatientDetailPage({
       .eq("patient_id", patientId)
       .order("uploaded_at", { ascending: false }),
     supabase.from("staff_users").select("id, name, role").order("name"),
+    supabase
+      .from("patient_feature_flags")
+      .select("feature_key, enabled, changed_by_staff_id, changed_at")
+      .eq("patient_id", patientId),
+    supabase.from("feature_defaults").select("feature_key, enabled"),
   ]);
 
   const patient = patientResult.data as Patient | null;
@@ -185,7 +203,14 @@ export default async function PatientDetailPage({
   >[];
 
   const staffById = new Map(staff.map((s) => [s.id, s]));
+  const featureFlagByKey = new Map(
+    (featureFlagsResult.data ?? []).map((f) => [f.feature_key, f])
+  );
+  const featureDefaultByKey = new Map(
+    (featureDefaultsResult.data ?? []).map((d) => [d.feature_key, d.enabled])
+  );
   const activeProcedure = procedures.find((p) => p.status === "active");
+  const nextAppointment = selectNextAppointment(appointments, new Date());
   const activeMeds = medications.filter((m) => m.stopped_at === null);
   const stoppedMeds = medications.filter((m) => m.stopped_at !== null);
   const openFlags = flags.filter((f) => f.resolved_at === null);
@@ -307,7 +332,7 @@ export default async function PatientDetailPage({
                 name="procedure_type"
                 placeholder="lasik / prk / smile / cataract / icl"
                 required
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -316,7 +341,7 @@ export default async function PatientDetailPage({
                 name="eye"
                 required
                 defaultValue="both"
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               >
                 <option value="left">Left</option>
                 <option value="right">Right</option>
@@ -328,7 +353,7 @@ export default async function PatientDetailPage({
               <select
                 name="surgeon_id"
                 required
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               >
                 <option value="">Select…</option>
                 {staff
@@ -348,7 +373,7 @@ export default async function PatientDetailPage({
                 type="date"
                 name="surgery_date"
                 required
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <label className="col-span-2 flex flex-col gap-1">
@@ -358,7 +383,7 @@ export default async function PatientDetailPage({
               <textarea
                 name="custom_notes"
                 rows={2}
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <button
@@ -427,7 +452,7 @@ export default async function PatientDetailPage({
                       <select
                         name="stop_reason"
                         required
-                        className="rounded-md border border-fv-bg-soft bg-white px-2 py-1 text-xs"
+                        className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-2 py-1 text-xs"
                       >
                         <option value="">Reason…</option>
                         <option value="Course completed">
@@ -500,7 +525,7 @@ export default async function PatientDetailPage({
                 name="name"
                 required
                 placeholder="Pred Forte 1%"
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -510,7 +535,7 @@ export default async function PatientDetailPage({
                 name="dose"
                 required
                 placeholder="1 drop"
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -520,7 +545,7 @@ export default async function PatientDetailPage({
                 name="route"
                 required
                 placeholder="topical eye"
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -530,7 +555,7 @@ export default async function PatientDetailPage({
                 name="frequency"
                 required
                 placeholder="4x daily"
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -541,7 +566,7 @@ export default async function PatientDetailPage({
                 type="text"
                 name="scheduled_times"
                 placeholder="08:00, 12:00, 16:00, 20:00"
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -550,7 +575,7 @@ export default async function PatientDetailPage({
                 type="date"
                 name="start_date"
                 required
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -560,7 +585,7 @@ export default async function PatientDetailPage({
               <input
                 type="date"
                 name="end_date"
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <label className="col-span-2 flex flex-col gap-1">
@@ -570,7 +595,7 @@ export default async function PatientDetailPage({
               <textarea
                 name="taper_notes"
                 rows={2}
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <button
@@ -637,7 +662,7 @@ export default async function PatientDetailPage({
                 name="appointment_type"
                 required
                 placeholder="1-week, 1-month, custom…"
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -645,14 +670,14 @@ export default async function PatientDetailPage({
               <input
                 type="datetime-local"
                 name="scheduled_at"
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs text-fv-text-secondary">Location</span>
               <select
                 name="location"
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               >
                 <option value="">—</option>
                 <option value="in_clinic">In clinic</option>
@@ -664,7 +689,7 @@ export default async function PatientDetailPage({
               <span className="text-xs text-fv-text-secondary">Clinician</span>
               <select
                 name="clinician_id"
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               >
                 <option value="">—</option>
                 {staff.map((s) => (
@@ -681,7 +706,7 @@ export default async function PatientDetailPage({
               <textarea
                 name="notes"
                 rows={2}
-                className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
               />
             </label>
             <button
@@ -708,7 +733,7 @@ export default async function PatientDetailPage({
             rows={3}
             placeholder="Internal observation, handoff, plan…"
             required
-            className="rounded-md border border-fv-bg-soft bg-white px-3 py-2"
+            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-2"
           />
           <button
             type="submit"
@@ -779,7 +804,7 @@ export default async function PatientDetailPage({
                   <input type="hidden" name="flag_id" value={f.id} />
                   <button
                     type="submit"
-                    className="rounded-md bg-white px-3 py-1 text-xs font-semibold text-fv-text-primary"
+                    className="rounded-md bg-fv-bg-card px-3 py-1 text-xs font-semibold text-fv-text-primary"
                   >
                     Resolve
                   </button>
@@ -808,8 +833,111 @@ export default async function PatientDetailPage({
         </div>
       </Card>
 
+      <Card title="App features (per-patient)">
+        <p className="mb-3 text-xs text-fv-text-secondary">
+          Overriding a feature changes it for this patient only. Patients keep
+          the state snapshotted at activation unless overridden here.
+        </p>
+        <ul className="space-y-2">
+          {FEATURES.map((feature) => {
+            const flag = featureFlagByKey.get(feature.key);
+            const clinicDefault = featureDefaultByKey.get(feature.key);
+            const effective = resolveFeature(
+              flag ? { enabled: flag.enabled } : null,
+              clinicDefault === undefined ? null : { enabled: clinicDefault },
+              feature.schemaDefault
+            );
+            const badge = !flag
+              ? "Inherits clinic default"
+              : flag.changed_by_staff_id
+                ? `Set by ${
+                    staffById.get(flag.changed_by_staff_id)?.name ?? "staff"
+                  } · ${fmtDate(flag.changed_at)}`
+                : "Default at activation";
+            return (
+              <li
+                key={feature.key}
+                className="flex items-center justify-between rounded-md border border-fv-bg-soft p-3 text-sm"
+              >
+                <div>
+                  <div className="font-medium text-fv-text-primary">
+                    {feature.label}
+                  </div>
+                  <div className="text-xs text-fv-text-secondary">{badge}</div>
+                </div>
+                <form action={setPatientFeatureOverrideAction}>
+                  <HiddenPatientId id={patient.id} />
+                  <input type="hidden" name="feature_key" value={feature.key} />
+                  <input
+                    type="hidden"
+                    name="enabled"
+                    value={(!effective).toString()}
+                  />
+                  <button
+                    type="submit"
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      effective
+                        ? "bg-fv-accent-strong text-white"
+                        : "border border-fv-border text-fv-text-secondary"
+                    }`}
+                  >
+                    {effective ? "ON" : "OFF"}
+                  </button>
+                </form>
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
+
       {/* ─── RECOVERY MONITORING ─── */}
       <SectionLabel>Recovery monitoring</SectionLabel>
+
+      <Card title="Next appointment">
+        {nextAppointment ? (
+          <div className="flex items-start justify-between gap-4">
+            <div className="text-sm">
+              <div className="font-medium text-fv-text-primary">
+                {appointmentTypeLabel(nextAppointment.appointment_type)}
+              </div>
+              <div className="text-fv-text-secondary">
+                {nextAppointment.status === "to_book" ||
+                !nextAppointment.scheduled_at
+                  ? "Time to be confirmed"
+                  : formatAppointmentDateTime(nextAppointment.scheduled_at)}
+              </div>
+              <div className="text-fv-text-secondary">
+                {locationLabel(nextAppointment.location)}
+                {nextAppointment.clinician_id
+                  ? ` · ${
+                      staffById.get(nextAppointment.clinician_id)?.name ?? "—"
+                    }`
+                  : ""}
+              </div>
+              {nextAppointment.location_address ? (
+                <div className="text-xs text-fv-text-secondary">
+                  {nextAppointment.location_address}
+                </div>
+              ) : null}
+              {nextAppointment.calendar_exported_at ? (
+                <div className="mt-1 text-xs text-fv-accent-strong">
+                  Patient has added this to their calendar.
+                </div>
+              ) : null}
+            </div>
+            <NextAppointmentModal
+              patientId={patient.id}
+              appointment={nextAppointment}
+              clinicians={staff.map((s) => ({ id: s.id, name: s.name }))}
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-fv-text-secondary">
+            No upcoming appointment. Schedule one from the Appointments card
+            above.
+          </p>
+        )}
+      </Card>
 
       <Card title="Daily check-in log">
         {checkIns.length === 0 ? (
@@ -874,12 +1002,11 @@ export default async function PatientDetailPage({
 
       <Card title="Documents">
         {documents.length === 0 ? (
-          <p className="text-sm text-fv-text-secondary">
-            No documents on file. Upload arrives once Supabase Storage is
-            wired (next session).
+          <p className="mb-4 text-sm text-fv-text-secondary">
+            No documents on file.
           </p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="mb-4 space-y-2">
             {documents.map((d) => (
               <li
                 key={d.id}
@@ -887,10 +1014,10 @@ export default async function PatientDetailPage({
               >
                 <div>
                   <div className="font-medium text-fv-text-primary">
-                    {d.filename}
+                    {d.title ?? d.filename}
                   </div>
                   <div className="text-xs text-fv-text-secondary">
-                    {d.category} ·{" "}
+                    {d.category} · {d.filename} ·{" "}
                     {staffById.get(d.uploaded_by ?? "")?.name ?? "—"} ·{" "}
                     {fmtDateTime(d.uploaded_at)}
                   </div>
@@ -899,6 +1026,59 @@ export default async function PatientDetailPage({
             ))}
           </ul>
         )}
+
+        <details className="mt-2">
+          <summary className="cursor-pointer text-sm font-semibold text-fv-accent-strong">
+            + Upload document
+          </summary>
+          <form
+            action={uploadDocumentAction}
+            className="mt-3 grid grid-cols-2 gap-3 text-sm"
+          >
+            <HiddenPatientId id={patient.id} />
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-fv-text-secondary">Category</span>
+              <select
+                name="category"
+                required
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
+              >
+                <option value="">Select…</option>
+                {DOCUMENT_CATEGORY_ORDER.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-fv-text-secondary">
+                Title (optional)
+              </span>
+              <input
+                type="text"
+                name="title"
+                placeholder="Defaults to the filename"
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
+              />
+            </label>
+            <label className="col-span-2 flex flex-col gap-1">
+              <span className="text-xs text-fv-text-secondary">File</span>
+              <input
+                type="file"
+                name="file"
+                required
+                className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
+              />
+            </label>
+            <button
+              type="submit"
+              className="col-span-2 mt-1 rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+            >
+              Upload
+            </button>
+          </form>
+        </details>
       </Card>
     </main>
   );

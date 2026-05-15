@@ -5,18 +5,25 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Calm medical theme tokens lifted from focus_vision_prototype.html.
-        // Other themes will be wired in via [data-theme="…"] CSS custom
-        // properties in a later pass; these literals exist so the staff
-        // dashboard has brand-aligned defaults today.
-        "fv-bg-app": "#F0F6F8",
-        "fv-bg-card": "#FFFFFF",
-        "fv-bg-soft": "#E0EBEE",
-        "fv-bg-accent-soft": "#D3E7EC",
-        "fv-text-primary": "#1F3540",
-        "fv-text-secondary": "#5C7672",
-        "fv-accent": "#4F9DAA",
-        "fv-accent-strong": "#2C7585",
+        // Theme tokens are backed by CSS custom properties. :root in
+        // globals.css defines the Calm-medical defaults; the patient
+        // layout overrides them per [data-theme] (see lib/theme.ts).
+        "fv-bg-app": "var(--fv-bg-app)",
+        "fv-bg-card": "var(--fv-bg-card)",
+        "fv-bg-tile": "var(--fv-bg-tile)",
+        "fv-bg-soft": "var(--fv-bg-soft)",
+        "fv-bg-accent-soft": "var(--fv-bg-accent-soft)",
+        "fv-text-primary": "var(--fv-text-primary)",
+        "fv-text-secondary": "var(--fv-text-secondary)",
+        "fv-text-muted": "var(--fv-text-muted)",
+        "fv-accent": "var(--fv-accent)",
+        "fv-accent-strong": "var(--fv-accent-strong)",
+        "fv-accent-2": "var(--fv-accent-2)",
+        "fv-accent-warm": "var(--fv-accent-warm)",
+        "fv-danger": "var(--fv-danger)",
+        "fv-success": "var(--fv-success)",
+        "fv-border": "var(--fv-border)",
+        // Logo brand colours are fixed — not themed.
         "fv-ring": "#5C8FA0",
         "fv-logo-text": "#1F3A48",
       },

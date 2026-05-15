@@ -1,14 +1,24 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FocusVisionLogo } from "@/components/FocusVisionLogo";
+import { PatientBottomNav } from "@/components/patient/PatientBottomNav";
+import { LogoUnlockTrigger } from "@/components/LogoUnlockTrigger";
+import { SparkleOverlay } from "@/components/SparkleOverlay";
+import { BonusUnlockBridge } from "@/components/patient/BonusUnlockBridge";
+import { unlockBonusPackAction } from "@/app/(patient)/bonus-actions";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import {
+  buildThemeCss,
+  resolveThemePreference,
+  shouldShowSparkle,
+} from "@/lib/theme";
 import { patientSignOutAction } from "@/app/patient-sign-in/actions";
 
 export const dynamic = "force-dynamic";
 
-// Patient app chrome. `data-theme="calm"` is the default; future theme
-// switching will mutate this attribute and the CSS custom properties on
-// it. Bottom nav is the primary navigation surface on mobile.
+// Patient app shell. The theme is read from user_preferences and applied
+// as data-theme / data-dark on the root container; the generated theme
+// CSS is injected once here. No preferences ⇒ Calm medical, light mode.
 export default async function PatientLayout({
   children,
 }: {
@@ -26,66 +36,68 @@ export default async function PatientLayout({
     .select("name")
     .eq("id", user.id)
     .maybeSingle();
-  // If signed in but not a patient (e.g. a staff member browsed here),
-  // just send them back to the staff dashboard without touching their
-  // session. Only the patient-sign-in flow itself signs out non-patients.
-  if (!patient) {
-    redirect("/");
-  }
+  if (!patient) redirect("/");
+
+  const { data: prefs } = await supabase
+    .from("user_preferences")
+    .select(
+      "theme, dark_mode, text_size, high_contrast, reduce_motion, sparkle, bonus_pack_unlocked"
+    )
+    .eq("patient_id", user.id)
+    .maybeSingle();
+
+  // 'random' resolves to a random bonus theme on every load.
+  const { theme, dark } = resolveThemePreference(prefs);
+  const showSparkle = shouldShowSparkle(
+    prefs?.sparkle ?? false,
+    prefs?.reduce_motion ?? false
+  );
 
   return (
-    <div data-theme="calm" className="min-h-screen bg-fv-bg-app pb-20">
-      <header className="bg-fv-bg-card">
-        <div className="mx-auto flex max-w-md items-center justify-between px-5 py-3 text-sm">
-          <span className="font-semibold text-fv-text-primary">
-            {patient.name}
-          </span>
-          <form action={patientSignOutAction}>
-            <button
-              type="submit"
-              className="text-xs font-medium text-fv-text-secondary hover:underline"
-            >
-              Sign out
-            </button>
-          </form>
-        </div>
-      </header>
+    <>
+      {/* Theme CSS — all five [data-theme] palettes + dark overrides. */}
+      <style dangerouslySetInnerHTML={{ __html: buildThemeCss() }} />
+      <div
+        id="fv-patient-root"
+        data-theme={theme}
+        data-dark={dark ? "" : undefined}
+        data-text-size={prefs?.text_size ?? "normal"}
+        data-contrast={prefs?.high_contrast ? "high" : undefined}
+        data-motion={prefs?.reduce_motion ? "reduced" : undefined}
+        className="min-h-screen bg-fv-bg-app pb-20"
+      >
+        <header className="bg-fv-bg-card">
+          <div className="mx-auto flex max-w-md items-center justify-between px-5 py-3 text-sm">
+            <div className="flex items-center gap-2">
+              <LogoUnlockTrigger
+                action={unlockBonusPackAction}
+                bridgeKey="fv_bonus_unlock"
+              >
+                <FocusVisionLogo size={28} />
+              </LogoUnlockTrigger>
+              <span className="font-semibold text-fv-text-primary">
+                {patient.name}
+              </span>
+            </div>
+            <form action={patientSignOutAction}>
+              <button
+                type="submit"
+                className="text-xs font-medium text-fv-text-secondary hover:underline"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
+        </header>
 
-      <div className="mx-auto max-w-md">{children}</div>
+        <div className="mx-auto max-w-md">{children}</div>
 
-      {/* Bottom nav. More tabs land as their pages are built. */}
-      <nav className="fixed inset-x-0 bottom-0 border-t border-fv-bg-soft bg-fv-bg-card">
-        <div className="mx-auto flex max-w-md items-stretch justify-around">
-          <Link
-            href="/home"
-            className="flex flex-1 flex-col items-center justify-center gap-1 py-3 text-xs font-medium text-fv-text-secondary"
-          >
-            <span aria-hidden className="text-base">🏠</span>
-            Home
-          </Link>
-          <Link
-            href="/medications"
-            className="flex flex-1 flex-col items-center justify-center gap-1 py-3 text-xs font-medium text-fv-text-secondary"
-          >
-            <span aria-hidden className="text-base">💊</span>
-            Meds
-          </Link>
-          <Link
-            href="/check-in"
-            className="flex flex-1 flex-col items-center justify-center gap-1 py-3 text-xs font-medium text-fv-text-secondary"
-          >
-            <span aria-hidden className="text-base">✓</span>
-            Check-in
-          </Link>
-          <Link
-            href="/messages"
-            className="flex flex-1 flex-col items-center justify-center gap-1 py-3 text-xs font-medium text-fv-text-secondary"
-          >
-            <span aria-hidden className="text-base">💬</span>
-            Messages
-          </Link>
-        </div>
-      </nav>
-    </div>
+        <PatientBottomNav />
+        {showSparkle ? <SparkleOverlay /> : null}
+        <BonusUnlockBridge
+          alreadyUnlocked={prefs?.bonus_pack_unlocked ?? false}
+        />
+      </div>
+    </>
   );
 }

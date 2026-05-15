@@ -56,19 +56,14 @@ export default async function PatientMessagesPage({
     .order("sent_at", { ascending: true });
   const msgs = messages ?? [];
 
-  // Mark inbound messages as read for this patient.
-  const unreadIds = msgs
-    .filter((m) => m.sender_type === "staff" && m.read_at === null)
-    .map((m) => m.id);
-  if (unreadIds.length > 0) {
-    await supabase
-      .from("messages")
-      .update({ read_at: new Date().toISOString() })
-      .in("id", unreadIds);
-    await supabase
-      .from("message_threads")
-      .update({ unread_for_patient: 0 })
-      .eq("id", thread.id);
+  // Mark inbound messages as read. Patients have no UPDATE grant on
+  // messages / message_threads, so this goes through a SECURITY DEFINER
+  // RPC; setting read_at also feeds bulk-push open tracking.
+  const hasUnread = msgs.some(
+    (m) => m.sender_type === "staff" && m.read_at === null
+  );
+  if (hasUnread) {
+    await supabase.rpc("mark_thread_read", { p_thread_id: thread.id });
   }
 
   // Resolve staff who participated so we can show name + role labels.
@@ -146,7 +141,7 @@ export default async function PatientMessagesPage({
           rows={2}
           required
           placeholder="Type a message…"
-          className="rounded-md border border-fv-bg-soft bg-white px-3 py-2 text-sm"
+          className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-2 text-sm"
         />
         <div className="flex items-center justify-between gap-2">
           <AttachmentField bucket="message-attachments" folder={thread.id} />

@@ -46,7 +46,7 @@ export function AttachmentField({ bucket, folder }: Props) {
 
   return (
     <div className="flex items-center gap-2 text-xs">
-      <label className="cursor-pointer rounded-md border border-fv-bg-soft bg-white px-3 py-1.5 font-medium text-fv-text-primary">
+      <label className="cursor-pointer rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5 font-medium text-fv-text-primary">
         {path ? "Photo attached ✓" : uploading ? "Uploading…" : "📎 Attach photo"}
         <input
           type="file"

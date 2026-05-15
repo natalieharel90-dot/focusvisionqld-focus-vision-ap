@@ -1,4 +1,6 @@
 import { FocusVisionLogo } from "@/components/FocusVisionLogo";
+import { LogoUnlockTrigger } from "@/components/LogoUnlockTrigger";
+import { unlockBonusPackAction } from "@/app/(patient)/bonus-actions";
 import { patientSignInAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +14,12 @@ export default function PatientSignInPage({
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center gap-4 pb-8">
-          <FocusVisionLogo size={120} />
+          <LogoUnlockTrigger
+            action={unlockBonusPackAction}
+            bridgeKey="fv_bonus_unlock"
+          >
+            <FocusVisionLogo size={120} />
+          </LogoUnlockTrigger>
           <h1 className="text-xl font-semibold text-fv-text-primary">
             Patient sign-in
           </h1>

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { FEATURE_BY_KEY } from "@/lib/feature-flags";
 import type { Database } from "@/types/database.types";
 
 type ManualFlagLevel = Database["public"]["Enums"]["manual_flag_level"];
@@ -231,6 +232,124 @@ export async function addAppointmentAction(formData: FormData) {
   revalidatePath(`/patients/${patientId}`);
 }
 
+export async function updateAppointmentAction(formData: FormData) {
+  const patientId = readPatientId(formData);
+  const appointmentId = String(formData.get("appointment_id") ?? "");
+  if (!appointmentId) backWithError(patientId, "Missing appointment id.");
+
+  const status = String(formData.get("status") ?? "").trim();
+  const scheduledRaw = String(formData.get("scheduled_at") ?? "").trim();
+  const locationRaw = String(formData.get("location") ?? "").trim();
+  const clinicianId =
+    String(formData.get("clinician_id") ?? "").trim() || null;
+  const locationAddress =
+    String(formData.get("location_address") ?? "").trim() || null;
+
+  const STATUSES = ["to_book", "confirmed", "completed", "cancelled"];
+  if (!STATUSES.includes(status)) backWithError(patientId, "Pick a status.");
+
+  const scheduled_at = scheduledRaw
+    ? new Date(scheduledRaw).toISOString()
+    : null;
+  // The DB CHECK requires a time for any non-to_book status.
+  if (status !== "to_book" && !scheduled_at) {
+    backWithError(
+      patientId,
+      "A scheduled time is required unless the status is 'to book'."
+    );
+  }
+
+  const location =
+    locationRaw && APPT_LOCATIONS.includes(locationRaw as AppointmentLocation)
+      ? (locationRaw as AppointmentLocation)
+      : null;
+
+  const supabase = createSupabaseServerClient();
+  const { data: before } = await supabase
+    .from("appointments")
+    .select("*")
+    .eq("id", appointmentId)
+    .single();
+
+  const { data: after, error } = await supabase
+    .from("appointments")
+    .update({
+      status: status as Database["public"]["Enums"]["appointment_status"],
+      scheduled_at,
+      location,
+      clinician_id: clinicianId,
+      location_address: locationAddress,
+    })
+    .eq("id", appointmentId)
+    .select()
+    .single();
+
+  if (error) backWithError(patientId, error.message);
+
+  await recordStaffAudit(supabase, "patient.appointment_updated", {
+    patient_id: patientId,
+    entity_type: "appointment",
+    entity_id: appointmentId,
+    old_value: before,
+    new_value: after,
+  });
+
+  revalidatePath(`/patients/${patientId}`);
+}
+
+// Sends the patient a pre-filled message about an appointment change.
+export async function messagePatientAboutAppointmentAction(
+  formData: FormData
+) {
+  const patientId = readPatientId(formData);
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  let { data: thread } = await supabase
+    .from("message_threads")
+    .select("id")
+    .eq("patient_id", patientId)
+    .maybeSingle();
+  if (!thread) {
+    const { data: created } = await supabase
+      .from("message_threads")
+      .insert({ patient_id: patientId })
+      .select("id")
+      .single();
+    thread = created ?? null;
+  }
+  if (!thread) backWithError(patientId, "Could not open the patient's thread.");
+
+  const body =
+    "Hi — there's been a change to one of your upcoming appointments. " +
+    "Please open the Focus Vision app to see the updated details, and let " +
+    "us know if the new time doesn't suit you.";
+
+  const { error } = await supabase.from("messages").insert({
+    thread_id: thread!.id,
+    sender_type: "staff",
+    sender_id: user.id,
+    body,
+  });
+  if (error) backWithError(patientId, error.message);
+
+  await supabase
+    .from("message_threads")
+    .update({ last_message_at: new Date().toISOString() })
+    .eq("id", thread!.id);
+
+  await recordStaffAudit(supabase, "message.sent_to_patient", {
+    patient_id: patientId,
+    entity_type: "message",
+    new_value: { about: "appointment_change" },
+  });
+
+  revalidatePath(`/patients/${patientId}`);
+}
+
 // ───── Staff notes (append-only) ──────────────────────────────────────────
 
 export async function addNoteAction(formData: FormData) {
@@ -262,6 +381,104 @@ export async function addNoteAction(formData: FormData) {
     entity_type: "staff_note",
     entity_id: data!.id,
     new_value: { body },
+  });
+
+  revalidatePath(`/patients/${patientId}`);
+}
+
+// ───── Documents ──────────────────────────────────────────────────────────
+
+export async function uploadDocumentAction(formData: FormData) {
+  const patientId = readPatientId(formData);
+  const category = String(formData.get("category") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim() || null;
+  const file = formData.get("file");
+
+  if (!category) backWithError(patientId, "Pick a document category.");
+  if (!(file instanceof File) || file.size === 0) {
+    backWithError(patientId, "Choose a file to upload.");
+  }
+  const upload = file as File;
+
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  // Path must start with the patient's id — Storage RLS keys ownership
+  // off the first folder segment.
+  const safeName = upload.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storagePath = `${patientId}/${Date.now()}-${safeName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("documents")
+    .upload(storagePath, upload, {
+      contentType: upload.type || undefined,
+      upsert: false,
+    });
+  if (uploadError) backWithError(patientId, uploadError.message);
+
+  const { data, error } = await supabase
+    .from("documents")
+    .insert({
+      patient_id: patientId,
+      category,
+      title,
+      filename: upload.name,
+      storage_path: storagePath,
+      uploaded_by: user.id,
+    })
+    .select()
+    .single();
+
+  if (error) backWithError(patientId, error.message);
+
+  await recordStaffAudit(supabase, "patient.document_uploaded", {
+    patient_id: patientId,
+    entity_type: "document",
+    entity_id: data!.id,
+    new_value: { category, filename: upload.name, title },
+  });
+
+  revalidatePath(`/patients/${patientId}`);
+}
+
+// ───── Patient app feature overrides ──────────────────────────────────────
+
+export async function setPatientFeatureOverrideAction(formData: FormData) {
+  const patientId = readPatientId(formData);
+  const featureKey = String(formData.get("feature_key") ?? "");
+  const enabled = String(formData.get("enabled") ?? "") === "true";
+
+  if (!FEATURE_BY_KEY.has(featureKey)) {
+    backWithError(patientId, "Unknown feature.");
+  }
+
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  // changed_by_staff_id marks this as an explicit staff override (vs the
+  // NULL left by the activation snapshot).
+  const { error } = await supabase.from("patient_feature_flags").upsert(
+    {
+      patient_id: patientId,
+      feature_key: featureKey,
+      enabled,
+      changed_by_staff_id: user.id,
+      changed_at: new Date().toISOString(),
+    },
+    { onConflict: "patient_id,feature_key" }
+  );
+  if (error) backWithError(patientId, error.message);
+
+  await recordStaffAudit(supabase, "patient.feature_override_updated", {
+    patient_id: patientId,
+    entity_type: "patient_feature_flag",
+    new_value: { feature_key: featureKey, enabled },
   });
 
   revalidatePath(`/patients/${patientId}`);

@@ -24,6 +24,7 @@ const PATIENT_PROTECTED_PREFIXES = [
   "/check-in",
   "/medications",
   "/messages",
+  "/preferences",
 ];
 
 function isPatientProtectedPath(pathname: string): boolean {
@@ -95,6 +96,34 @@ export async function middleware(request: NextRequest) {
       ? "/patient-sign-in"
       : "/sign-in";
     return NextResponse.redirect(url);
+  }
+
+  // Role gates on /audit and /analytics. Server-side — non-permitted
+  // staff get a hard 403 from middleware, never reaching the page.
+  const onAudit = pathname === "/audit" || pathname.startsWith("/audit/");
+  const onAnalytics =
+    pathname === "/analytics" || pathname.startsWith("/analytics/");
+  if (onAudit || onAnalytics) {
+    const { data: staff } = await supabase
+      .from("staff_users")
+      .select("access_tier, role")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (onAudit && staff?.access_tier !== 1) {
+      return new NextResponse(
+        "403 Forbidden — the audit log requires tier-1 (Owner / Admin / Clinical Lead) access.",
+        { status: 403, headers: { "content-type": "text/plain" } }
+      );
+    }
+    if (
+      onAnalytics &&
+      !(staff?.access_tier === 1 || staff?.role === "surgeon")
+    ) {
+      return new NextResponse(
+        "403 Forbidden — analytics is restricted to Owner / Admin / Clinical Lead and Surgeons.",
+        { status: 403, headers: { "content-type": "text/plain" } }
+      );
+    }
   }
 
   return response;

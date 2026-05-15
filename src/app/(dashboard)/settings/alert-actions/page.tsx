@@ -138,7 +138,7 @@ export default async function AlertActionsPage({
                     name="additional_email"
                     defaultValue={row.additional_email ?? ""}
                     placeholder="optional"
-                    className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                    className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
                   />
                 </label>
                 <label className="flex flex-col gap-1">
@@ -150,7 +150,7 @@ export default async function AlertActionsPage({
                     name="oncall_number"
                     defaultValue={row.oncall_number ?? ""}
                     placeholder="+61..."
-                    className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+                    className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
                   />
                 </label>
               </div>

@@ -57,7 +57,7 @@ export default async function SymptomsPage({
             name="key"
             required
             placeholder="e.g. blurred_vision"
-            className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -67,7 +67,7 @@ export default async function SymptomsPage({
             name="label"
             required
             placeholder="e.g. Blurred vision"
-            className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -76,7 +76,7 @@ export default async function SymptomsPage({
             type="number"
             name="order_index"
             defaultValue={120}
-            className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5"
+            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5"
           />
         </label>
         <button

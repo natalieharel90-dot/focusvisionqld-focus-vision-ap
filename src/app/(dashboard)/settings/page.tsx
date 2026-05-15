@@ -14,6 +14,12 @@ const SECTIONS: ReadonlyArray<{
       "Per-(procedure × surgeon) routing rules for pain, light sensitivity, vision, and each symptom chip.",
   },
   {
+    href: "/settings/recovery-guidance",
+    title: "Recovery guidance",
+    description:
+      "The headline, message, expected symptoms, and tips a patient sees after each daily check-in — per (procedure × surgeon × zone).",
+  },
+  {
     href: "/settings/alert-actions",
     title: "Alert actions",
     description:
@@ -24,6 +30,18 @@ const SECTIONS: ReadonlyArray<{
     title: "Standard symptom options",
     description:
       "The chip set the patient sees on the daily check-in. Adding a new symptom auto-creates an Orange routing rule.",
+  },
+  {
+    href: "/settings/patient-features",
+    title: "Patient app features",
+    description:
+      "Clinic-wide default ON/OFF for each optional patient-app feature, plus per-patient overrides.",
+  },
+  {
+    href: "/settings/clinic",
+    title: "Clinic & Doctors",
+    description:
+      "Clinic profile, the doctor directory, partner facilities, message templates, the Contact screen, and the content library.",
   },
 ];
 

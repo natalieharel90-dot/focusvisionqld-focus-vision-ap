@@ -79,7 +79,7 @@ export function FlagPatientModal({ patientId }: Props) {
               required
               rows={3}
               placeholder="What you observed, why this needs review."
-              className="rounded-md border border-fv-bg-soft bg-white px-3 py-2 text-sm"
+              className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-2 text-sm"
             />
           </label>
 

@@ -269,7 +269,7 @@ export default async function TriagePage({
                       {level !== "red" && item.patient_phone ? (
                         <a
                           href={`tel:${item.patient_phone}`}
-                          className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5 text-xs font-semibold text-fv-text-primary"
+                          className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5 text-xs font-semibold text-fv-text-primary"
                         >
                           📞 Call
                         </a>
@@ -277,14 +277,14 @@ export default async function TriagePage({
                       {item.thread_id ? (
                         <Link
                           href={`/inbox/${item.thread_id}`}
-                          className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5 text-xs font-semibold text-fv-text-primary"
+                          className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5 text-xs font-semibold text-fv-text-primary"
                         >
                           💬 Message
                         </Link>
                       ) : null}
                       <Link
                         href={`/patients/${item.patient_id}`}
-                        className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5 text-xs font-semibold text-fv-text-primary"
+                        className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5 text-xs font-semibold text-fv-text-primary"
                       >
                         Open record
                       </Link>

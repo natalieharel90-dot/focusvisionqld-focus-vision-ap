@@ -41,22 +41,22 @@ const PILL_STYLES: Record<
 > = {
   off: {
     active: "bg-fv-bg-soft text-fv-text-primary border-fv-text-secondary",
-    inactive: "bg-white text-fv-text-secondary border-fv-bg-soft",
+    inactive: "bg-fv-bg-card text-fv-text-secondary border-fv-bg-soft",
     label: "Off",
   },
   yellow: {
     active: "bg-yellow-400 text-yellow-950 border-yellow-500",
-    inactive: "bg-white text-yellow-800 border-yellow-200",
+    inactive: "bg-fv-bg-card text-yellow-800 border-yellow-200",
     label: "Yellow",
   },
   orange: {
     active: "bg-orange-500 text-white border-orange-600",
-    inactive: "bg-white text-orange-700 border-orange-200",
+    inactive: "bg-fv-bg-card text-orange-700 border-orange-200",
     label: "Orange",
   },
   red: {
     active: "bg-red-600 text-white border-red-700",
-    inactive: "bg-white text-red-700 border-red-200",
+    inactive: "bg-fv-bg-card text-red-700 border-red-200",
     label: "Red",
   },
 };
@@ -138,7 +138,7 @@ export function RulesEditor(props: EditorProps) {
           <select
             value={props.procedureType ?? ""}
             onChange={(e) => navigateScope(e.target.value || null, props.surgeonId)}
-            className="rounded-md border border-fv-bg-soft bg-white px-3 py-2 text-sm"
+            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-2 text-sm"
           >
             <option value="">★ Default (all procedures)</option>
             {props.procedureOptions.map((p) => (
@@ -155,7 +155,7 @@ export function RulesEditor(props: EditorProps) {
           <select
             value={props.surgeonId ?? ""}
             onChange={(e) => navigateScope(props.procedureType, e.target.value || null)}
-            className="rounded-md border border-fv-bg-soft bg-white px-3 py-2 text-sm"
+            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-2 text-sm"
           >
             <option value="">★ Default (all surgeons)</option>
             {props.surgeonOptions.map((s) => (

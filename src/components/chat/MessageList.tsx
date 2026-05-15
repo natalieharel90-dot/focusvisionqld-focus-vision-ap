@@ -47,9 +47,11 @@ export function MessageList({
         const senderLabel =
           m.sender_type === "patient"
             ? "Patient"
-            : sender
-              ? `${sender.name} · ${sender.role}`
-              : "Focus Vision team";
+            : m.bulk_push_id
+              ? "Focus Vision team"
+              : sender
+                ? `${sender.name} · ${sender.role}`
+                : "Focus Vision team";
         const attachments = signedAttachmentsByMessage.get(m.id) ?? [];
 
         return (

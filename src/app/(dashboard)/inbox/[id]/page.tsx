@@ -43,19 +43,13 @@ export default async function StaffThreadDetailPage({
     .order("sent_at", { ascending: true });
   const msgs = messages ?? [];
 
-  // Mark inbound (patient) messages as read.
-  const unreadIds = msgs
-    .filter((m) => m.sender_type === "patient" && m.read_at === null)
-    .map((m) => m.id);
-  if (unreadIds.length > 0) {
-    await supabase
-      .from("messages")
-      .update({ read_at: new Date().toISOString() })
-      .in("id", unreadIds);
-    await supabase
-      .from("message_threads")
-      .update({ unread_for_staff: 0 })
-      .eq("id", threadId);
+  // Mark inbound (patient) messages read via the SECURITY DEFINER RPC —
+  // staff have no UPDATE grant on messages.
+  const hasUnread = msgs.some(
+    (m) => m.sender_type === "patient" && m.read_at === null
+  );
+  if (hasUnread) {
+    await supabase.rpc("mark_thread_read", { p_thread_id: threadId });
   }
 
   // Staff who've sent in this thread, for name + role labels.

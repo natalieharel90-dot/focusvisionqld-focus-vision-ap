@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { loadPatientFeatures } from "@/lib/patient-features-server";
 import { PhotoUploadField } from "./PhotoUploadField";
 import { submitCheckInAction } from "./actions";
 
@@ -30,6 +31,8 @@ export default async function CheckInPage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/patient-sign-in");
+
+  const features = await loadPatientFeatures(supabase, user.id);
 
   return (
     <main className="flex flex-col gap-5 px-5 py-6">
@@ -70,7 +73,7 @@ export default async function CheckInPage({
                   required
                   className="peer sr-only"
                 />
-                <span className="block rounded-md border border-fv-bg-soft bg-white py-2 text-center font-medium text-fv-text-primary peer-checked:border-fv-accent-strong peer-checked:bg-fv-accent-strong peer-checked:text-white">
+                <span className="block rounded-md border border-fv-bg-soft bg-fv-bg-card py-2 text-center font-medium text-fv-text-primary peer-checked:border-fv-accent-strong peer-checked:bg-fv-accent-strong peer-checked:text-white">
                   {label}
                 </span>
               </label>
@@ -96,7 +99,7 @@ export default async function CheckInPage({
                   required
                   className="peer sr-only"
                 />
-                <span className="block rounded-md border border-fv-bg-soft bg-white py-2 text-center font-semibold text-fv-text-primary peer-checked:border-fv-accent-strong peer-checked:bg-fv-accent-strong peer-checked:text-white">
+                <span className="block rounded-md border border-fv-bg-soft bg-fv-bg-card py-2 text-center font-semibold text-fv-text-primary peer-checked:border-fv-accent-strong peer-checked:bg-fv-accent-strong peer-checked:text-white">
                   {n}
                 </span>
               </label>
@@ -122,7 +125,7 @@ export default async function CheckInPage({
                   required
                   className="peer sr-only"
                 />
-                <span className="block rounded-md border border-fv-bg-soft bg-white py-2 text-center font-semibold text-fv-text-primary peer-checked:border-fv-accent-strong peer-checked:bg-fv-accent-strong peer-checked:text-white">
+                <span className="block rounded-md border border-fv-bg-soft bg-fv-bg-card py-2 text-center font-semibold text-fv-text-primary peer-checked:border-fv-accent-strong peer-checked:bg-fv-accent-strong peer-checked:text-white">
                   {n}
                 </span>
               </label>
@@ -147,7 +150,7 @@ export default async function CheckInPage({
                   value={chip.key}
                   className="peer sr-only"
                 />
-                <span className="block rounded-full border border-fv-bg-soft bg-white px-3 py-1.5 text-fv-text-primary peer-checked:border-fv-accent-strong peer-checked:bg-fv-accent-strong peer-checked:text-white">
+                <span className="block rounded-full border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5 text-fv-text-primary peer-checked:border-fv-accent-strong peer-checked:bg-fv-accent-strong peer-checked:text-white">
                   {chip.label}
                 </span>
               </label>
@@ -161,13 +164,15 @@ export default async function CheckInPage({
               name="other_description"
               rows={2}
               placeholder="Optional — anything else you noticed."
-              className="rounded-md border border-fv-bg-soft bg-white px-3 py-2 text-sm"
+              className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-2 text-sm"
             />
           </label>
         </fieldset>
 
-        {/* Optional photo */}
-        <PhotoUploadField patientId={user.id} />
+        {/* Optional photo — gated by the eye_photo_prompt feature flag. */}
+        {features.eye_photo_prompt ? (
+          <PhotoUploadField patientId={user.id} />
+        ) : null}
 
         <button
           type="submit"

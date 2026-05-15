@@ -84,9 +84,17 @@ export default async function PatientsListPage() {
         <h1 className="text-2xl font-semibold text-fv-text-primary">
           Patients
         </h1>
-        <span className="text-sm text-fv-text-secondary">
-          {patients.length} total
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-fv-text-secondary">
+            {patients.length} total
+          </span>
+          <Link
+            href="/patients/new"
+            className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white"
+          >
+            Set up new patient
+          </Link>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl bg-fv-bg-card shadow-sm">

@@ -190,7 +190,7 @@ export default async function MedicationsPage({
                           <input type="hidden" name="minutes" value={m} />
                           <button
                             type="submit"
-                            className="rounded-md border border-fv-bg-soft bg-white px-2 py-1 text-xs font-medium text-fv-text-primary"
+                            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-2 py-1 text-xs font-medium text-fv-text-primary"
                           >
                             {m} min
                           </button>

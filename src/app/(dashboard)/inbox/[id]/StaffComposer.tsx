@@ -38,7 +38,7 @@ export function StaffComposer({ threadId, templates }: Props) {
             e.currentTarget.selectedIndex = 0;
           }}
           defaultValue=""
-          className="rounded-md border border-fv-bg-soft bg-white px-3 py-1.5 text-sm"
+          className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-1.5 text-sm"
         >
           <option value="">Insert template…</option>
           {templates.map((t) => (
@@ -56,7 +56,7 @@ export function StaffComposer({ threadId, templates }: Props) {
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder="Type a reply…"
-        className="rounded-md border border-fv-bg-soft bg-white px-3 py-2 text-sm"
+        className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-2 text-sm"
       />
 
       <div className="flex items-center justify-between gap-2">

@@ -2,10 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Calm-medical light palette as the app-wide default. The staff
+   dashboard uses these as-is; the patient layout overrides them per
+   [data-theme] via the generated CSS in lib/theme.ts (buildThemeCss). */
+:root {
+  --fv-bg-app: #f0f6f8;
+  --fv-bg-card: #ffffff;
+  --fv-bg-tile: #ffffff;
+  --fv-bg-soft: #e0ebee;
+  --fv-bg-accent-soft: #d3e7ec;
+  --fv-text-primary: #1f3540;
+  --fv-text-secondary: #5c7178;
+  --fv-text-muted: #8fa0a6;
+  --fv-accent: #4f9daa;
+  --fv-accent-strong: #2c7585;
+  --fv-accent-2: #6fa8c7;
+  --fv-accent-warm: #e5c07b;
+  --fv-danger: #d97757;
+  --fv-success: #4f9daa;
+  --fv-border: #d2e1e5;
+}
+
 html,
 body {
-  background: theme("colors.fv-bg-app");
-  color: theme("colors.fv-text-primary");
+  background: var(--fv-bg-app);
+  color: var(--fv-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Patient accessibility preferences ──────────────────────────────── */
+
+/* Text size scales the patient subtree's root font size. */
+[data-text-size="small"] {
+  font-size: 14px;
+}
+[data-text-size="normal"] {
+  font-size: 16px;
+}
+[data-text-size="large"] {
+  font-size: 18px;
+}
+
+/* High contrast: stronger borders + pure text. */
+[data-contrast="high"] {
+  --fv-border: var(--fv-text-primary);
+}
+[data-contrast="high"] * {
+  border-color: var(--fv-text-primary);
+}
+
+/* Reduce motion: disable transitions + animations inside the subtree. */
+[data-motion="reduced"] *,
+[data-motion="reduced"] *::before,
+[data-motion="reduced"] *::after {
+  transition-duration: 0ms !important;
+  animation-duration: 0ms !important;
+}
+
+/* ── Sparkle overlay (bonus theme pack) ─────────────────────────────── */
+@keyframes fv-sparkle-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+.fv-sparkle {
+  animation: fv-sparkle-twinkle 3.6s ease-in-out infinite;
+}
+/* The staff dashboard has no [data-motion] attribute, so honour the OS
+   reduced-motion setting directly for the sparkle overlay. */
+@media (prefers-reduced-motion: reduce) {
+  .fv-sparkle {
+    animation: none;
+  }
 }
