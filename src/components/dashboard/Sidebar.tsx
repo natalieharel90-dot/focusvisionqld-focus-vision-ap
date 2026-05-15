@@ -119,7 +119,7 @@ export function Sidebar({
   });
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col bg-[#1F3A36] text-white">
+    <aside className="fv-dash-sidebar flex w-60 shrink-0 flex-col text-white">
       <div className="flex flex-col items-start gap-1.5 px-[18px] pb-6 pt-6">
         <LogoUnlockTrigger action={unlockStaffBonusPackAction}>
           <span className="grid h-[72px] w-[72px] place-items-center rounded-full bg-white p-2">

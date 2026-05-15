@@ -82,3 +82,13 @@ body {
     animation: none;
   }
 }
+
+/* Dashboard sidebar — dark chrome that follows the active theme. In light
+   themes it takes the theme's dark text colour; in dark mode it takes a
+   dark themed surface. White sidebar text reads well on all of them. */
+.fv-dash-sidebar {
+  background: var(--fv-text-primary);
+}
+[data-dark] .fv-dash-sidebar {
+  background: var(--fv-bg-soft);
+}
