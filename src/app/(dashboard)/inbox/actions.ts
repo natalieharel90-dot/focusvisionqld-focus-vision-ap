@@ -103,6 +103,7 @@ export async function toggleNotificationPrefAction(formData: FormData) {
   });
 
   revalidatePath("/inbox");
+  revalidatePath("/staff-app/me");
 }
 
 // Marks a thread resolved — it drops out of the unread count and the
