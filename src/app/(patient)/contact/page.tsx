@@ -3,31 +3,13 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { ContactCard } from "@/components/patient/ContactCard";
 import {
-  isAfterHours,
+  contactHeroTagline,
   visibleContactOptions,
   type ContactOption,
   type OpeningHours,
 } from "@/lib/contact";
 
 export const dynamic = "force-dynamic";
-
-const WEEKDAYS: ReadonlyArray<[string, string]> = [
-  ["mon", "Monday"],
-  ["tue", "Tuesday"],
-  ["wed", "Wednesday"],
-  ["thu", "Thursday"],
-  ["fri", "Friday"],
-  ["sat", "Saturday"],
-  ["sun", "Sunday"],
-];
-
-function to12h(hhmm: string): string {
-  const [h, m] = hhmm.split(":").map(Number);
-  const hour = h ?? 0;
-  const period = hour >= 12 ? "PM" : "AM";
-  const h12 = hour % 12 === 0 ? 12 : hour % 12;
-  return `${h12}:${String(m ?? 0).padStart(2, "0")} ${period}`;
-}
 
 export default async function PatientContactPage() {
   const supabase = createSupabaseServerClient();
@@ -45,75 +27,48 @@ export default async function PatientContactPage() {
     (optionRows ?? []) as ContactOption[]
   );
 
-  const openingHours = (clinic?.opening_hours ?? {}) as OpeningHours;
-  const afterHours = clinic
-    ? isAfterHours(openingHours, new Date(), clinic.timezone)
-    : false;
+  const tagline = clinic
+    ? contactHeroTagline(
+        clinic.service_areas,
+        (clinic.opening_hours ?? {}) as OpeningHours
+      )
+    : "";
 
   return (
-    <main className="flex flex-col gap-5 px-5 py-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-fv-text-primary">
+    <main className="flex flex-col gap-4 px-5 py-6">
+      {/* Clinic hero */}
+      <section className="rounded-2xl bg-gradient-to-br from-fv-accent to-fv-accent-strong p-5 text-white shadow-sm">
+        <h1 className="text-2xl font-bold">
           {clinic?.name ?? "Contact the clinic"}
         </h1>
-        {clinic ? (
-          <p className="mt-1 text-sm text-fv-text-secondary">
-            {clinic.address}
-          </p>
+        {tagline ? (
+          <p className="mt-1 text-sm text-white/85">{tagline}</p>
         ) : null}
-      </header>
-
-      {afterHours && clinic ? (
-        <div className="rounded-2xl border border-fv-accent-warm bg-fv-bg-accent-soft p-4">
-          <h2 className="text-sm font-semibold text-fv-text-primary">
-            We&apos;re closed right now
-          </h2>
-          <p className="mt-1 text-sm text-fv-text-secondary">
-            Here&apos;s how to reach us after hours.
-          </p>
-          <a
-            href={`tel:${clinic.after_hours_phone.replace(/[^\d+]/g, "")}`}
-            className="mt-3 flex items-center justify-center gap-2 rounded-md bg-fv-accent-strong px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            📞 {clinic.after_hours_label} · {clinic.after_hours_phone}
-          </a>
-          <p className="mt-2 text-xs text-fv-text-secondary">
-            {clinic.after_hours_message}
-          </p>
-        </div>
-      ) : null}
-
-      <section className="flex flex-col gap-3">
-        {options.length === 0 ? (
-          <div className="rounded-2xl bg-fv-bg-card p-6 text-center text-sm text-fv-text-secondary shadow-sm">
-            No contact options are configured.
-          </div>
-        ) : (
-          options.map((option) => (
-            <ContactCard key={option.id} option={option} />
-          ))
-        )}
       </section>
 
+      {/* Contact options */}
+      {options.length === 0 ? (
+        <div className="rounded-2xl bg-fv-bg-card p-6 text-center text-sm text-fv-text-secondary shadow-sm">
+          No contact options are configured.
+        </div>
+      ) : (
+        options.map((option) => (
+          <ContactCard key={option.id} option={option} />
+        ))
+      )}
+
+      {/* After-hours emergency notice */}
       {clinic ? (
-        <section className="rounded-2xl bg-fv-bg-card p-4 shadow-sm">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-fv-text-secondary">
-            Opening hours
-          </h2>
-          <dl className="mt-2 flex flex-col gap-1 text-sm">
-            {WEEKDAYS.map(([key, label]) => {
-              const day = openingHours[key];
-              return (
-                <div key={key} className="flex justify-between">
-                  <dt className="text-fv-text-secondary">{label}</dt>
-                  <dd className="text-fv-text-primary">
-                    {day ? `${to12h(day[0])} – ${to12h(day[1])}` : "Closed"}
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
-        </section>
+        <div className="rounded-r-2xl rounded-bl-2xl border-l-4 border-red-400 bg-red-50 p-4 text-sm font-medium leading-relaxed text-red-700">
+          After hours emergency? Call{" "}
+          <a
+            href={`tel:${clinic.after_hours_phone.replace(/[^\d+]/g, "")}`}
+            className="font-bold underline"
+          >
+            {clinic.after_hours_phone}
+          </a>
+          . {clinic.after_hours_message}
+        </div>
       ) : null}
     </main>
   );

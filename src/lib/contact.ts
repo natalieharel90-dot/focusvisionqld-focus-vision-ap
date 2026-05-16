@@ -69,3 +69,68 @@ export function isAfterHours(
   const current = Number(hourStr) * 60 + Number(minuteStr);
   return current < toMinutes(today[0]) || current >= toMinutes(today[1]);
 }
+
+// Weekdays in display order, paired with their short label.
+const WEEKDAYS: ReadonlyArray<readonly [string, string]> = [
+  ["mon", "Mon"],
+  ["tue", "Tue"],
+  ["wed", "Wed"],
+  ["thu", "Thu"],
+  ["fri", "Fri"],
+  ["sat", "Sat"],
+  ["sun", "Sun"],
+];
+
+// "08:00" → "8AM"; "09:30" → "9:30AM".
+export function formatHour(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const hour = h ?? 0;
+  const period = hour >= 12 ? "PM" : "AM";
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  const mins = m ?? 0;
+  return mins === 0
+    ? `${h12}${period}`
+    : `${h12}:${String(mins).padStart(2, "0")}${period}`;
+}
+
+// "Mon–Fri 8AM–5PM · Sat 9AM–1PM" — runs of days with identical hours are
+// collapsed; closed days are skipped.
+export function summariseHours(hours: OpeningHours): string {
+  type Run = { start: string; end: string; label: string };
+  const runs: Run[] = [];
+  let run: Run | null = null;
+
+  for (const [key, short] of WEEKDAYS) {
+    const day = hours[key];
+    const label = day
+      ? `${formatHour(day[0])}–${formatHour(day[1])}`
+      : null;
+    if (label && run && run.label === label) {
+      run.end = short;
+    } else {
+      if (run) runs.push(run);
+      run = label ? { start: short, end: short, label } : null;
+    }
+  }
+  if (run) runs.push(run);
+
+  return runs
+    .map(
+      (r) =>
+        `${r.start === r.end ? r.start : `${r.start}–${r.end}`} ${r.label}`
+    )
+    .join(" · ");
+}
+
+// The Contact-hero tagline: the service-areas label (if set) prefixed onto
+// the opening-hours summary. With no service areas it falls back to the
+// hours alone — never a dangling separator.
+export function contactHeroTagline(
+  serviceAreas: string | null | undefined,
+  hours: OpeningHours
+): string {
+  const summary = summariseHours(hours);
+  const areas = serviceAreas?.trim();
+  if (areas) return summary ? `${areas} · ${summary}` : areas;
+  return summary;
+}

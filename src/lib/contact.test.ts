@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   type ContactOption,
   type OpeningHours,
+  contactHeroTagline,
   isAfterHours,
+  summariseHours,
   visibleContactOptions,
 } from "./contact";
 
@@ -85,5 +87,46 @@ describe("isAfterHours — clinic timezone aware", () => {
     ["Sun 12:00 — closed", "2026-05-17T02:00:00Z", true],
   ])("%s", (_label, iso, expected) => {
     expect(isAfterHours(HOURS, new Date(iso), TZ)).toBe(expected);
+  });
+});
+
+describe("contactHeroTagline — Contact hero", () => {
+  // Mon-Fri 08:00-17:00, Sat 09:00-13:00, Sun closed.
+  const HOURS: OpeningHours = {
+    mon: ["08:00", "17:00"],
+    tue: ["08:00", "17:00"],
+    wed: ["08:00", "17:00"],
+    thu: ["08:00", "17:00"],
+    fri: ["08:00", "17:00"],
+    sat: ["09:00", "13:00"],
+    sun: null,
+  };
+
+  it("collapses runs of identical hours into ranges", () => {
+    expect(summariseHours(HOURS)).toBe("Mon–Fri 8AM–5PM · Sat 9AM–1PM");
+  });
+
+  it("prefixes service areas before the hours summary", () => {
+    expect(contactHeroTagline("Brisbane & Gold Coast", HOURS)).toBe(
+      "Brisbane & Gold Coast · Mon–Fri 8AM–5PM · Sat 9AM–1PM"
+    );
+  });
+
+  it("falls back to hours-only when service areas is null", () => {
+    expect(contactHeroTagline(null, HOURS)).toBe(
+      "Mon–Fri 8AM–5PM · Sat 9AM–1PM"
+    );
+  });
+
+  it("treats an empty / whitespace service-areas string as unset", () => {
+    expect(contactHeroTagline("   ", HOURS)).toBe(
+      "Mon–Fri 8AM–5PM · Sat 9AM–1PM"
+    );
+  });
+
+  it("shows service areas alone when there are no opening hours", () => {
+    expect(contactHeroTagline("Brisbane & Gold Coast", {})).toBe(
+      "Brisbane & Gold Coast"
+    );
   });
 });

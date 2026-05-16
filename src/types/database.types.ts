@@ -378,6 +378,7 @@ export type Database = {
           name: string
           opening_hours: Json
           phone: string
+          service_areas: string | null
           timezone: string
           updated_at: string
           website: string | null
@@ -394,6 +395,7 @@ export type Database = {
           name: string
           opening_hours: Json
           phone: string
+          service_areas?: string | null
           timezone?: string
           updated_at?: string
           website?: string | null
@@ -410,6 +412,7 @@ export type Database = {
           name?: string
           opening_hours?: Json
           phone?: string
+          service_areas?: string | null
           timezone?: string
           updated_at?: string
           website?: string | null
@@ -1409,6 +1412,7 @@ export type Database = {
           created_at: string
           custom_notes: string | null
           eye: Database["public"]["Enums"]["eye_side"]
+          facility_id: string | null
           id: string
           patient_id: string
           procedure_type: string
@@ -1422,6 +1426,7 @@ export type Database = {
           created_at?: string
           custom_notes?: string | null
           eye: Database["public"]["Enums"]["eye_side"]
+          facility_id?: string | null
           id?: string
           patient_id: string
           procedure_type: string
@@ -1435,6 +1440,7 @@ export type Database = {
           created_at?: string
           custom_notes?: string | null
           eye?: Database["public"]["Enums"]["eye_side"]
+          facility_id?: string | null
           id?: string
           patient_id?: string
           procedure_type?: string
@@ -1445,6 +1451,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "procedures_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "partner_facilities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "procedures_patient_id_fkey"
             columns: ["patient_id"]
