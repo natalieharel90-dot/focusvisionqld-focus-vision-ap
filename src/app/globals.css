@@ -116,3 +116,27 @@ body {
     display: none !important;
   }
 }
+
+/* Modern dropdowns — drop the native OS select arrow for a consistent
+   custom chevron across every <select> in the app. Element-level so no
+   per-component class is needed. padding-right is forced past the
+   Tailwind px-* utilities so the chevron never overlaps the label. */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235C7178' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.625rem center;
+  background-size: 1rem;
+  padding-right: 2rem !important;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+select:focus-visible {
+  outline: none;
+  border-color: var(--fv-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fv-accent) 22%, transparent);
+}
