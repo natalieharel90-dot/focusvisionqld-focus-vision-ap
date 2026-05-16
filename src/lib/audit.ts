@@ -36,6 +36,8 @@ export type StaffAuditEventType =
   | "audit.exported"
   | "patient.setup_item_completed"
   | "patient.activated"
+  | "patient.discharged"
+  | "patient.readmitted"
   | "analytics.viewed"
   | "dashboard.viewed"
   | "analytics.exported"

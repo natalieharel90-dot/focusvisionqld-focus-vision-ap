@@ -62,11 +62,12 @@ function avatarColor(seed: string): string {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length] as string;
 }
 
-type Tone = "good" | "review" | "flag";
+type Tone = "good" | "review" | "flag" | "neutral";
 const TONE_CLASS: Record<Tone, string> = {
   good: "bg-emerald-100 text-emerald-800",
   review: "bg-amber-100 text-amber-800",
   flag: "bg-red-100 text-red-700",
+  neutral: "bg-fv-bg-soft text-fv-text-secondary",
 };
 
 export default async function PatientsListPage({
@@ -88,7 +89,7 @@ export default async function PatientsListPage({
   ] = await Promise.all([
     supabase
       .from("patients")
-      .select("id, name, email, created_at")
+      .select("id, name, email, created_at, discharged_at")
       .order("name"),
     supabase
       .from("procedures")
@@ -114,6 +115,9 @@ export default async function PatientsListPage({
   const doses = dosesResult.data ?? [];
 
   const procByPatient = new Map(procedures.map((p) => [p.patient_id, p]));
+  const dischargedSet = new Set(
+    patients.filter((p) => p.discharged_at != null).map((p) => p.id)
+  );
 
   // Latest check-in per patient (rows arrive newest-first).
   const latestCheckIn = new Map<string, (typeof checkIns)[number]>();
@@ -143,7 +147,9 @@ export default async function PatientsListPage({
   const today = brisbaneDate(new Date());
 
   // ── KPIs ──
-  const activeCount = procByPatient.size;
+  const activeCount = [...procByPatient.keys()].filter(
+    (id) => !dischargedSet.has(id)
+  ).length;
   const newThisWeek = patients.filter(
     (p) => Date.now() - new Date(p.created_at).getTime() < WEEK_MS
   ).length;
@@ -175,7 +181,9 @@ export default async function PatientsListPage({
         latest != null && brisbaneDate(new Date(latest.created_at)) === today;
 
       let status: { label: string; tone: Tone };
-      if (latest && latest.pain >= PAIN_FLAG) {
+      if (dischargedSet.has(p.id)) {
+        status = { label: "Discharged", tone: "neutral" };
+      } else if (latest && latest.pain >= PAIN_FLAG) {
         status = { label: `Pain reported (${latest.pain}/5)`, tone: "flag" };
       } else if (flaggedPatients.has(p.id)) {
         status = { label: "Flagged for review", tone: "flag" };

@@ -502,6 +502,122 @@ export async function uploadDocumentAction(formData: FormData) {
   revalidatePath(`/patients/${patientId}`);
 }
 
+// ───── Discharge ──────────────────────────────────────────────────────────
+
+// Discharges the patient — they drop out of the active-recovery lists.
+export async function dischargePatientAction(formData: FormData) {
+  const patientId = readPatientId(formData);
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  const { error } = await supabase
+    .from("patients")
+    .update({
+      discharged_at: new Date().toISOString(),
+      discharged_by_staff_id: user.id,
+    })
+    .eq("id", patientId);
+  if (error) backWithError(patientId, error.message);
+
+  await recordStaffAudit(supabase, "patient.discharged", {
+    patient_id: patientId,
+    entity_type: "patient",
+    entity_id: patientId,
+  });
+  revalidatePath(`/patients/${patientId}`);
+  revalidatePath("/patients");
+  revalidatePath("/");
+}
+
+// Re-admits a discharged patient back into active recovery.
+export async function readmitPatientAction(formData: FormData) {
+  const patientId = readPatientId(formData);
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  const { error } = await supabase
+    .from("patients")
+    .update({ discharged_at: null, discharged_by_staff_id: null })
+    .eq("id", patientId);
+  if (error) backWithError(patientId, error.message);
+
+  await recordStaffAudit(supabase, "patient.readmitted", {
+    patient_id: patientId,
+    entity_type: "patient",
+    entity_id: patientId,
+  });
+  revalidatePath(`/patients/${patientId}`);
+  revalidatePath("/patients");
+  revalidatePath("/");
+}
+
+// ───── Custom pinned content ──────────────────────────────────────────────
+
+const PINNED_KINDS = ["content", "document", "message"] as const;
+
+export async function pinContentAction(formData: FormData) {
+  const patientId = readPatientId(formData);
+  const kind = String(formData.get("kind") ?? "").trim();
+  const label = String(formData.get("label") ?? "").trim();
+  if (!(PINNED_KINDS as ReadonlyArray<string>).includes(kind)) {
+    backWithError(patientId, "Pick a content type.");
+  }
+  if (!label) backWithError(patientId, "A label is required.");
+
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  const { error } = await supabase.from("patient_pinned_content").insert({
+    patient_id: patientId,
+    kind,
+    label,
+    created_by_staff_id: user.id,
+  });
+  if (error) backWithError(patientId, error.message);
+
+  await recordStaffAudit(supabase, "patient.details_updated", {
+    patient_id: patientId,
+    entity_type: "patient_pinned_content",
+    new_value: { kind, label, change: "pinned" },
+  });
+  revalidatePath(`/patients/${patientId}`);
+}
+
+export async function unpinContentAction(formData: FormData) {
+  const patientId = readPatientId(formData);
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) backWithError(patientId, "Missing content id.");
+
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  const { error } = await supabase
+    .from("patient_pinned_content")
+    .delete()
+    .eq("id", id);
+  if (error) backWithError(patientId, error.message);
+
+  await recordStaffAudit(supabase, "patient.details_updated", {
+    patient_id: patientId,
+    entity_type: "patient_pinned_content",
+    entity_id: id,
+    new_value: { change: "unpinned" },
+  });
+  revalidatePath(`/patients/${patientId}`);
+}
+
 // ───── Patient app feature overrides ──────────────────────────────────────
 
 export async function setPatientFeatureOverrideAction(formData: FormData) {

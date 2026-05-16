@@ -9,7 +9,11 @@ import {
   addMedicationAction,
   addNoteAction,
   addProcedureAction,
+  dischargePatientAction,
+  pinContentAction,
+  readmitPatientAction,
   resolveFlagAction,
+  unpinContentAction,
   setPatientFeatureOverrideAction,
   stopMedicationAction,
   updatePatientDetailsAction,
@@ -76,6 +80,55 @@ function fmtDateTime(value: string | null): string {
     minute: "2-digit",
   });
 }
+
+// "Today" / "Yesterday" / "11 May" for a check-in's date.
+function relativeDay(iso: string): string {
+  const day = new Date(iso).toLocaleDateString("en-CA");
+  const today = new Date().toLocaleDateString("en-CA");
+  const yesterday = new Date(Date.now() - 86_400_000).toLocaleDateString(
+    "en-CA"
+  );
+  if (day === today) return "Today";
+  if (day === yesterday) return "Yesterday";
+  return new Date(iso).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+// "08:00" → "8AM", "16:00" → "4PM" — for the medication schedule pill.
+function fmtClock(t: string): string {
+  const hr = Number(t.split(":")[0] ?? "0");
+  const period = hr < 12 ? "AM" : "PM";
+  const h12 = hr % 12 === 0 ? 12 : hr % 12;
+  return `${h12}${period}`;
+}
+
+// Stable per-author avatar colour for the internal notes thread.
+const NOTE_AVATAR_COLORS = [
+  "bg-violet-500",
+  "bg-emerald-600",
+  "bg-amber-500",
+  "bg-sky-600",
+  "bg-rose-500",
+  "bg-teal-600",
+];
+function noteAvatarColor(seed: string): string {
+  let h = 0;
+  for (const c of seed) h += c.charCodeAt(0);
+  return NOTE_AVATAR_COLORS[h % NOTE_AVATAR_COLORS.length]!;
+}
+
+// Coloured icon tile per optional patient-app feature.
+const FEATURE_ICON: Record<string, { emoji: string; bg: string }> = {
+  surgeon_spotlight: { emoji: "🎥", bg: "bg-emerald-600" },
+  eye_photo_prompt: { emoji: "📷", bg: "bg-orange-500" },
+  checkin_nudge: { emoji: "🔔", bg: "bg-amber-500" },
+  lockscreen_widget: { emoji: "🔒", bg: "bg-slate-600" },
+  feedback_tile: { emoji: "⭐", bg: "bg-sky-600" },
+  preop_tile: { emoji: "📅", bg: "bg-violet-600" },
+  bonus_theme_pack: { emoji: "✨", bg: "bg-fuchsia-600" },
+};
 
 // Reads a string field out of a jsonb column (emergency_contact / health_fund).
 function jsonField(value: Json | null | undefined, key: string): string | null {
@@ -150,6 +203,18 @@ function Pill({ label, cls }: { label: string; cls: string }) {
     >
       {label}
     </span>
+  );
+}
+
+// Uppercase-label + value cell for the procedure card field grid.
+function ProcField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-fv-text-secondary">
+        {label}
+      </div>
+      <div className="capitalize text-sm text-fv-text-primary">{value}</div>
+    </div>
   );
 }
 
@@ -271,6 +336,7 @@ export default async function PatientDetailPage({
     staffResult,
     featureFlagsResult,
     featureDefaultsResult,
+    pinnedContentResult,
   ] = await Promise.all([
     supabase.from("patients").select("*").eq("id", patientId).maybeSingle(),
     supabase
@@ -314,7 +380,13 @@ export default async function PatientDetailPage({
       .select("feature_key, enabled, changed_by_staff_id, changed_at")
       .eq("patient_id", patientId),
     supabase.from("feature_defaults").select("feature_key, enabled"),
+    supabase
+      .from("patient_pinned_content")
+      .select("id, kind, label")
+      .eq("patient_id", patientId)
+      .order("created_at"),
   ]);
+  const pinnedContent = pinnedContentResult.data ?? [];
 
   const patient = patientResult.data as Patient | null;
   if (!patient) notFound();
@@ -348,12 +420,15 @@ export default async function PatientDetailPage({
   const openFlags = flags.filter((f) => f.resolved_at === null);
   const resolvedFlags = flags.filter((f) => f.resolved_at !== null);
   const currentStaffName = user ? staffById.get(user.id)?.name ?? null : null;
+  const currentStaffRole = user ? staffById.get(user.id)?.role ?? null : null;
 
-  // Patient status pill — derived, no schema field. Flagged wins; otherwise
-  // a patient with no active procedure is treated as discharged.
+  // Patient status pill. An explicit discharge wins; otherwise flagged
+  // wins; a patient with no active procedure is also treated as discharged.
+  const isDischarged = patient.discharged_at != null;
   const hasActiveProcedure = procedures.some((p) => p.status === "active");
-  const status =
-    openFlags.length > 0
+  const status = isDischarged
+    ? { label: "Discharged", cls: "bg-fv-bg-soft text-fv-text-secondary" }
+    : openFlags.length > 0
       ? { label: "Flagged", cls: "bg-orange-100 text-orange-800" }
       : !hasActiveProcedure
         ? { label: "Discharged", cls: "bg-fv-bg-soft text-fv-text-secondary" }
@@ -413,12 +488,6 @@ export default async function PatientDetailPage({
           >
             Message
           </Link>
-          <a
-            href="#patient-details"
-            className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-          >
-            Edit details
-          </a>
         </div>
       </section>
 
@@ -615,34 +684,65 @@ export default async function PatientDetailPage({
               </span>
             }
           >
+            <p className="text-sm text-fv-text-secondary">
+              Track each surgical event separately. A patient can have any
+              number of procedures — sequential per-eye surgeries, touch-ups,
+              different procedures over time, or multiple issues treated at
+              once. Each procedure has its own recovery timeline, medications,
+              content set, and check-in history.
+            </p>
             {procedures.length === 0 ? (
-              <p className="text-sm text-fv-text-secondary">
+              <p className="mt-3 text-sm text-fv-text-secondary">
                 No procedures yet.
               </p>
             ) : (
-              <ul className="space-y-2">
-                {procedures.map((p) => {
+              <ul className="mt-3 space-y-2.5">
+                {procedures.map((p, i) => {
                   const ps = procedureStatus(p);
+                  const accent =
+                    p.status === "active"
+                      ? "border-l-emerald-600"
+                      : "border-l-amber-500";
                   return (
                     <li
                       key={p.id}
-                      className="rounded-lg border border-fv-bg-soft p-3 text-sm"
+                      className={`rounded-xl border-l-4 bg-fv-bg-soft/40 p-3.5 text-sm ${accent}`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-fv-text-primary">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-fv-bg-soft px-2 py-0.5 text-[11px] font-semibold text-fv-text-secondary">
+                          Procedure {i + 1}
+                        </span>
+                        <span className="font-semibold text-fv-text-primary">
                           {p.procedure_type.toUpperCase()}
                         </span>
-                        <Pill label={ps.label} cls={ps.cls} />
+                        <span className="ml-auto">
+                          <Pill label={ps.label} cls={ps.cls} />
+                        </span>
                       </div>
-                      <div className="mt-1 text-xs text-fv-text-secondary">
-                        {staffById.get(p.surgeon_id)?.name ?? "—"} ·{" "}
-                        <span className="capitalize">{p.eye}</span> ·{" "}
-                        {fmtDate(p.surgery_date)}
+                      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+                        <ProcField
+                          label="Procedure"
+                          value={p.procedure_type.toUpperCase()}
+                        />
+                        <ProcField
+                          label="Surgeon"
+                          value={staffById.get(p.surgeon_id)?.name ?? "—"}
+                        />
+                        <ProcField label="Eye(s) treated" value={p.eye} />
+                        <ProcField
+                          label="Date"
+                          value={fmtDate(p.surgery_date)}
+                        />
                       </div>
                       {p.custom_notes ? (
-                        <p className="mt-2 rounded-md bg-fv-bg-soft px-2 py-1 text-xs text-fv-text-secondary">
-                          {p.custom_notes}
-                        </p>
+                        <div className="mt-3">
+                          <div className="text-[10px] font-semibold uppercase tracking-wide text-fv-text-secondary">
+                            Custom recovery notes (patient-facing)
+                          </div>
+                          <div className="mt-1 rounded-lg border border-fv-bg-soft bg-fv-bg-app px-3 py-2 text-sm text-fv-text-primary">
+                            {p.custom_notes}
+                          </div>
+                        </div>
                       ) : null}
                     </li>
                   );
@@ -720,6 +820,10 @@ export default async function PatientDetailPage({
                 </button>
               </form>
             </details>
+            <p className="mt-3 text-xs text-fv-text-secondary">
+              For patients with multiple issues — e.g. cataract on one eye plus
+              PRK on the other, or a planned second-eye procedure.
+            </p>
           </Panel>
 
           {/* Medications */}
@@ -819,31 +923,28 @@ export default async function PatientDetailPage({
                 {activeMeds.map((m) => (
                   <li
                     key={m.id}
-                    className="flex items-start justify-between gap-3 rounded-lg border border-fv-bg-soft p-3 text-sm"
+                    className="rounded-lg border border-fv-bg-soft p-3 text-sm"
                   >
-                    <div className="min-w-0">
-                      <div className="font-medium text-fv-text-primary">
-                        {m.name}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-fv-text-primary">
+                          {m.name}
+                        </div>
+                        <div className="text-xs text-fv-text-secondary">
+                          {m.dose} · {m.route}
+                        </div>
                       </div>
-                      <div className="text-xs text-fv-text-secondary">
-                        {m.dose} · {m.route} · {m.frequency}
-                        {m.scheduled_times.length > 0
-                          ? ` · ${m.scheduled_times.join(", ")}`
-                          : ""}
-                      </div>
-                      <div className="mt-1 text-xs text-fv-text-secondary">
-                        {fmtDate(m.start_date)} →{" "}
-                        {m.end_date ? fmtDate(m.end_date) : "ongoing"}
-                      </div>
-                    </div>
-                    <details className="shrink-0">
-                      <summary className="cursor-pointer rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
-                        Remove
-                      </summary>
-                      <form
-                        action={stopMedicationAction}
-                        className="mt-2 flex flex-col gap-2"
-                      >
+                      <details className="shrink-0">
+                        <summary
+                          title="Remove medication"
+                          className="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-md border border-red-200 bg-red-50 text-red-600"
+                        >
+                          🗑
+                        </summary>
+                        <form
+                          action={stopMedicationAction}
+                          className="mt-2 flex flex-col gap-2"
+                        >
                         <HiddenPatientId id={patient.id} />
                         <input
                           type="hidden"
@@ -878,7 +979,20 @@ export default async function PatientDetailPage({
                           Confirm stop
                         </button>
                       </form>
-                    </details>
+                      </details>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                        {m.frequency}
+                        {m.scheduled_times.length > 0
+                          ? ` · ${m.scheduled_times.map(fmtClock).join(" ")}`
+                          : ""}
+                      </span>
+                      <span className="text-[11px] text-fv-text-secondary">
+                        {fmtDate(m.start_date)} →{" "}
+                        {m.end_date ? fmtDate(m.end_date) : "ongoing"}
+                      </span>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -931,21 +1045,29 @@ export default async function PatientDetailPage({
                   return (
                     <li
                       key={n.id}
-                      className="rounded-lg bg-fv-bg-soft p-3 text-sm"
+                      className="rounded-lg bg-fv-bg-soft/60 p-3 text-sm"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-fv-bg-accent-soft text-[10px] font-semibold text-fv-accent-strong">
+                      <div className="flex items-start gap-2.5">
+                        <span
+                          className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-[11px] font-semibold text-white ${noteAvatarColor(
+                            n.author_staff_id
+                          )}`}
+                        >
                           {initials(author?.name ?? "?")}
                         </span>
-                        <div className="min-w-0 text-xs text-fv-text-secondary">
-                          <span className="font-semibold text-fv-text-primary">
+                        <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                          <span className="text-sm font-semibold text-fv-text-primary">
                             {author?.name ?? "Unknown"}
+                            {author?.role ? (
+                              <span className="font-normal capitalize text-fv-text-secondary">
+                                {" "}
+                                ({author.role})
+                              </span>
+                            ) : null}
                           </span>
-                          {author?.role ? (
-                            <span className="capitalize"> · {author.role}</span>
-                          ) : null}
-                          {" · "}
-                          {fmtDateTime(n.created_at)}
+                          <span className="shrink-0 text-xs text-fv-text-secondary">
+                            {fmtDateTime(n.created_at)}
+                          </span>
                         </div>
                       </div>
                       <div className="mt-2 whitespace-pre-wrap text-fv-text-primary">
@@ -971,7 +1093,13 @@ export default async function PatientDetailPage({
               />
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-fv-text-secondary">
-                  Posting as {currentStaffName ?? "you"}
+                  Posting as{" "}
+                  <strong className="text-fv-text-primary">
+                    {currentStaffName ?? "you"}
+                  </strong>
+                  {currentStaffRole ? (
+                    <span className="capitalize"> ({currentStaffRole})</span>
+                  ) : null}
                 </span>
                 <button
                   type="submit"
@@ -989,7 +1117,9 @@ export default async function PatientDetailPage({
             title="Appointments"
             action={
               <details className="relative">
-                <summary className={summaryBtn}>+ Schedule</summary>
+                <summary className={summaryBtn}>
+                  + Schedule appointment
+                </summary>
                 <form
                   action={addAppointmentAction}
                   className="absolute right-0 z-10 mt-2 grid w-[320px] grid-cols-2 gap-3 rounded-xl border border-fv-bg-soft bg-fv-bg-card p-4 text-sm shadow-lg"
@@ -1074,13 +1204,34 @@ export default async function PatientDetailPage({
                           : ""}
                       </div>
                     </div>
-                    <span className="shrink-0 text-xs uppercase tracking-wide text-fv-text-secondary">
-                      {a.status}
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        a.status === "confirmed"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : a.status === "to_book"
+                            ? "bg-amber-100 text-amber-800"
+                            : a.status === "cancelled"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-fv-bg-soft text-fv-text-secondary"
+                      }`}
+                    >
+                      {a.status === "to_book"
+                        ? "To book"
+                        : a.status === "confirmed"
+                          ? "Confirmed"
+                          : a.status === "completed"
+                            ? "Completed"
+                            : "Cancelled"}
                     </span>
                   </li>
                 ))}
               </ul>
             )}
+            <p className="mt-3 text-xs text-fv-text-secondary">
+              Appointments here appear on the patient&apos;s home screen as the
+              &ldquo;next appointment&rdquo; card. Unscheduled appointments show
+              as &ldquo;to be made&rdquo; in the patient app.
+            </p>
             {nextAppointment ? (
               <div className="mt-3 border-t border-fv-bg-soft pt-3">
                 <NextAppointmentModal
@@ -1099,8 +1250,19 @@ export default async function PatientDetailPage({
           />
 
           {/* Patient app features */}
-          <Panel title="Patient app features">
-            <ul className="space-y-2">
+          <Panel
+            title="Patient app features"
+            action={
+              <span className="text-xs font-medium text-fv-text-secondary">
+                Opt-in per patient
+              </span>
+            }
+          >
+            <p className="text-sm text-fv-text-secondary">
+              Optional features for this patient. None of these are shown by
+              default — enable only when appropriate for this person.
+            </p>
+            <ul className="mt-3 flex flex-col gap-2">
               {FEATURES.map((feature) => {
                 const flag = featureFlagByKey.get(feature.key);
                 const clinicDefault = featureDefaultByKey.get(feature.key);
@@ -1111,27 +1273,24 @@ export default async function PatientDetailPage({
                     : { enabled: clinicDefault },
                   feature.schemaDefault
                 );
-                const overrideBy = flag?.changed_by_staff_id
-                  ? staffById.get(flag.changed_by_staff_id)?.name ?? "staff"
-                  : null;
+                const icon =
+                  FEATURE_ICON[feature.key] ?? FEATURE_ICON.feedback_tile!;
                 return (
                   <li
                     key={feature.key}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-fv-bg-soft p-3 text-sm"
+                    className="flex items-center gap-3 rounded-xl border border-fv-bg-soft p-3 text-sm"
                   >
-                    <div className="min-w-0">
-                      <div className="font-medium text-fv-text-primary">
+                    <span
+                      className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-lg ${icon.bg}`}
+                    >
+                      {icon.emoji}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-fv-text-primary">
                         {feature.label}
                       </div>
                       <div className="text-xs text-fv-text-secondary">
                         {feature.description}
-                      </div>
-                      <div className="mt-1 text-[11px] text-fv-text-muted">
-                        {overrideBy
-                          ? `Explicitly set by ${overrideBy} on ${fmtDate(
-                              flag?.changed_at ?? null
-                            )}`
-                          : "Default at activation"}
                       </div>
                     </div>
                     <form action={setPatientFeatureOverrideAction}>
@@ -1148,13 +1307,18 @@ export default async function PatientDetailPage({
                       />
                       <button
                         type="submit"
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          effective
-                            ? "bg-fv-accent-strong text-white"
-                            : "border border-fv-border text-fv-text-secondary"
+                        role="switch"
+                        aria-checked={effective}
+                        title={effective ? "On — tap to turn off" : "Off — tap to turn on"}
+                        className={`relative block h-6 w-11 shrink-0 rounded-full transition-colors ${
+                          effective ? "bg-fv-accent-strong" : "bg-fv-bg-soft"
                         }`}
                       >
-                        {effective ? "ON" : "OFF"}
+                        <span
+                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                            effective ? "translate-x-[22px]" : "translate-x-0.5"
+                          }`}
+                        />
                       </button>
                     </form>
                   </li>
@@ -1164,11 +1328,90 @@ export default async function PatientDetailPage({
           </Panel>
 
           {/* Custom content for this patient */}
-          <Panel title="Custom content for this patient">
+          <Panel
+            title="Custom content for this patient"
+            action={
+              <details className="relative">
+                <summary className={summaryBtn}>+ Push content</summary>
+                <form
+                  action={pinContentAction}
+                  className="absolute right-0 z-10 mt-2 flex w-[300px] flex-col gap-3 rounded-xl border border-fv-bg-soft bg-fv-bg-card p-4 text-sm shadow-lg"
+                >
+                  <HiddenPatientId id={patient.id} />
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>Type</span>
+                    <select name="kind" required className={inputCls}>
+                      <option value="content">Recovery content / video</option>
+                      <option value="document">Document</option>
+                      <option value="message">Reassurance message</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabel}>Label</span>
+                    <input
+                      type="text"
+                      name="label"
+                      required
+                      placeholder="e.g. Halos & glare (LASIK Day 3–7)"
+                      className={inputCls}
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                  >
+                    Push to patient
+                  </button>
+                </form>
+              </details>
+            }
+          >
             <p className="text-sm text-fv-text-secondary">
-              No content has been pinned for this patient. Recovery guidance
-              follows the clinic defaults for their procedure and surgeon.
+              Pin videos, documents or reassurance messages to this
+              patient&apos;s app home screen.
             </p>
+            {pinnedContent.length === 0 ? (
+              <p className="mt-3 text-sm text-fv-text-secondary">
+                Nothing pinned yet.
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-col gap-2">
+                {pinnedContent.map((c) => {
+                  const isMsg = c.kind === "message";
+                  const icon =
+                    c.kind === "message"
+                      ? "💬"
+                      : c.kind === "document"
+                        ? "📄"
+                        : "📺";
+                  return (
+                    <div
+                      key={c.id}
+                      className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${
+                        isMsg
+                          ? "bg-amber-50 text-amber-800"
+                          : "bg-emerald-50 text-emerald-800"
+                      }`}
+                    >
+                      <span className="min-w-0 truncate">
+                        {icon} {c.label}
+                      </span>
+                      <form action={unpinContentAction} className="shrink-0">
+                        <HiddenPatientId id={patient.id} />
+                        <input type="hidden" name="id" value={c.id} />
+                        <button
+                          type="submit"
+                          title="Unpin"
+                          className="text-xs font-bold text-fv-text-secondary hover:text-red-600"
+                        >
+                          ✕
+                        </button>
+                      </form>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Panel>
         </div>
 
@@ -1194,37 +1437,49 @@ export default async function PatientDetailPage({
                 No check-ins submitted yet.
               </p>
             ) : (
-              <ul className="space-y-2">
-                {checkIns.slice(0, 14).map((c) => (
-                  <li
-                    key={c.id}
-                    className="flex items-center gap-3 rounded-lg border border-fv-bg-soft px-3 py-2 text-sm"
-                  >
-                    <span className="w-12 shrink-0 font-semibold tabular-nums text-fv-text-primary">
-                      Day {c.recovery_day}
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${zoneClasses(
-                        c.patient_zone
-                      )}`}
+              <ul className="flex flex-col gap-2">
+                {checkIns.slice(0, 14).map((c) => {
+                  const ciStatus =
+                    c.recovery_day === 0
+                      ? {
+                          label: "Surgery",
+                          cls: "bg-emerald-100 text-emerald-800",
+                        }
+                      : c.staff_alert_level !== "none"
+                        ? {
+                            label: "Review",
+                            cls: "bg-amber-100 text-amber-800",
+                          }
+                        : {
+                            label: "Normal",
+                            cls: "bg-emerald-100 text-emerald-800",
+                          };
+                  return (
+                    <li
+                      key={c.id}
+                      className="flex flex-wrap items-center gap-3 rounded-lg bg-fv-bg-soft/40 px-3 py-2.5 text-sm"
                     >
-                      {c.patient_zone}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-xs text-fv-text-secondary">
-                      {c.vision} vision · pain {c.pain}/5 · light{" "}
-                      {c.light_sensitivity}/5
-                    </span>
-                    {c.staff_alert_level !== "none" ? (
-                      <span
-                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${flagClasses(
-                          c.staff_alert_level
-                        )}`}
-                      >
-                        {c.staff_alert_level}
+                      <div className="w-28 shrink-0">
+                        <div className="font-semibold text-fv-text-primary">
+                          Day {c.recovery_day}
+                        </div>
+                        <div className="text-xs text-fv-text-secondary">
+                          {relativeDay(c.created_at)}
+                        </div>
+                      </div>
+                      <span className="min-w-0 flex-1 text-xs text-fv-text-secondary">
+                        {c.recovery_day === 0
+                          ? "Surgery day — pre-op only"
+                          : `Pain ${c.pain}/5, vision "${c.vision}", light ${c.light_sensitivity}/5`}
                       </span>
-                    ) : null}
-                  </li>
-                ))}
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${ciStatus.cls}`}
+                      >
+                        {ciStatus.label}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Panel>
@@ -1326,8 +1581,38 @@ export default async function PatientDetailPage({
                 href="#documents"
                 className="rounded-md border border-fv-bg-soft px-3 py-2 text-left font-medium text-fv-text-primary hover:bg-fv-bg-soft/50"
               >
-                📄 Upload to documents
+                📄 Upload to their documents
               </a>
+              {isDischarged ? (
+                <form action={readmitPatientAction}>
+                  <HiddenPatientId id={patient.id} />
+                  <button
+                    type="submit"
+                    className="w-full rounded-md border border-fv-bg-soft px-3 py-2 text-left font-medium text-fv-text-primary hover:bg-fv-bg-soft/50"
+                  >
+                    📈 Re-admit patient
+                  </button>
+                </form>
+              ) : (
+                <details>
+                  <summary className="cursor-pointer list-none rounded-md border border-fv-bg-soft px-3 py-2 text-left font-medium text-fv-text-primary hover:bg-fv-bg-soft/50">
+                    📈 Mark as discharged
+                  </summary>
+                  <form action={dischargePatientAction} className="mt-1.5">
+                    <HiddenPatientId id={patient.id} />
+                    <button
+                      type="submit"
+                      className="w-full rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:opacity-90"
+                    >
+                      Confirm — discharge {patient.name}
+                    </button>
+                    <p className="mt-1 text-[11px] text-fv-text-secondary">
+                      Removes them from active-recovery lists. They can be
+                      re-admitted later.
+                    </p>
+                  </form>
+                </details>
+              )}
             </div>
           </Panel>
 

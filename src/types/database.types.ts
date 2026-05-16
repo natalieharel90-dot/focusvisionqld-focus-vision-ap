@@ -1147,6 +1147,48 @@ export type Database = {
           },
         ]
       }
+      patient_pinned_content: {
+        Row: {
+          created_at: string
+          created_by_staff_id: string | null
+          id: string
+          kind: string
+          label: string
+          patient_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_staff_id?: string | null
+          id?: string
+          kind: string
+          label: string
+          patient_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by_staff_id?: string | null
+          id?: string
+          kind?: string
+          label?: string
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_pinned_content_created_by_staff_id_fkey"
+            columns: ["created_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_pinned_content_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_setup_tasks: {
         Row: {
           activated_at: string | null
@@ -1200,6 +1242,8 @@ export type Database = {
           allergies: string[]
           created_at: string
           date_of_birth: string | null
+          discharged_at: string | null
+          discharged_by_staff_id: string | null
           email: string
           emergency_contact: Json | null
           first_name: string
@@ -1217,6 +1261,8 @@ export type Database = {
           allergies?: string[]
           created_at?: string
           date_of_birth?: string | null
+          discharged_at?: string | null
+          discharged_by_staff_id?: string | null
           email: string
           emergency_contact?: Json | null
           first_name?: string
@@ -1234,6 +1280,8 @@ export type Database = {
           allergies?: string[]
           created_at?: string
           date_of_birth?: string | null
+          discharged_at?: string | null
+          discharged_by_staff_id?: string | null
           email?: string
           emergency_contact?: Json | null
           first_name?: string
@@ -1247,7 +1295,15 @@ export type Database = {
           phone_verified?: boolean
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "patients_discharged_by_staff_id_fkey"
+            columns: ["discharged_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       procedure_templates: {
         Row: {
