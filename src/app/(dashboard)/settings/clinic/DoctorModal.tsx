@@ -15,6 +15,7 @@ export type Doctor = {
   photo_url: string | null;
   bio: string | null;
   active: boolean;
+  welcome_video_url: string | null;
 };
 
 const inputClass =

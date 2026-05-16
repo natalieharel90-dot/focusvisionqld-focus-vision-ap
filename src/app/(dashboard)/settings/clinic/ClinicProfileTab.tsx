@@ -5,8 +5,9 @@ import { saveClinicProfileAction } from "./actions";
 type Profile = Database["public"]["Tables"]["clinic_profile"]["Row"];
 
 const inputClass =
-  "mt-1 w-full rounded-md border border-fv-border bg-fv-bg-app px-3 py-2 text-sm";
-const labelClass = "text-xs font-medium text-fv-text-secondary";
+  "mt-1.5 w-full rounded-lg border border-fv-bg-soft bg-fv-bg-app px-3 py-2 text-sm focus:border-fv-accent focus:outline-none";
+const labelClass =
+  "text-[11px] font-semibold uppercase tracking-wide text-fv-text-secondary";
 
 export function ClinicProfileTab({
   profile,
@@ -31,12 +32,12 @@ export function ClinicProfileTab({
   return (
     <form action={saveClinicProfileAction} className="flex flex-col gap-5">
       <fieldset disabled={!canEdit} className="flex flex-col gap-5">
-        <section className="rounded-xl bg-fv-bg-card p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-fv-text-primary">
+        <section className="rounded-2xl border border-fv-bg-soft bg-fv-bg-card p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-fv-text-primary">
             Clinic details
           </h2>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <label className="col-span-2">
+          <div className="mt-4 grid grid-cols-1 gap-x-5 gap-y-3.5 sm:grid-cols-2">
+            <label>
               <span className={labelClass}>Clinic name</span>
               <input
                 name="name"
@@ -53,15 +54,7 @@ export function ClinicProfileTab({
                 className={inputClass}
               />
             </label>
-            <label>
-              <span className={labelClass}>Website</span>
-              <input
-                name="website"
-                defaultValue={profile.website ?? ""}
-                className={inputClass}
-              />
-            </label>
-            <label className="col-span-2">
+            <label className="sm:col-span-2">
               <span className={labelClass}>Address</span>
               <input
                 name="address"
@@ -80,7 +73,7 @@ export function ClinicProfileTab({
               />
             </label>
             <label>
-              <span className={labelClass}>After-hours phone</span>
+              <span className={labelClass}>After-hours emergency</span>
               <input
                 name="after_hours_phone"
                 required
@@ -98,6 +91,14 @@ export function ClinicProfileTab({
               />
             </label>
             <label>
+              <span className={labelClass}>Website</span>
+              <input
+                name="website"
+                defaultValue={profile.website ?? ""}
+                className={inputClass}
+              />
+            </label>
+            <label>
               <span className={labelClass}>Timezone</span>
               <input
                 value={profile.timezone}
@@ -106,7 +107,7 @@ export function ClinicProfileTab({
                 className={`${inputClass} opacity-60`}
               />
             </label>
-            <label className="col-span-2">
+            <label className="sm:col-span-2">
               <span className={labelClass}>After-hours message</span>
               <textarea
                 name="after_hours_message"
@@ -119,8 +120,8 @@ export function ClinicProfileTab({
           </div>
         </section>
 
-        <section className="rounded-xl bg-fv-bg-card p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-fv-text-primary">
+        <section className="rounded-2xl border border-fv-bg-soft bg-fv-bg-card p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-fv-text-primary">
             Opening hours
           </h2>
           <div className="mt-3 flex flex-col gap-2">
@@ -141,14 +142,14 @@ export function ClinicProfileTab({
                     type="time"
                     name={`${key}_start`}
                     defaultValue={day ? day[0] : "09:00"}
-                    className="rounded-md border border-fv-border bg-fv-bg-app px-2 py-1 text-sm"
+                    className="rounded-md border border-fv-bg-soft bg-fv-bg-app px-2 py-1 text-sm"
                   />
                   <span className="text-fv-text-secondary">to</span>
                   <input
                     type="time"
                     name={`${key}_end`}
                     defaultValue={day ? day[1] : "17:00"}
-                    className="rounded-md border border-fv-border bg-fv-bg-app px-2 py-1 text-sm"
+                    className="rounded-md border border-fv-bg-soft bg-fv-bg-app px-2 py-1 text-sm"
                   />
                 </div>
               );
@@ -160,7 +161,7 @@ export function ClinicProfileTab({
       {canEdit ? (
         <button
           type="submit"
-          className="self-start rounded-md bg-fv-accent-strong px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
+          className="self-start rounded-lg bg-fv-accent-strong px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
         >
           Save clinic profile
         </button>

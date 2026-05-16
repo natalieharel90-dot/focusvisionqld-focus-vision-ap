@@ -512,6 +512,7 @@ export type Database = {
           photo_url: string | null
           role: string
           updated_at: string
+          welcome_video_url: string | null
         }
         Insert: {
           active?: boolean
@@ -524,6 +525,7 @@ export type Database = {
           photo_url?: string | null
           role: string
           updated_at?: string
+          welcome_video_url?: string | null
         }
         Update: {
           active?: boolean
@@ -536,6 +538,7 @@ export type Database = {
           photo_url?: string | null
           role?: string
           updated_at?: string
+          welcome_video_url?: string | null
         }
         Relationships: []
       }
@@ -1658,6 +1661,7 @@ export type Database = {
           name: string
           role: Database["public"]["Enums"]["staff_role"]
           sparkle: boolean
+          text_size: string
           theme: string
           updated_at: string
         }
@@ -1672,6 +1676,7 @@ export type Database = {
           name: string
           role: Database["public"]["Enums"]["staff_role"]
           sparkle?: boolean
+          text_size?: string
           theme?: string
           updated_at?: string
         }
@@ -1686,6 +1691,7 @@ export type Database = {
           name?: string
           role?: Database["public"]["Enums"]["staff_role"]
           sparkle?: boolean
+          text_size?: string
           theme?: string
           updated_at?: string
         }
@@ -2042,6 +2048,7 @@ export type Database = {
           name: string
           role: Database["public"]["Enums"]["staff_role"]
           sparkle: boolean
+          text_size: string
           theme: string
           updated_at: string
         }

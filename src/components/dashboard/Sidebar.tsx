@@ -5,9 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { FocusVisionLogo } from "@/components/FocusVisionLogo";
 import { LogoUnlockTrigger } from "@/components/LogoUnlockTrigger";
-import { StaffThemePicker } from "@/components/dashboard/StaffThemePicker";
 import { unlockStaffBonusPackAction } from "@/app/(dashboard)/theme-actions";
-import type { ThemePreference } from "@/lib/theme";
 
 type IconKey =
   | "home"
@@ -110,19 +108,11 @@ export function Sidebar({
   staffName,
   staffRole,
   accessTier,
-  themePreference,
-  dark,
-  sparkle,
-  bonusUnlocked,
   navBadges,
 }: {
   staffName: string;
   staffRole: string;
   accessTier: number;
-  themePreference: ThemePreference;
-  dark: boolean;
-  sparkle: boolean;
-  bonusUnlocked: boolean;
   navBadges: Record<string, number>;
 }) {
   const pathname = usePathname();
@@ -179,17 +169,9 @@ export function Sidebar({
         </ul>
       </nav>
 
-      <div className="m-3 rounded-xl bg-black/15 p-3">
-        <StaffThemePicker
-          initialTheme={themePreference}
-          initialDark={dark}
-          initialSparkle={sparkle}
-          bonusUnlocked={bonusUnlocked}
-        />
-        <div className="mt-3 text-xs">
-          <div className="font-semibold text-white">{staffName}</div>
-          <div className="capitalize text-white/55">{staffRole}</div>
-        </div>
+      <div className="m-3 rounded-xl bg-black/15 p-3 text-xs">
+        <div className="font-semibold text-white">{staffName}</div>
+        <div className="capitalize text-white/55">{staffRole}</div>
       </div>
     </aside>
   );

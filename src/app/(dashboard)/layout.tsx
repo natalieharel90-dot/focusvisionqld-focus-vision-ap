@@ -31,7 +31,7 @@ export default async function DashboardLayout({
   const { data: staff } = await supabase
     .from("staff_users")
     .select(
-      "name, role, access_tier, theme, dark_mode, bonus_pack_unlocked, sparkle"
+      "name, role, access_tier, theme, dark_mode, bonus_pack_unlocked, sparkle, text_size"
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -80,9 +80,18 @@ export default async function DashboardLayout({
     "/reviews": feedbackRes.count ?? 0,
   };
 
+  // Dashboard text size — scales every rem-based size while a dashboard
+  // page is mounted. Set from Settings → Appearance.
+  const rootFontPx =
+    staff.text_size === "small" ? 15 : staff.text_size === "large" ? 18 : 16;
+
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: buildThemeCss() }} />
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `${buildThemeCss()}\nhtml{font-size:${rootFontPx}px;}`,
+        }}
+      />
       <div
         id="fv-dashboard-root"
         data-theme={theme}
@@ -93,10 +102,6 @@ export default async function DashboardLayout({
         staffName={staff.name}
         staffRole={staff.role}
         accessTier={staff.access_tier}
-        themePreference={staff.theme as ThemePreference}
-        dark={dark}
-        sparkle={staff.sparkle ?? false}
-        bonusUnlocked={staff.bonus_pack_unlocked ?? false}
         navBadges={navBadges}
       />
       <div className="flex min-w-0 flex-1 flex-col">

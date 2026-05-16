@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import type { Database } from "@/types/database.types";
 import {
@@ -201,16 +203,26 @@ export default async function AlertThresholdsPage({
   ];
 
   return (
-    <RulesEditor
-      procedureType={procedureType}
-      surgeonId={surgeonId}
-      procedureOptions={[...PROCEDURE_TYPES]}
-      surgeonOptions={surgeons}
-      groups={groups}
-      tier={tier}
-      procedureLabel={procedureLabel}
-      surgeonLabel={surgeonLabel}
-      saved={searchParams.saved === "1"}
-    />
+    <>
+      <div className="mx-auto max-w-5xl px-6 pt-4">
+        <Link
+          href="/settings/alert-actions"
+          className="text-sm font-semibold text-fv-accent-strong hover:underline"
+        >
+          Alert actions — what happens at each Yellow / Orange / Red level →
+        </Link>
+      </div>
+      <RulesEditor
+        procedureType={procedureType}
+        surgeonId={surgeonId}
+        procedureOptions={[...PROCEDURE_TYPES]}
+        surgeonOptions={surgeons}
+        groups={groups}
+        tier={tier}
+        procedureLabel={procedureLabel}
+        surgeonLabel={surgeonLabel}
+        saved={searchParams.saved === "1"}
+      />
+    </>
   );
 }

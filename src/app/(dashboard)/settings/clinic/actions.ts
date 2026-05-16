@@ -134,6 +134,62 @@ export async function saveDoctorAction(formData: FormData) {
   back("doctors");
 }
 
+// Uploads a doctor's welcome video to the public doctor-videos bucket and
+// stores its URL — shown to that doctor's patients in the patient app.
+export async function saveDoctorVideoAction(formData: FormData) {
+  const { supabase } = await requireEditor();
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) back("doctors", "Missing doctor id.");
+
+  const file = formData.get("video");
+  if (!(file instanceof File) || file.size === 0) {
+    back("doctors", "Choose a video file to upload.");
+  }
+  const upload = file as File;
+  const safe = upload.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `${id}/${Date.now()}-${safe}`;
+  const { error: upErr } = await supabase.storage
+    .from("doctor-videos")
+    .upload(path, upload, { contentType: upload.type || undefined });
+  if (upErr) back("doctors", upErr.message);
+  const url = supabase.storage.from("doctor-videos").getPublicUrl(path).data
+    .publicUrl;
+
+  const { error } = await supabase
+    .from("doctors")
+    .update({ welcome_video_url: url })
+    .eq("id", id);
+  if (error) back("doctors", error.message);
+
+  await recordStaffAudit(supabase, "settings.doctor_updated", {
+    entity_type: "doctor",
+    entity_id: id,
+    new_value: { welcome_video: "uploaded" },
+  });
+  revalidatePath("/settings/clinic");
+  back("doctors");
+}
+
+// Removes a doctor from the clinic roster. The doctors table is a
+// standalone roster (procedures reference staff_users, not this table),
+// so a hard delete is safe.
+export async function deleteDoctorAction(formData: FormData) {
+  const { supabase } = await requireEditor();
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) back("doctors", "Missing doctor id.");
+
+  const { error } = await supabase.from("doctors").delete().eq("id", id);
+  if (error) back("doctors", error.message);
+
+  await recordStaffAudit(supabase, "settings.doctor_updated", {
+    entity_type: "doctor",
+    entity_id: id,
+    new_value: { change: "removed" },
+  });
+  revalidatePath("/settings/clinic");
+  back("doctors");
+}
+
 export async function toggleDoctorActiveAction(formData: FormData) {
   const { supabase } = await requireEditor();
   const id = String(formData.get("id") ?? "");
