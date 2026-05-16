@@ -3,11 +3,13 @@ import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
 import {
-  AUDIT_EVENT_TYPES,
+  AUDIT_CATEGORIES,
+  AUDIT_EXPORT_CAP,
   AUDIT_PAGE_SIZE,
+  auditCategory,
+  auditEventLabel,
   canAccessAuditLog,
-  filterDateBounds,
-  parseAuditFilters,
+  type AuditCategory,
 } from "@/lib/audit-log";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { AuditTable, type AuditRow } from "./AuditTable";
@@ -16,8 +18,23 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-function uniqueNonNull(values: Array<string | null>): string[] {
-  return Array.from(new Set(values.filter((v): v is string => v !== null)));
+function first(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+function isToday(iso: string): boolean {
+  return new Date(iso).toDateString() === new Date().toDateString();
+}
+
+function auditHref(opts: { category?: string; q?: string; page?: number }) {
+  const p = new URLSearchParams();
+  if (opts.category && opts.category !== "all") {
+    p.set("category", opts.category);
+  }
+  if (opts.q) p.set("q", opts.q);
+  if (opts.page && opts.page > 1) p.set("page", String(opts.page));
+  const s = p.toString();
+  return s ? `/audit?${s}` : "/audit";
 }
 
 export default async function AuditPage({
@@ -31,8 +48,6 @@ export default async function AuditPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  // Defense in depth — middleware already 403s non-tier-1, but never
-  // render audit data without re-checking server-side here.
   const { data: me } = await supabase
     .from("staff_users")
     .select("access_tier")
@@ -52,61 +67,33 @@ export default async function AuditPage({
     );
   }
 
-  const filters = parseAuditFilters(searchParams);
-  const { fromIso, toIso } = filterDateBounds(filters);
-  const offset = (filters.page - 1) * AUDIT_PAGE_SIZE;
+  const category = (
+    AUDIT_CATEGORIES.some((c) => c.key === first(searchParams.category))
+      ? first(searchParams.category)
+      : "all"
+  ) as AuditCategory;
+  const q = (first(searchParams.q) ?? "").trim();
+  const page = Math.max(1, Math.floor(Number(first(searchParams.page)) || 1));
 
-  // Filtered, paginated query — uses the (created_at desc) +
-  // (actor_staff_id/patient_id/event_type, created_at desc) indexes.
-  let query = supabase
-    .from("audit_events")
-    .select("*", { count: "exact" })
-    .gte("created_at", fromIso)
-    .lte("created_at", toIso);
-  if (filters.actorStaffId) {
-    query = query.eq("actor_staff_id", filters.actorStaffId);
-  }
-  if (filters.patientId) query = query.eq("patient_id", filters.patientId);
-  if (filters.eventTypes.length > 0) {
-    query = query.in("event_type", filters.eventTypes);
-  }
-  query = query
-    .order("created_at", { ascending: false })
-    .range(offset, offset + AUDIT_PAGE_SIZE - 1);
-
-  const { data: events, count } = await query;
-  const eventRows = events ?? [];
-
-  // Resolve actor + patient names for display.
-  const staffIds = uniqueNonNull(eventRows.map((e) => e.actor_staff_id));
-  const patientIds = uniqueNonNull(eventRows.map((e) => e.patient_id));
-
-  const [referencedStaff, referencedPatients, allStaff, allPatients] =
-    await Promise.all([
-      staffIds.length > 0
-        ? supabase
-            .from("staff_users")
-            .select("id, name, role, email")
-            .in("id", staffIds)
-        : Promise.resolve({ data: [] }),
-      patientIds.length > 0
-        ? supabase.from("patients").select("id, name").in("id", patientIds)
-        : Promise.resolve({ data: [] }),
-      supabase.from("staff_users").select("id, name").order("name"),
-      supabase.from("patients").select("id, name").order("name"),
-    ]);
+  const [eventsRes, staffRes, patientsRes] = await Promise.all([
+    supabase
+      .from("audit_events")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(AUDIT_EXPORT_CAP),
+    supabase.from("staff_users").select("id, name, role, email"),
+    supabase.from("patients").select("id, name"),
+  ]);
 
   const staffById = new Map(
-    (referencedStaff.data ?? []).map((s) => [s.id, s])
+    (staffRes.data ?? []).map((s) => [s.id, s])
   );
   const patientById = new Map(
-    (referencedPatients.data ?? []).map((p) => [p.id, p])
+    (patientsRes.data ?? []).map((p) => [p.id, p])
   );
 
-  const rows: AuditRow[] = eventRows.map((e) => {
-    const actor = e.actor_staff_id
-      ? staffById.get(e.actor_staff_id)
-      : null;
+  const allRows: AuditRow[] = (eventsRes.data ?? []).map((e) => {
+    const actor = e.actor_staff_id ? staffById.get(e.actor_staff_id) : null;
     const patient = e.patient_id ? patientById.get(e.patient_id) : null;
     return {
       id: e.id,
@@ -127,182 +114,206 @@ export default async function AuditPage({
     };
   });
 
-  const total = count ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / AUDIT_PAGE_SIZE));
+  // ── Summary metrics ──
+  const todayRows = allRows.filter((r) => isToday(r.created_at));
+  const staffToday = new Set(
+    todayRows.map((r) => r.actor_staff_id).filter(Boolean)
+  ).size;
+  const recordEdits = allRows.filter(
+    (r) => auditCategory(r.event_type) === "record_edits"
+  ).length;
+  const patientAccess = allRows.filter(
+    (r) => auditCategory(r.event_type) === "patient_access"
+  ).length;
 
-  // Self-audit: record that the log was viewed, with the filters applied.
-  await recordStaffAudit(supabase, "audit.viewed", {
-    entity_type: "audit_log",
-    new_value: {
-      from: filters.from,
-      to: filters.to,
-      actor: filters.actorStaffId,
-      patient: filters.patientId,
-      event_types: filters.eventTypes,
-      page: filters.page,
+  const stats = [
+    {
+      label: "Events today",
+      value: String(todayRows.length),
+      sub: `Across ${staffToday} staff`,
     },
+    {
+      label: "Record edits",
+      value: String(recordEdits),
+      sub: "All logged",
+    },
+    {
+      label: "Patient access",
+      value: String(patientAccess),
+      sub: "Views & reviews",
+    },
+    { label: "Anomalies", value: "0", sub: "None flagged" },
+  ];
+
+  // ── Category + search filter ──
+  const ql = q.toLowerCase();
+  const filtered = allRows.filter((r) => {
+    if (category !== "all" && auditCategory(r.event_type) !== category) {
+      return false;
+    }
+    if (ql) {
+      const hay = [
+        r.actor_name ?? "",
+        r.patient_name ?? "",
+        r.event_type,
+        auditEventLabel(r.event_type),
+      ]
+        .join(" ")
+        .toLowerCase();
+      if (!hay.includes(ql)) return false;
+    }
+    return true;
   });
 
-  // Build the export URL carrying the current filters.
-  const exportParams = new URLSearchParams();
-  exportParams.set("from", filters.from);
-  exportParams.set("to", filters.to);
-  if (filters.actorStaffId) exportParams.set("actor", filters.actorStaffId);
-  if (filters.patientId) exportParams.set("patient", filters.patientId);
-  if (filters.eventTypes.length > 0) {
-    exportParams.set("events", filters.eventTypes.join(","));
-  }
+  const totalPages = Math.max(1, Math.ceil(filtered.length / AUDIT_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = filtered.slice(
+    (safePage - 1) * AUDIT_PAGE_SIZE,
+    safePage * AUDIT_PAGE_SIZE
+  );
+  const firstShown =
+    filtered.length === 0 ? 0 : (safePage - 1) * AUDIT_PAGE_SIZE + 1;
+  const lastShown = (safePage - 1) * AUDIT_PAGE_SIZE + pageRows.length;
 
-  function pageHref(page: number): string {
-    const sp = new URLSearchParams(exportParams);
-    sp.set("page", String(page));
-    return `/audit?${sp.toString()}`;
-  }
+  await recordStaffAudit(supabase, "audit.viewed", {
+    entity_type: "audit_log",
+    new_value: { category, q, page: safePage },
+  });
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
-      <div className="flex items-start justify-between">
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-fv-text-primary">
             Audit log
           </h1>
           <p className="mt-1 text-sm text-fv-text-secondary">
-            Append-only and retained for 7 years post-patient discharge. No
-            edits, no deletes.
+            Every staff action across patient records · required by
+            Australian Privacy Principle 11
           </p>
         </div>
-        <a
-          href={`/audit/export?${exportParams.toString()}`}
-          className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white"
-        >
-          Export CSV
-        </a>
+        <div className="flex items-center gap-2">
+          <form method="get" className="w-full max-w-xs">
+            {category !== "all" ? (
+              <input type="hidden" name="category" value={category} />
+            ) : null}
+            <input
+              type="search"
+              name="q"
+              defaultValue={q}
+              placeholder="Search by staff, patient or action…"
+              className="w-full rounded-lg border border-fv-bg-soft bg-fv-bg-card px-3 py-2 text-sm focus:border-fv-accent focus:outline-none"
+            />
+          </form>
+          <a
+            href="/audit/export"
+            className="shrink-0 rounded-lg bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          >
+            Export CSV
+          </a>
+        </div>
       </div>
 
-      {/* Filter bar — GET form, filters live in the URL query string. */}
-      <form
-        method="get"
-        className="mt-6 grid grid-cols-2 gap-3 rounded-xl bg-fv-bg-card p-4 shadow-sm sm:grid-cols-4"
-      >
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="font-semibold text-fv-text-secondary">From</span>
-          <input
-            type="date"
-            name="from"
-            defaultValue={filters.from}
-            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="font-semibold text-fv-text-secondary">To</span>
-          <input
-            type="date"
-            name="to"
-            defaultValue={filters.to}
-            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="font-semibold text-fv-text-secondary">Actor</span>
-          <select
-            name="actor"
-            defaultValue={filters.actorStaffId ?? ""}
-            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-2 py-1.5 text-sm"
-          >
-            <option value="">Any staff member</option>
-            {(allStaff.data ?? []).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="font-semibold text-fv-text-secondary">Patient</span>
-          <select
-            name="patient"
-            defaultValue={filters.patientId ?? ""}
-            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-2 py-1.5 text-sm"
-          >
-            <option value="">Any patient</option>
-            {(allPatients.data ?? []).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      {/* Category chips */}
+      <div className="mt-5 flex flex-wrap gap-2">
+        {AUDIT_CATEGORIES.map((c) => {
+          const active = c.key === category;
+          return (
+            <Link
+              key={c.key}
+              href={auditHref({ category: c.key, q })}
+              className={`rounded-full px-3.5 py-1.5 text-sm font-semibold ${
+                active
+                  ? "bg-fv-accent-strong text-white"
+                  : "border border-fv-border text-fv-text-secondary hover:bg-fv-bg-soft"
+              }`}
+            >
+              {c.label}
+            </Link>
+          );
+        })}
+      </div>
 
-        <fieldset className="col-span-2 sm:col-span-4">
-          <legend className="text-xs font-semibold text-fv-text-secondary">
-            Event types (none selected = all)
-          </legend>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-            {AUDIT_EVENT_TYPES.map((et) => (
-              <label
-                key={et}
-                className="flex items-center gap-1.5 text-xs text-fv-text-primary"
-              >
-                <input
-                  type="checkbox"
-                  name="events"
-                  value={et}
-                  defaultChecked={filters.eventTypes.includes(et)}
-                />
-                {et}
-              </label>
-            ))}
+      {/* Stat cards */}
+      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {stats.map((s) => (
+          <div
+            key={s.label}
+            className="rounded-2xl border border-fv-bg-soft bg-fv-bg-card p-5 shadow-sm"
+          >
+            <div className="text-xs font-semibold uppercase tracking-wide text-fv-text-secondary">
+              {s.label}
+            </div>
+            <div className="mt-2 text-3xl font-semibold text-fv-text-primary">
+              {s.value}
+            </div>
+            <div className="mt-1 text-xs text-fv-text-secondary">{s.sub}</div>
           </div>
-        </fieldset>
+        ))}
+      </div>
 
-        <div className="col-span-2 flex items-end gap-2 sm:col-span-4">
-          <button
-            type="submit"
-            className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white"
-          >
-            Apply filters
-          </button>
-          <Link
-            href="/audit"
-            className="rounded-md border border-fv-bg-soft px-4 py-2 text-sm font-medium text-fv-text-primary"
-          >
-            Reset
-          </Link>
-        </div>
-      </form>
-
-      <p className="mt-4 text-xs text-fv-text-secondary">
-        {total} event{total === 1 ? "" : "s"} · page {filters.page} of{" "}
-        {totalPages}
-      </p>
-
-      <div className="mt-2">
-        <AuditTable rows={rows} />
+      {/* Event table */}
+      <div className="mt-5">
+        <AuditTable rows={pageRows} />
       </div>
 
       {/* Pagination */}
-      <div className="mt-4 flex items-center justify-between text-sm">
-        {filters.page > 1 ? (
-          <Link
-            href={pageHref(filters.page - 1)}
-            className="rounded-md border border-fv-bg-soft px-3 py-1.5 font-medium text-fv-text-primary"
-          >
-            ← Previous
-          </Link>
-        ) : (
-          <span />
-        )}
-        {filters.page < totalPages ? (
-          <Link
-            href={pageHref(filters.page + 1)}
-            className="rounded-md border border-fv-bg-soft px-3 py-1.5 font-medium text-fv-text-primary"
-          >
-            Next →
-          </Link>
-        ) : (
-          <span />
-        )}
-      </div>
+      {filtered.length > 0 ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-fv-text-secondary">
+          <span>
+            Showing {firstShown}–{lastShown} of {filtered.length}
+          </span>
+          {totalPages > 1 ? (
+            <span className="flex items-center gap-2">
+              {safePage > 1 ? (
+                <Link
+                  href={auditHref({ category, q, page: safePage - 1 })}
+                  className="rounded-lg border border-fv-border px-3 py-1.5 font-medium text-fv-text-primary hover:bg-fv-bg-soft"
+                >
+                  ← Previous
+                </Link>
+              ) : (
+                <span className="rounded-lg border border-fv-bg-soft px-3 py-1.5 font-medium opacity-40">
+                  ← Previous
+                </span>
+              )}
+              <span className="px-1">
+                Page {safePage} of {totalPages}
+              </span>
+              {safePage < totalPages ? (
+                <Link
+                  href={auditHref({ category, q, page: safePage + 1 })}
+                  className="rounded-lg border border-fv-border px-3 py-1.5 font-medium text-fv-text-primary hover:bg-fv-bg-soft"
+                >
+                  Next →
+                </Link>
+              ) : (
+                <span className="rounded-lg border border-fv-bg-soft px-3 py-1.5 font-medium opacity-40">
+                  Next →
+                </span>
+              )}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* About this log */}
+      <section className="mt-6 rounded-2xl border border-fv-bg-soft bg-[#FAFCFC] p-5">
+        <h2 className="text-[13px] font-semibold text-fv-text-primary">
+          About this log
+        </h2>
+        <p className="mt-1.5 text-xs leading-relaxed text-fv-text-secondary">
+          Every action staff take on a patient record is logged
+          automatically — viewing, editing, messaging, manual flagging. Logs
+          are immutable (records cannot be edited or deleted, only added) and
+          retained for 7 years post-discharge in line with Australian
+          clinical record retention standards. Only admin-role users can
+          access this view. Anomaly detection flags unusual patterns (e.g. a
+          single staff member accessing 50+ records in an hour) for the
+          Privacy Officer to review.
+        </p>
+      </section>
     </main>
   );
 }

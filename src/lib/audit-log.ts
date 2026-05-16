@@ -2,8 +2,90 @@
 // imports so the role-gating, filtering, summary, and CSV logic are
 // directly unit-testable.
 
-export const AUDIT_PAGE_SIZE = 50;
+export const AUDIT_PAGE_SIZE = 20;
 export const AUDIT_EXPORT_CAP = 5000;
+
+// ── Categories ─────────────────────────────────────────────────────────────
+
+export type AuditCategory =
+  | "all"
+  | "patient_access"
+  | "record_edits"
+  | "message_activity"
+  | "manual_flags"
+  | "system_actions";
+
+export const AUDIT_CATEGORIES: ReadonlyArray<{
+  key: AuditCategory;
+  label: string;
+}> = [
+  { key: "all", label: "All events" },
+  { key: "patient_access", label: "Patient access" },
+  { key: "record_edits", label: "Record edits" },
+  { key: "message_activity", label: "Message activity" },
+  { key: "manual_flags", label: "Manual flags" },
+  { key: "system_actions", label: "System actions" },
+];
+
+// Buckets an event type into one of the audit categories.
+export function auditCategory(
+  eventType: string
+): Exclude<AuditCategory, "all"> {
+  if (
+    eventType === "patient.check_in_reviewed" ||
+    eventType === "patient.document_viewed"
+  ) {
+    return "patient_access";
+  }
+  if (
+    eventType === "patient.flag_raised" ||
+    eventType === "patient.flag_resolved"
+  ) {
+    return "manual_flags";
+  }
+  if (eventType.startsWith("message.") || eventType === "bulkpush.sent") {
+    return "message_activity";
+  }
+  if (eventType.startsWith("patient.")) return "record_edits";
+  return "system_actions";
+}
+
+const AUDIT_EVENT_LABELS: Record<string, string> = {
+  "staff.signed_in": "Signed in",
+  "staff.signed_out": "Signed out",
+  "staff.created": "Staff added",
+  "message.sent_to_patient": "Message sent",
+  "message.thread_resolved": "Thread resolved",
+  "bulkpush.sent": "Bulk push sent",
+  "patient.created": "Patient created",
+  "patient.details_updated": "Record edited",
+  "patient.note_added": "Internal note",
+  "patient.flag_raised": "Manual flag",
+  "patient.flag_resolved": "Flag resolved",
+  "patient.check_in_reviewed": "Check-in reviewed",
+  "patient.document_viewed": "Document viewed",
+  "patient.medication_added": "Medication added",
+  "patient.medication_stopped": "Medication stopped",
+  "patient.procedure_added": "Procedure added",
+  "patient.appointment_scheduled": "Appointment scheduled",
+  "patient.appointment_updated": "Appointment updated",
+  "patient.template_applied": "Template applied",
+  "patient.activated": "Patient activated",
+  "audit.viewed": "Audit log viewed",
+  "audit.exported": "Audit log exported",
+  "analytics.viewed": "Analytics viewed",
+};
+
+// A human-friendly label for an event type — falls back to a humanised
+// version of the raw type for anything not explicitly mapped.
+export function auditEventLabel(eventType: string): string {
+  const known = AUDIT_EVENT_LABELS[eventType];
+  if (known) return known;
+  return eventType
+    .split(/[._]/)
+    .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}
 
 // Tier 1 = Owner / Admin / Clinical Lead. Only tier 1 may view the audit
 // log (server-side gate in middleware + the page).

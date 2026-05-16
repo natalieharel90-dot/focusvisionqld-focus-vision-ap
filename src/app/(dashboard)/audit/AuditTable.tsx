@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 
-import { summarizeAuditEvent } from "@/lib/audit-log";
+import {
+  auditCategory,
+  auditEventLabel,
+  summarizeAuditEvent,
+} from "@/lib/audit-log";
 
 export type AuditRow = {
   id: string;
@@ -23,8 +27,15 @@ export type AuditRow = {
   user_agent: string | null;
 };
 
+const CATEGORY_PILL: Record<string, string> = {
+  patient_access: "bg-blue-100 text-blue-800",
+  record_edits: "bg-amber-100 text-amber-800",
+  message_activity: "bg-green-100 text-green-800",
+  manual_flags: "bg-orange-100 text-orange-800",
+  system_actions: "bg-fv-bg-soft text-fv-text-secondary",
+};
+
 function fmtTimestamp(iso: string): string {
-  // Client component — toLocaleString uses the viewer's local time zone.
   return new Date(iso).toLocaleString(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
@@ -51,16 +62,15 @@ export function AuditTable({ rows }: { rows: ReadonlyArray<AuditRow> }) {
 
   return (
     <>
-      <div className="overflow-x-auto rounded-xl bg-fv-bg-card shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-fv-bg-soft bg-fv-bg-card">
         <table className="w-full text-left text-sm">
-          <thead className="bg-fv-bg-soft text-xs uppercase tracking-wide text-fv-text-secondary">
+          <thead className="border-b border-fv-bg-soft text-xs uppercase tracking-wide text-fv-text-secondary">
             <tr>
-              <th className="px-3 py-2 font-semibold">Timestamp</th>
-              <th className="px-3 py-2 font-semibold">Actor</th>
-              <th className="px-3 py-2 font-semibold">Action</th>
-              <th className="px-3 py-2 font-semibold">Patient</th>
-              <th className="px-3 py-2 font-semibold">Entity</th>
-              <th className="px-3 py-2 font-semibold">Summary</th>
+              <th className="px-4 py-3 font-semibold">When</th>
+              <th className="px-4 py-3 font-semibold">Who</th>
+              <th className="px-4 py-3 font-semibold">Action</th>
+              <th className="px-4 py-3 font-semibold">Patient</th>
+              <th className="px-4 py-3 font-semibold">Detail</th>
             </tr>
           </thead>
           <tbody>
@@ -68,13 +78,15 @@ export function AuditTable({ rows }: { rows: ReadonlyArray<AuditRow> }) {
               <tr
                 key={row.id}
                 onClick={() => openDetail(row)}
-                className="cursor-pointer border-t border-fv-bg-soft text-fv-text-primary hover:bg-fv-bg-soft"
+                className="cursor-pointer border-b border-fv-bg-soft/60 text-fv-text-primary last:border-0 hover:bg-fv-bg-soft/40"
               >
-                <td className="whitespace-nowrap px-3 py-2 tabular-nums">
+                <td className="whitespace-nowrap px-4 py-3 tabular-nums text-fv-text-secondary">
                   {fmtTimestamp(row.created_at)}
                 </td>
-                <td className="px-3 py-2">
-                  {row.actor_name ?? "—"}
+                <td className="px-4 py-3">
+                  <span className="font-medium text-fv-text-primary">
+                    {row.actor_name ?? "System"}
+                  </span>
                   {row.actor_role ? (
                     <span className="text-xs text-fv-text-secondary">
                       {" "}
@@ -82,10 +94,17 @@ export function AuditTable({ rows }: { rows: ReadonlyArray<AuditRow> }) {
                     </span>
                   ) : null}
                 </td>
-                <td className="px-3 py-2">
-                  <code className="text-xs">{row.event_type}</code>
+                <td className="px-4 py-3">
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      CATEGORY_PILL[auditCategory(row.event_type)] ??
+                      CATEGORY_PILL.system_actions
+                    }`}
+                  >
+                    {auditEventLabel(row.event_type)}
+                  </span>
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-4 py-3">
                   {row.patient_id && row.patient_name ? (
                     <Link
                       href={`/patients/${row.patient_id}`}
@@ -95,18 +114,10 @@ export function AuditTable({ rows }: { rows: ReadonlyArray<AuditRow> }) {
                       {row.patient_name}
                     </Link>
                   ) : (
-                    "—"
+                    <span className="text-fv-text-secondary">—</span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-xs text-fv-text-secondary">
-                  {row.entity_type ?? "—"}
-                  {row.entity_id ? (
-                    <span className="block font-mono">
-                      {row.entity_id.slice(0, 8)}…
-                    </span>
-                  ) : null}
-                </td>
-                <td className="px-3 py-2 text-fv-text-secondary">
+                <td className="px-4 py-3 text-fv-text-secondary">
                   {summarizeAuditEvent(row)}
                 </td>
               </tr>
@@ -114,10 +125,10 @@ export function AuditTable({ rows }: { rows: ReadonlyArray<AuditRow> }) {
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
-                  className="px-3 py-10 text-center text-fv-text-secondary"
+                  colSpan={5}
+                  className="px-4 py-10 text-center text-fv-text-secondary"
                 >
-                  No audit events match these filters.
+                  No audit events match this view.
                 </td>
               </tr>
             ) : null}
@@ -135,9 +146,10 @@ export function AuditTable({ rows }: { rows: ReadonlyArray<AuditRow> }) {
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-base font-semibold text-fv-text-primary">
-                  <code className="text-sm">{selected.event_type}</code>
+                  {auditEventLabel(selected.event_type)}
                 </h2>
                 <p className="mt-1 text-xs text-fv-text-secondary">
+                  <code>{selected.event_type}</code> ·{" "}
                   {fmtTimestamp(selected.created_at)}
                 </p>
               </div>
@@ -158,9 +170,7 @@ export function AuditTable({ rows }: { rows: ReadonlyArray<AuditRow> }) {
               <Field label="Actor email">
                 {selected.actor_email ?? "—"}
               </Field>
-              <Field label="IP address">
-                {selected.ip_address ?? "—"}
-              </Field>
+              <Field label="IP address">{selected.ip_address ?? "—"}</Field>
               <Field label="Entity">
                 {selected.entity_type ?? "—"}
                 {selected.entity_id ? ` · ${selected.entity_id}` : ""}
@@ -184,7 +194,6 @@ export function AuditTable({ rows }: { rows: ReadonlyArray<AuditRow> }) {
               </Field>
             </dl>
 
-            {/* Before → after, side by side */}
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wide text-fv-text-secondary">
                 Before → after
