@@ -6,12 +6,44 @@ import { MedicationReminders } from "./MedicationReminders";
 
 export const dynamic = "force-dynamic";
 
-function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-AU", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+// "08:00" or an ISO timestamp → "8:00 AM".
+function fmtClock(value: string): string {
+  const d = value.includes("T")
+    ? new Date(value)
+    : new Date(`2000-01-01T${value}`);
+  return d
+    .toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" })
+    .toUpperCase();
+}
+
+// "Pred Forte" → "PF"; "Oxybuprocaine" → "Ox".
+function medInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return (words[0]![0]! + words[1]![0]!).toUpperCase();
+  }
+  return name.slice(0, 2);
+}
+
+const AVATAR_COLORS = [
+  "bg-fv-bg-accent-soft text-fv-accent-strong",
+  "bg-amber-100 text-amber-800",
+  "bg-emerald-100 text-emerald-800",
+  "bg-violet-100 text-violet-800",
+  "bg-sky-100 text-sky-800",
+];
+function avatarColor(seed: string): string {
+  let h = 0;
+  for (const c of seed) h += c.charCodeAt(0);
+  return AVATAR_COLORS[h % AVATAR_COLORS.length]!;
+}
+
+function untilLabel(iso: string): string {
+  const mins = Math.round((new Date(iso).getTime() - Date.now()) / 60_000);
+  if (mins <= 0) return "due now";
+  if (mins < 60) return `in ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  return `in ${hrs}h ${mins % 60}m`;
 }
 
 export default async function MedicationsPage({
@@ -25,9 +57,7 @@ export default async function MedicationsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/patient-sign-in");
 
-  // Lazily create today's medication_doses rows on first visit. RLS
-  // forbids patient INSERTs into medication_doses directly; this RPC
-  // (SECURITY DEFINER) handles it on their behalf.
+  // Lazily create today's medication_doses rows (SECURITY DEFINER RPC).
   await supabase.rpc("ensure_todays_doses", { p_patient_id: user.id });
 
   const { data: medications } = await supabase
@@ -58,10 +88,13 @@ export default async function MedicationsPage({
           .order("scheduled_at");
 
   const todayDoses = doses ?? [];
+  const total = todayDoses.length;
+  const taken = todayDoses.filter((d) => d.taken_at !== null).length;
+  const pct = total > 0 ? Math.round((taken / total) * 100) : 0;
 
-  // "Currently due" = soonest non-taken dose (whether slightly past or
-  // imminent). Only this one gets snooze controls.
-  const currentDoseId = todayDoses.find((d) => d.taken_at === null)?.id ?? null;
+  // The soonest not-yet-taken dose — the "due now" card + next-dose label.
+  const nextDose = todayDoses.find((d) => d.taken_at === null) ?? null;
+  const nextMed = nextDose ? medById.get(nextDose.medication_id) : null;
 
   const reminderPayload = todayDoses
     .filter((d) => d.taken_at === null)
@@ -76,13 +109,15 @@ export default async function MedicationsPage({
     });
 
   return (
-    <main className="flex flex-col gap-5 px-5 py-6">
+    <main className="flex flex-col gap-4 px-5 py-5">
       <header>
-        <h1 className="text-2xl font-semibold text-fv-text-primary">
+        <h1 className="text-2xl font-bold text-fv-text-primary">
           Medications
         </h1>
-        <p className="mt-1 text-sm text-fv-text-secondary">
-          Your reminder times are set by your care team.
+        <p className="mt-0.5 text-sm text-fv-text-secondary">
+          {total > 0
+            ? `Today, ${taken} of ${total} doses complete`
+            : "No doses scheduled today"}
         </p>
       </header>
 
@@ -94,116 +129,178 @@ export default async function MedicationsPage({
         </p>
       ) : null}
 
-      {/* Active medications list (read-only — patients can't add) */}
-      <section className="rounded-2xl bg-fv-bg-card p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-fv-text-primary">
-          Your medications
-        </h2>
-        {meds.length === 0 ? (
-          <p className="mt-3 text-sm text-fv-text-secondary">
-            No active medications.
-          </p>
-        ) : (
-          <ul className="mt-3 space-y-2">
-            {meds.map((m) => (
-              <li
-                key={m.id}
-                className="rounded-md bg-fv-bg-soft p-3 text-sm"
-              >
-                <div className="font-medium text-fv-text-primary">{m.name}</div>
-                <div className="text-xs text-fv-text-secondary">
-                  {m.dose} · {m.route} · {m.frequency}
-                </div>
-                {m.taper_notes ? (
-                  <p className="mt-1 text-xs text-fv-text-secondary">
-                    {m.taper_notes}
-                  </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* Today's progress */}
+      {total > 0 ? (
+        <section className="rounded-2xl bg-gradient-to-br from-fv-accent to-fv-accent-strong p-5 text-white shadow-sm">
+          <div className="text-sm font-semibold text-white/80">
+            Today&apos;s progress
+          </div>
+          <div className="mt-0.5 text-3xl font-bold">
+            {taken} / {total} doses
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/25">
+            <div
+              className="h-full rounded-full bg-white"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <div className="mt-2 text-sm text-white/85">
+            {nextDose && nextMed
+              ? `Next dose ${untilLabel(nextDose.scheduled_at)} · ${nextMed.name}`
+              : "All doses done for today 🎉"}
+          </div>
+        </section>
+      ) : null}
 
-      {/* Today's timeline */}
-      <section className="rounded-2xl bg-fv-bg-card p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-fv-text-primary">
-          Today
-        </h2>
-        {todayDoses.length === 0 ? (
-          <p className="mt-3 text-sm text-fv-text-secondary">
-            No doses scheduled today.
-          </p>
-        ) : (
-          <ul className="mt-3 space-y-2">
+      {/* Today's schedule */}
+      {total > 0 ? (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-fv-text-secondary">
+            Today&apos;s schedule
+          </h2>
+          <div className="mt-2 flex flex-col gap-2.5">
             {todayDoses.map((d) => {
               const med = medById.get(d.medication_id);
-              const isCurrent = d.id === currentDoseId;
+              const name = med?.name ?? "Medication";
               const isTaken = d.taken_at !== null;
+              const isDue = !isTaken && d.id === nextDose?.id;
               return (
-                <li
-                  key={d.id}
-                  className={`rounded-md p-3 text-sm ${
-                    isCurrent
-                      ? "border border-fv-accent-strong bg-fv-bg-accent-soft"
-                      : "bg-fv-bg-soft"
-                  } ${isTaken ? "opacity-60" : ""}`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-fv-text-secondary">
-                        {fmtTime(d.scheduled_at)}
-                        {d.snooze_count > 0 ? ` · snoozed ×${d.snooze_count}` : ""}
-                      </div>
-                      <div className="font-medium text-fv-text-primary">
-                        {med?.name ?? "Medication"}
+                <div key={d.id} className="flex gap-3">
+                  <div className="w-16 shrink-0 pt-3 text-sm font-semibold text-fv-text-secondary">
+                    {fmtClock(d.scheduled_at)}
+                  </div>
+                  <div
+                    className={`flex flex-1 items-center gap-3 rounded-2xl bg-fv-bg-card p-3 shadow-sm ${
+                      isDue ? "ring-2 ring-fv-accent-strong" : ""
+                    } ${isTaken ? "opacity-70" : ""}`}
+                  >
+                    <span
+                      className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl text-sm font-bold ${avatarColor(
+                        name
+                      )}`}
+                    >
+                      {medInitials(name)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-fv-text-primary">
+                        {name}
                       </div>
                       <div className="text-xs text-fv-text-secondary">
-                        {med?.dose}
+                        {isDue
+                          ? "Due now · reminder fired"
+                          : `${med?.dose ?? ""}${
+                              med?.route ? ` · ${med.route}` : ""
+                            }`}
                       </div>
                     </div>
+                    {isDue ? (
+                      <form action={snoozeAction}>
+                        <input type="hidden" name="dose_id" value={d.id} />
+                        <input type="hidden" name="minutes" value={15} />
+                        <button
+                          type="submit"
+                          className="rounded-full border border-fv-border px-3 py-1.5 text-xs font-semibold text-fv-text-primary"
+                        >
+                          🕐 Snooze
+                        </button>
+                      </form>
+                    ) : null}
                     {isTaken ? (
-                      <span className="text-xs font-semibold text-fv-accent-strong">
-                        ✓ Taken at {fmtTime(d.taken_at!)}
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-fv-accent-strong text-white">
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={3}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-4 w-4"
+                        >
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
                       </span>
                     ) : (
                       <form action={markTakenAction}>
                         <input type="hidden" name="dose_id" value={d.id} />
                         <button
                           type="submit"
-                          className="rounded-md bg-fv-accent-strong px-3 py-1.5 text-xs font-semibold text-white"
-                        >
-                          Mark taken
-                        </button>
+                          title="Mark taken"
+                          className="block h-9 w-9 shrink-0 rounded-full border-2 border-fv-bg-soft hover:border-fv-accent-strong"
+                        />
                       </form>
                     )}
                   </div>
-
-                  {!isTaken && isCurrent ? (
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="text-xs text-fv-text-secondary">
-                        Snooze:
-                      </span>
-                      {[15, 30, 60].map((m) => (
-                        <form key={m} action={snoozeAction}>
-                          <input type="hidden" name="dose_id" value={d.id} />
-                          <input type="hidden" name="minutes" value={m} />
-                          <button
-                            type="submit"
-                            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-2 py-1 text-xs font-medium text-fv-text-primary"
-                          >
-                            {m} min
-                          </button>
-                        </form>
-                      ))}
-                    </div>
-                  ) : null}
-                </li>
+                </div>
               );
             })}
-          </ul>
-        )}
-      </section>
+          </div>
+        </section>
+      ) : null}
+
+      {/* Reminder schedule per medication */}
+      {meds.length > 0 ? (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-fv-text-secondary">
+            Your reminder schedule
+          </h2>
+          <div className="mt-2 flex flex-col gap-2.5">
+            {meds.map((m) => (
+              <div
+                key={m.id}
+                className="rounded-2xl bg-fv-bg-card p-4 shadow-sm"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className="font-semibold text-fv-text-primary">
+                    {m.name}
+                  </div>
+                  <div className="text-sm text-fv-text-secondary">
+                    {m.frequency}
+                  </div>
+                </div>
+                {m.scheduled_times.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {m.scheduled_times.map((t) => (
+                      <span
+                        key={t}
+                        className="rounded-lg bg-fv-bg-soft px-3 py-1.5 text-sm font-semibold text-fv-text-primary"
+                      >
+                        {fmtClock(t)}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                {m.taper_notes ? (
+                  <p className="mt-2 text-xs text-fv-text-secondary">
+                    {m.taper_notes}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {/* Info notes */}
+      <div className="flex gap-2.5 rounded-2xl bg-fv-bg-soft/60 p-4 text-sm text-fv-text-secondary">
+        <span aria-hidden className="text-fv-accent-strong">
+          ⓘ
+        </span>
+        <p>
+          Your reminder times are set by your care team. To change them,
+          message your clinic. Times follow your phone&apos;s clock — if you
+          travel, your reminders adjust automatically.
+        </p>
+      </div>
+      <div className="flex gap-2.5 rounded-2xl bg-fv-bg-soft/60 p-4 text-sm text-fv-text-secondary">
+        <span aria-hidden className="text-fv-accent-strong">
+          📶
+        </span>
+        <p>
+          <strong className="text-fv-text-primary">No signal?</strong>{" "}
+          Reminders still fire and you can still mark doses taken. Everything
+          syncs back when you reconnect.
+        </p>
+      </div>
     </main>
   );
 }
