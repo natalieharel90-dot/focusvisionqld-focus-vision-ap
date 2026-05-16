@@ -128,8 +128,8 @@ export function Sidebar({
     <aside className="fv-dash-sidebar flex w-60 shrink-0 flex-col text-white">
       <div className="flex flex-col items-start gap-1.5 px-[18px] pb-6 pt-6">
         <LogoUnlockTrigger action={unlockStaffBonusPackAction}>
-          <span className="grid h-[72px] w-[72px] place-items-center rounded-full bg-white p-2">
-            <FocusVisionLogo size={56} />
+          <span className="grid h-[72px] w-[72px] place-items-center rounded-full bg-white p-0.5">
+            <FocusVisionLogo size={66} />
           </span>
         </LogoUnlockTrigger>
         <span className="mt-1 text-[11px] text-white/65">
