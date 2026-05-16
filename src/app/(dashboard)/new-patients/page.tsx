@@ -507,49 +507,6 @@ export default async function NewPatientsPage({
           })
         )}
       </div>
-
-      {/* How setup works */}
-      <section className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-blue-900">
-          <svg
-            aria-hidden
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-4 w-4"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-          How new patient setup works
-        </h2>
-        <ul className="mt-2 flex flex-col gap-1.5 text-sm leading-relaxed text-blue-950/80">
-          <li>
-            📱 <strong>Patient signs up via the app</strong> with email +
-            phone. After MFA they appear here in the New patients queue.
-          </li>
-          <li>
-            🔍 <strong>Staff confirm identity</strong> against existing
-            patient records (matched by email or phone, or manually linked).
-          </li>
-          <li>
-            👤 <strong>Pick surgeon and procedure</strong> — the template
-            auto-populates medications, appointments and recovery content.
-          </li>
-          <li>
-            ✏️ <strong>Edit per-patient as needed</strong> — different
-            astigmatism, atypical case, custom notes, etc.
-          </li>
-          <li>
-            ✅ <strong>Activate</strong> — the patient moves into the active
-            Patients list and gets a welcome notification.
-          </li>
-        </ul>
-      </section>
     </main>
   );
 }
