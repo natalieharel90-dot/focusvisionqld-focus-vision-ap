@@ -7,7 +7,7 @@ import { recordStaffAudit } from "@/lib/audit";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 function back(threadId: string, message: string): never {
-  redirect(`/inbox/${threadId}?error=${encodeURIComponent(message)}`);
+  redirect(`/inbox?thread=${threadId}&error=${encodeURIComponent(message)}`);
 }
 
 export async function sendStaffMessageAction(formData: FormData) {
@@ -57,6 +57,42 @@ export async function sendStaffMessageAction(formData: FormData) {
     new_value: { body_length: body.length, has_attachment: !!attachmentPath },
   });
 
-  revalidatePath(`/inbox/${threadId}`);
   revalidatePath("/inbox");
+  redirect(`/inbox?thread=${threadId}`);
+}
+
+// Marks a thread resolved — it drops out of the unread count and the
+// default inbox filter. Threads re-open automatically isn't modelled;
+// staff reply still works on a resolved thread.
+export async function resolveThreadAction(formData: FormData) {
+  const threadId = String(formData.get("thread_id") ?? "");
+  if (!threadId) redirect("/inbox");
+
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  const { data: thread, error } = await supabase
+    .from("message_threads")
+    .select("patient_id")
+    .eq("id", threadId)
+    .single();
+  if (error) back(threadId, error.message);
+
+  const { error: updateError } = await supabase
+    .from("message_threads")
+    .update({ status: "resolved" })
+    .eq("id", threadId);
+  if (updateError) back(threadId, updateError.message);
+
+  await recordStaffAudit(supabase, "message.thread_resolved", {
+    patient_id: thread!.patient_id,
+    entity_type: "message_thread",
+    entity_id: threadId,
+  });
+
+  revalidatePath("/inbox");
+  redirect(`/inbox?thread=${threadId}`);
 }

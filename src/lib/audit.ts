@@ -16,6 +16,7 @@ export type StaffAuditEventType =
   | "patient.flag_resolved"
   | "patient.check_in_reviewed"
   | "message.sent_to_patient"
+  | "message.thread_resolved"
   | "settings.routing_rules_updated"
   | "settings.alert_actions_updated"
   | "settings.symptom_added"
