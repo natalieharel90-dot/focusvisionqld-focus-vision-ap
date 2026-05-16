@@ -339,6 +339,7 @@ export default async function PatientDetailPage({
     pinnedContentResult,
     threadResult,
     contentItemsResult,
+    facilitiesResult,
   ] = await Promise.all([
     supabase.from("patients").select("*").eq("id", patientId).maybeSingle(),
     supabase
@@ -396,10 +397,16 @@ export default async function PatientDetailPage({
       .from("content_items")
       .select("id, type, title, audience, procedures")
       .order("title"),
+    supabase
+      .from("partner_facilities")
+      .select("id, name")
+      .eq("active", true)
+      .order("name"),
   ]);
   const pinnedContent = pinnedContentResult.data ?? [];
   const messageThreadId = threadResult.data?.id ?? null;
   const contentOptions = contentItemsResult.data ?? [];
+  const facilities = facilitiesResult.data ?? [];
 
   const patient = patientResult.data as Patient | null;
   if (!patient) notFound();
@@ -808,6 +815,21 @@ export default async function PatientDetailPage({
                     required
                     className={inputCls}
                   />
+                </label>
+                <label className="col-span-2 flex flex-col gap-1">
+                  <span className={fieldLabel}>Day hospital (optional)</span>
+                  <select
+                    name="facility_id"
+                    defaultValue=""
+                    className={inputCls}
+                  >
+                    <option value="">Not set</option>
+                    {facilities.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="col-span-2 flex flex-col gap-1">
                   <span className={fieldLabel}>Custom notes (optional)</span>

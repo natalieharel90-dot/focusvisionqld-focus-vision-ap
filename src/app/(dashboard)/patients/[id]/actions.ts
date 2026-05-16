@@ -110,6 +110,7 @@ export async function addProcedureAction(formData: FormData) {
   const surgery_date = String(formData.get("surgery_date") ?? "");
   const custom_notes =
     String(formData.get("custom_notes") ?? "").trim() || null;
+  const facility_id = String(formData.get("facility_id") ?? "").trim() || null;
 
   if (!procedure_type) backWithError(patientId, "Procedure type is required.");
   if (!EYE_SIDES.includes(eye)) backWithError(patientId, "Pick an eye.");
@@ -126,6 +127,7 @@ export async function addProcedureAction(formData: FormData) {
       surgeon_id,
       surgery_date,
       custom_notes,
+      facility_id,
       status: "active",
     })
     .select()

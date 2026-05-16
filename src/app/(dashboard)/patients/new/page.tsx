@@ -37,6 +37,12 @@ export default async function NewPatientPage({
     label: `${surgeonName.get(t.surgeon_id) ?? "—"} · ${t.procedure_type.toUpperCase()}`,
   }));
 
+  const { data: facilities } = await supabase
+    .from("partner_facilities")
+    .select("id, name")
+    .eq("active", true)
+    .order("name");
+
   const inputCls =
     "rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-2 text-sm";
 
@@ -140,6 +146,19 @@ export default async function NewPatientPage({
               {templateOptions.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-fv-text-primary">
+              Day hospital (optional)
+            </span>
+            <select name="facility_id" defaultValue="" className={inputCls}>
+              <option value="">Not set</option>
+              {(facilities ?? []).map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
                 </option>
               ))}
             </select>

@@ -28,6 +28,7 @@ export async function createPatientAction(formData: FormData) {
   const eye = String(formData.get("eye") ?? "") as EyeSide;
   const surgeryDate = String(formData.get("surgery_date") ?? "").trim();
   const templateId = String(formData.get("template_id") ?? "").trim();
+  const facilityId = String(formData.get("facility_id") ?? "").trim() || null;
 
   if (!firstName) back("Patient first name is required.");
   if (!email) back("Email is required.");
@@ -81,6 +82,7 @@ export async function createPatientAction(formData: FormData) {
       surgeon_id: template.surgeon_id,
       surgery_date: surgeryDate,
       source_template_id: template.id,
+      facility_id: facilityId,
       status: "active",
     });
   if (procedureError) back(procedureError.message);
