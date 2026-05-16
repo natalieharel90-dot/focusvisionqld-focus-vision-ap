@@ -28,27 +28,17 @@ export function FacilityModal({ facility }: { facility: Facility | null }) {
         <button
           type="button"
           onClick={() => ref.current?.showModal()}
-          className={`flex w-full flex-col rounded-xl bg-fv-bg-card p-4 text-left shadow-sm hover:shadow ${
-            inactive ? "opacity-50" : ""
-          }`}
+          className="w-full rounded-lg border border-fv-border bg-fv-bg-card px-3 py-1.5 text-xs font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
         >
-          <span className="text-sm font-semibold text-fv-text-primary">
-            {facility.name}
-            {inactive ? " · inactive" : ""}
-          </span>
-          {facility.address ? (
-            <span className="text-xs text-fv-text-secondary">
-              {facility.address}
-            </span>
-          ) : null}
+          Edit
         </button>
       ) : (
         <button
           type="button"
           onClick={() => ref.current?.showModal()}
-          className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          className="rounded-lg border border-fv-border bg-fv-bg-card px-3 py-1.5 text-sm font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
         >
-          + Add facility
+          + Add partner
         </button>
       )}
 

@@ -44,9 +44,8 @@ export async function addSymptomAction(formData: FormData) {
   redirect(`/settings/symptoms?added=${encodeURIComponent(label)}`);
 }
 
-export async function toggleSymptomAction(formData: FormData) {
+export async function deleteSymptomAction(formData: FormData) {
   const id = String(formData.get("symptom_id") ?? "");
-  const nextActive = formData.get("next_active") === "1";
   if (!id) back("Missing symptom id.");
 
   const supabase = createSupabaseServerClient();
@@ -57,21 +56,29 @@ export async function toggleSymptomAction(formData: FormData) {
 
   const { data: before } = await supabase
     .from("symptom_options")
-    .select("key, label, active")
+    .select("key, label")
     .eq("id", id)
     .single();
 
+  // Remove the symptom's auto-created chip routing rules first so no
+  // orphan rule is left behind for a chip patients can no longer pick.
+  if (before) {
+    await supabase
+      .from("routing_rules")
+      .delete()
+      .eq("item_key", `chip:${before.key}`);
+  }
+
   const { error } = await supabase
     .from("symptom_options")
-    .update({ active: nextActive })
+    .delete()
     .eq("id", id);
   if (error) back(error.message);
 
-  await recordStaffAudit(supabase, "settings.symptom_toggled", {
+  await recordStaffAudit(supabase, "settings.symptom_removed", {
     entity_type: "symptom_option",
     entity_id: id,
-    old_value: before,
-    new_value: { ...(before ?? {}), active: nextActive },
+    old_value: before ?? null,
   });
 
   revalidatePath("/settings/symptoms");

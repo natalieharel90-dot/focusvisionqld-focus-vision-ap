@@ -18,14 +18,17 @@ export default async function ClinicSettingsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  const [profileRes, doctorsRes] = await Promise.all([
+  const [profileRes, doctorsRes, rolesRes] = await Promise.all([
     supabase.from("clinic_profile").select("*").limit(1).maybeSingle(),
     supabase
       .from("doctors")
       .select("*")
       .order("active", { ascending: false })
       .order("name"),
+    supabase.from("staff_roles").select("id, name").order("name"),
   ]);
+
+  const roles = rolesRes.data ?? [];
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-6">
@@ -36,7 +39,7 @@ export default async function ClinicSettingsPage({
       ) : null}
       <div className="flex flex-col gap-6">
         <ClinicProfileTab profile={profileRes.data} canEdit />
-        <DoctorsTab doctors={doctorsRes.data ?? []} canEdit />
+        <DoctorsTab doctors={doctorsRes.data ?? []} roles={roles} canEdit />
       </div>
     </main>
   );

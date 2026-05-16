@@ -252,6 +252,55 @@ export async function toggleDoctorActiveAction(formData: FormData) {
   back("doctors");
 }
 
+// Adds a new staff roster role to the managed staff_roles list.
+export async function addRoleAction(formData: FormData) {
+  const { supabase } = await requireEditor();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) back("doctors", "Role name is required.");
+
+  const { error } = await supabase.from("staff_roles").insert({ name });
+  if (error) {
+    back(
+      "doctors",
+      error.code === "23505"
+        ? `Role "${name}" already exists.`
+        : error.message
+    );
+  }
+
+  await recordStaffAudit(supabase, "settings.staff_role_added", {
+    entity_type: "staff_role",
+    new_value: { name },
+  });
+  revalidatePath("/settings/clinic");
+  back("doctors");
+}
+
+// Removes a staff roster role. doctors.role is plain text, so staff
+// already assigned this role keep their stored role label.
+export async function deleteRoleAction(formData: FormData) {
+  const { supabase } = await requireEditor();
+  const id = String(formData.get("role_id") ?? "").trim();
+  if (!id) back("doctors", "Missing role id.");
+
+  const { data: before } = await supabase
+    .from("staff_roles")
+    .select("name")
+    .eq("id", id)
+    .maybeSingle();
+
+  const { error } = await supabase.from("staff_roles").delete().eq("id", id);
+  if (error) back("doctors", error.message);
+
+  await recordStaffAudit(supabase, "settings.staff_role_removed", {
+    entity_type: "staff_role",
+    entity_id: id,
+    old_value: before ?? null,
+  });
+  revalidatePath("/settings/clinic");
+  back("doctors");
+}
+
 // ── Tab 3 · Partner facilities ───────────────────────────────────────────
 export async function saveFacilityAction(formData: FormData) {
   const { supabase } = await requireEditor();
@@ -290,7 +339,7 @@ export async function saveFacilityAction(formData: FormData) {
     entity_id: facId,
     new_value: { name, change: id ? "updated" : "added" },
   });
-  revalidatePath("/settings/clinic");
+  revalidatePath("/settings/partners");
   back("facilities");
 }
 
@@ -311,7 +360,34 @@ export async function toggleFacilityActiveAction(formData: FormData) {
     entity_id: id,
     new_value: { active },
   });
-  revalidatePath("/settings/clinic");
+  revalidatePath("/settings/partners");
+  back("facilities");
+}
+
+export async function deleteFacilityAction(formData: FormData) {
+  const { supabase } = await requireEditor();
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) back("facilities", "Missing facility id.");
+
+  const { error } = await supabase
+    .from("partner_facilities")
+    .delete()
+    .eq("id", id);
+  // A facility referenced by patient feedback can't be hard-deleted —
+  // point staff at the soft-delete instead.
+  if (error) {
+    back(
+      "facilities",
+      "Could not remove — this facility has patient feedback attached. Deactivate it instead."
+    );
+  }
+
+  await recordStaffAudit(supabase, "settings.facility_updated", {
+    entity_type: "partner_facility",
+    entity_id: id,
+    new_value: { change: "removed" },
+  });
+  revalidatePath("/settings/partners");
   back("facilities");
 }
 

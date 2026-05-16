@@ -2,13 +2,6 @@
 // option sets shared across the six tabs. The page is open to all staff.
 
 // ── Curated option sets ──────────────────────────────────────────────────
-export const DOCTOR_ROLES = [
-  "Surgeon",
-  "Optometrist",
-  "Nurse",
-  "Reception",
-] as const;
-
 export const MESSAGE_TEMPLATE_CATEGORIES = [
   "general",
   "follow-up",

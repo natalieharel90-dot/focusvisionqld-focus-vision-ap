@@ -1,5 +1,5 @@
 import { initials } from "@/lib/bulk-push";
-import { DOCTOR_ROLES } from "@/lib/clinic-settings";
+import { AddRoleModal } from "./AddRoleModal";
 import { DoctorModal, type Doctor } from "./DoctorModal";
 import {
   deleteDoctorAction,
@@ -28,24 +28,32 @@ function gradientFor(seed: string): string {
 
 export function DoctorsTab({
   doctors,
+  roles,
   canEdit,
 }: {
   doctors: Doctor[];
+  roles: { id: string; name: string }[];
   canEdit: boolean;
 }) {
+  const roleNames = roles.map((r) => r.name);
   return (
     <section className="rounded-2xl border border-fv-bg-soft bg-fv-bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-fv-text-primary">
-            Doctors &amp; clinicians
+            Staff
           </h2>
           <p className="mt-0.5 text-xs text-fv-text-secondary">
-            Surgeons and optometrists. Each can optionally upload a welcome
+            Clinical and admin staff. Each can optionally upload a welcome
             video that plays for their patients on the patient app.
           </p>
         </div>
-        {canEdit ? <DoctorModal doctor={null} /> : null}
+        {canEdit ? (
+          <div className="flex shrink-0 flex-col items-stretch gap-2">
+            <DoctorModal doctor={null} roles={roleNames} />
+            <AddRoleModal roles={roles} />
+          </div>
+        ) : null}
       </div>
 
       {doctors.length === 0 ? (
@@ -125,7 +133,7 @@ export function DoctorsTab({
                         disabled={!canEdit}
                         className={fieldInput}
                       >
-                        {DOCTOR_ROLES.map((r) => (
+                        {roleNames.map((r) => (
                           <option key={r} value={r}>
                             {r}
                           </option>

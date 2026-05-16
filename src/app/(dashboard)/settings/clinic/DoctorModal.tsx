@@ -3,7 +3,6 @@
 import { useRef } from "react";
 
 import { initials } from "@/lib/bulk-push";
-import { DOCTOR_ROLES } from "@/lib/clinic-settings";
 import { saveDoctorAction, toggleDoctorActiveAction } from "./actions";
 
 export type Doctor = {
@@ -22,8 +21,14 @@ const inputClass =
   "mt-1 w-full rounded-md border border-fv-border bg-fv-bg-app px-3 py-2 text-sm";
 const labelClass = "text-xs font-medium text-fv-text-secondary";
 
-// Card-or-add-button trigger plus the doctor add/edit dialog.
-export function DoctorModal({ doctor }: { doctor: Doctor | null }) {
+// Card-or-add-button trigger plus the staff add/edit dialog.
+export function DoctorModal({
+  doctor,
+  roles,
+}: {
+  doctor: Doctor | null;
+  roles: string[];
+}) {
   const ref = useRef<HTMLDialogElement>(null);
   const inactive = doctor != null && !doctor.active;
 
@@ -54,7 +59,7 @@ export function DoctorModal({ doctor }: { doctor: Doctor | null }) {
           onClick={() => ref.current?.showModal()}
           className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
         >
-          + Add doctor
+          + Add staff
         </button>
       )}
 
@@ -64,7 +69,7 @@ export function DoctorModal({ doctor }: { doctor: Doctor | null }) {
       >
         <div className="flex flex-col gap-4 p-5">
           <h2 className="text-base font-semibold text-fv-text-primary">
-            {doctor ? "Edit doctor" : "Add doctor"}
+            {doctor ? "Edit staff member" : "Add staff member"}
           </h2>
 
           <form
@@ -96,10 +101,10 @@ export function DoctorModal({ doctor }: { doctor: Doctor | null }) {
               <span className={labelClass}>Role</span>
               <select
                 name="role"
-                defaultValue={doctor?.role ?? "Surgeon"}
+                defaultValue={doctor?.role ?? roles[0] ?? "Surgeon"}
                 className={inputClass}
               >
-                {DOCTOR_ROLES.map((r) => (
+                {roles.map((r) => (
                   <option key={r} value={r}>
                     {r}
                   </option>
@@ -157,7 +162,7 @@ export function DoctorModal({ doctor }: { doctor: Doctor | null }) {
                   type="submit"
                   className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white"
                 >
-                  {doctor ? "Save" : "Add doctor"}
+                  {doctor ? "Save" : "Add staff"}
                 </button>
               ) : null}
             </div>
