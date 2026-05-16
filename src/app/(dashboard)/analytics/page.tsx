@@ -299,7 +299,13 @@ export default async function AnalyticsPage({
     e.n += 1;
     ratingBySurgeon.set(sid, e);
   }
-  const surgeonRows = [...patientsBySurgeon.keys()]
+  // Every surgeon in the staff list appears (0 patients if none yet),
+  // plus any surgeon who has patients but isn't in the staff list.
+  const allSurgeonIds = new Set<string>([
+    ...(surgeonsResult.data ?? []).map((s) => s.id),
+    ...patientsBySurgeon.keys(),
+  ]);
+  const surgeonRows = [...allSurgeonIds]
     .map((sid) => {
       const stat = surgeonStatById.get(sid);
       const r = ratingBySurgeon.get(sid);
@@ -863,7 +869,7 @@ export default async function AnalyticsPage({
         >
           {surgeonRows.length === 0 ? (
             <p className="text-sm text-fv-text-secondary">
-              No surgeons with active patients.
+              No surgeons in the staff list yet.
             </p>
           ) : (
             <table className="w-full text-left text-sm">
