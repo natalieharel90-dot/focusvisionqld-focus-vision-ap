@@ -35,25 +35,38 @@ export type RecoveryGuidanceEditorProps = {
 
 const ZONE_META: Record<
   Zone,
-  { label: string; hero: string; heroText: string; hasWarning: boolean }
+  {
+    label: string;
+    hero: string;
+    heroText: string;
+    hasWarning: boolean;
+    dot: string;
+    accent: string;
+  }
 > = {
   green: {
     label: "Green — on track",
     hero: "bg-green-100",
     heroText: "text-green-900",
     hasWarning: false,
+    dot: "bg-green-500",
+    accent: "border-l-4 border-green-600",
   },
   yellow: {
     label: "Yellow — keep an eye on this",
     hero: "bg-yellow-100",
     heroText: "text-yellow-900",
     hasWarning: true,
+    dot: "bg-yellow-400",
+    accent: "border-l-4 border-yellow-500",
   },
   orange: {
     label: "Orange — we'll be in touch",
     hero: "bg-orange-100",
     heroText: "text-orange-900",
     hasWarning: true,
+    dot: "bg-orange-500",
+    accent: "border-l-4 border-orange-500",
   },
 };
 
@@ -198,7 +211,7 @@ export function RecoveryGuidanceEditor(props: RecoveryGuidanceEditorProps) {
             <form
               key={zone}
               action={saveZoneContentAction}
-              className="rounded-xl bg-fv-bg-card p-5 shadow-sm"
+              className={`rounded-xl ${meta.accent} bg-fv-bg-card p-5 shadow-sm`}
             >
               <input type="hidden" name="zone" value={zone} />
               <input
@@ -213,7 +226,10 @@ export function RecoveryGuidanceEditor(props: RecoveryGuidanceEditorProps) {
               />
 
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-fv-text-primary">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-fv-text-primary">
+                  <span
+                    className={`h-2.5 w-2.5 shrink-0 rounded-full ${meta.dot}`}
+                  />
                   {meta.label}
                 </h2>
                 {props.savedZone === zone ? (
