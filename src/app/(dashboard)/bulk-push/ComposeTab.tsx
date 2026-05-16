@@ -15,7 +15,10 @@ import {
   type ZoneFilter,
 } from "@/lib/bulk-push";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { attachmentFilename, attachmentKind } from "@/lib/messages";
 import { sendBulkPushAction } from "./actions";
+
+const ATTACHMENT_ICON = { image: "🖼️", video: "🎬", document: "📄" } as const;
 
 export type ContentLibraryItem = {
   id: string;
@@ -66,7 +69,7 @@ export function ComposeTab({
   const [scheduledAt, setScheduledAt] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [attachmentPath, setAttachmentPath] = useState<string | null>(null);
+  const [attachmentPaths, setAttachmentPaths] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -74,14 +77,15 @@ export function ComposeTab({
     event: React.ChangeEvent<HTMLInputElement>
   ) {
     const file = event.target.files?.[0];
+    event.target.value = ""; // allow re-picking / adding more
     if (!file) return;
     setUploadError(null);
     setUploading(true);
     try {
       const supabase = createSupabaseBrowserClient();
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
       // Staff may write anywhere in message-attachments; the fan-out
-      // copies this path onto every delivered message.
+      // copies these paths onto every delivered message.
       const objectPath = `bulk-push/${crypto.randomUUID()}.${ext}`;
       const { error: uploadErr } = await supabase.storage
         .from("message-attachments")
@@ -90,7 +94,7 @@ export function ComposeTab({
           upsert: false,
         });
       if (uploadErr) throw uploadErr;
-      setAttachmentPath(objectPath);
+      setAttachmentPaths((prev) => [...prev, objectPath]);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -127,7 +131,7 @@ export function ComposeTab({
         contentItemIds: selectedContentIds,
         messageTitle: title,
         messageBody: body,
-        attachmentPath,
+        attachmentPaths,
         scheduleMode,
         scheduledAt:
           scheduleMode === "later" && scheduledAt
@@ -386,34 +390,46 @@ export function ComposeTab({
                 />
               </div>
               <div className="mt-4">
-                <div className={fieldLabel}>Attachment (optional)</div>
+                <div className={fieldLabel}>Attachments (optional)</div>
+                {attachmentPaths.length > 0 ? (
+                  <ul className="mt-2 flex flex-col gap-1.5">
+                    {attachmentPaths.map((p) => (
+                      <li
+                        key={p}
+                        className="flex items-center justify-between gap-2 rounded-md border border-fv-border bg-fv-bg-card px-3 py-1.5 text-xs"
+                      >
+                        <span className="truncate text-fv-text-primary">
+                          {ATTACHMENT_ICON[attachmentKind(p)]}{" "}
+                          {attachmentFilename(p)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAttachmentPaths((prev) =>
+                              prev.filter((x) => x !== p)
+                            )
+                          }
+                          className="shrink-0 font-medium text-fv-text-secondary hover:text-fv-text-primary"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                   <label className="cursor-pointer rounded-md border border-fv-border bg-fv-bg-card px-3 py-1.5 font-medium text-fv-text-primary hover:bg-fv-bg-soft">
-                    {attachmentPath
-                      ? "Image attached ✓"
-                      : uploading
-                        ? "Uploading…"
-                        : "📎 Attach an image"}
+                    {uploading
+                      ? "Uploading…"
+                      : "📎 Add image, video or document"}
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/*,video/*,application/pdf,.pdf,.doc,.docx,.txt"
                       onChange={handleAttachmentChange}
-                      disabled={uploading || attachmentPath !== null}
+                      disabled={uploading}
                       className="sr-only"
                     />
                   </label>
-                  {attachmentPath ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAttachmentPath(null);
-                        setUploadError(null);
-                      }}
-                      className="rounded-md border border-fv-border px-2 py-1.5 font-medium text-fv-text-secondary hover:bg-fv-bg-soft"
-                    >
-                      Remove
-                    </button>
-                  ) : null}
                   {uploadError ? (
                     <span className="text-red-600">{uploadError}</span>
                   ) : null}

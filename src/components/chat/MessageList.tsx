@@ -1,5 +1,6 @@
 import type { Database } from "@/types/database.types";
 import type { MessageAttachment } from "@/lib/messages";
+import { MessageAttachments } from "./MessageAttachments";
 
 type Message = Database["public"]["Tables"]["messages"]["Row"];
 type StaffSummary = Pick<
@@ -76,34 +77,7 @@ export function MessageList({
                 {senderLabel} · {fmt(m.sent_at)}
               </div>
               <div className="whitespace-pre-wrap leading-relaxed">{m.body}</div>
-              {attachments.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {attachments.map((a) =>
-                    a.signed_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <a
-                        key={a.path}
-                        href={a.signed_url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <img
-                          src={a.signed_url}
-                          alt="attachment"
-                          className="max-h-48 rounded-md"
-                        />
-                      </a>
-                    ) : (
-                      <span
-                        key={a.path}
-                        className="text-xs italic opacity-75"
-                      >
-                        (attachment unavailable)
-                      </span>
-                    )
-                  )}
-                </div>
-              ) : null}
+              <MessageAttachments attachments={attachments} />
             </div>
           </li>
         );

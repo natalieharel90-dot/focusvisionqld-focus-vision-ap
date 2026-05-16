@@ -14,7 +14,7 @@ export type SendBulkPushInput = {
   contentItemIds: string[];
   messageTitle: string;
   messageBody: string;
-  attachmentPath: string | null;
+  attachmentPaths: string[];
   scheduleMode: "now" | "later";
   scheduledAt: string | null; // ISO; required when scheduleMode === 'later'
   recipientCount: number; // preview count the sender saw — recorded in audit
@@ -121,7 +121,7 @@ export async function sendBulkPushAction(
       content_item_ids: contentItemIds,
       message_title: finalTitle,
       message_body: finalBody,
-      attachment_path: input.attachmentPath || null,
+      attachment_paths: input.attachmentPaths,
       scheduled_at: scheduledAt,
     })
     .select("id")
@@ -153,7 +153,7 @@ export async function sendBulkPushAction(
       cohort_summary: input.cohortSummary,
       content_type: input.contentType,
       content_item_count: contentItemIds.length,
-      has_attachment: !!input.attachmentPath,
+      attachment_count: input.attachmentPaths.length,
       recipient_count: input.recipientCount,
       scheduled_at: scheduledAt,
       mode: input.scheduleMode,

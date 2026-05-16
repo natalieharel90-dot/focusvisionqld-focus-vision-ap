@@ -10,6 +10,7 @@ import {
 } from "@/lib/messages";
 import type { Database } from "@/types/database.types";
 import { ThreadRealtime } from "@/components/chat/ThreadRealtime";
+import { MessageAttachments } from "@/components/chat/MessageAttachments";
 import { StaffComposer } from "./StaffComposer";
 import { InboxFilter } from "./InboxFilter";
 import { ComingSoonButton } from "./ComingSoonButton";
@@ -645,34 +646,7 @@ function OpenThread({
                   }`}
                 >
                   <div className="whitespace-pre-wrap">{m.body}</div>
-                  {attachments.length > 0 ? (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {attachments.map((a) =>
-                        a.signed_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <a
-                            key={a.path}
-                            href={a.signed_url}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <img
-                              src={a.signed_url}
-                              alt="attachment"
-                              className="max-h-44 rounded-md"
-                            />
-                          </a>
-                        ) : (
-                          <span
-                            key={a.path}
-                            className="text-xs italic opacity-75"
-                          >
-                            (attachment unavailable)
-                          </span>
-                        )
-                      )}
-                    </div>
-                  ) : null}
+                  <MessageAttachments attachments={attachments} />
                 </div>
               </div>
             );
