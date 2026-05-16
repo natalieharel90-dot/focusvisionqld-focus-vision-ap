@@ -21,7 +21,6 @@ type TriageItem = {
   id: string;
   patientId: string;
   patientName: string;
-  patientPhone: string | null;
   recoveryDay: number | null;
   procedureType: string | null;
   surgeonName: string | null;
@@ -162,7 +161,7 @@ export default async function TriagePage({
       ? await Promise.all([
           supabase
             .from("patients")
-            .select("id, name, phone")
+            .select("id, name")
             .in("id", patientIds),
           supabase
             .from("procedures")
@@ -176,7 +175,7 @@ export default async function TriagePage({
           supabase.from("staff_users").select("id, name"),
         ])
       : [
-          { data: [] as { id: string; name: string; phone: string | null }[] },
+          { data: [] as { id: string; name: string }[] },
           {
             data: [] as {
               patient_id: string;
@@ -214,7 +213,6 @@ export default async function TriagePage({
       id: c.id,
       patientId: c.patient_id,
       patientName: p?.name ?? "Unknown",
-      patientPhone: p?.phone ?? null,
       recoveryDay: c.recovery_day,
       procedureType: proc?.procedure_type ?? null,
       surgeonName: proc ? staffName.get(proc.surgeon_id) ?? null : null,
@@ -232,7 +230,6 @@ export default async function TriagePage({
       id: f.id,
       patientId: f.patient_id,
       patientName: p?.name ?? "Unknown",
-      patientPhone: p?.phone ?? null,
       recoveryDay: daysSince(proc?.surgery_date ?? null),
       procedureType: proc?.procedure_type ?? null,
       surgeonName: proc ? staffName.get(proc.surgeon_id) ?? null : null,
@@ -427,18 +424,6 @@ export default async function TriagePage({
                         </div>
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-2">
-                        {item.patientPhone ? (
-                          <a
-                            href={`tel:${item.patientPhone}`}
-                            className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
-                              tier === "red"
-                                ? "bg-[#C13434] text-white"
-                                : "border border-fv-border text-fv-text-primary hover:bg-fv-bg-soft"
-                            }`}
-                          >
-                            {tier === "red" ? "📞 Call NOW" : "📞 Call"}
-                          </a>
-                        ) : null}
                         {item.threadId ? (
                           <Link
                             href={`/inbox?thread=${item.threadId}`}
