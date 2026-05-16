@@ -62,7 +62,7 @@ export function FacilitiesTab({
           {facilities.map((facility) => (
             <div
               key={facility.id}
-              className={`flex flex-wrap items-center gap-3.5 rounded-xl bg-fv-bg-soft/40 p-3.5 ${
+              className={`flex flex-wrap items-center gap-3.5 rounded-xl bg-fv-bg-soft/40 px-3.5 pb-3.5 pt-6 ${
                 facility.active ? "" : "opacity-60"
               }`}
             >
@@ -83,7 +83,7 @@ export function FacilitiesTab({
               </div>
 
               {canEdit ? (
-                <div className="flex w-24 shrink-0 flex-col gap-1.5">
+                <div className="flex shrink-0 items-start gap-2">
                   <FacilityModal facility={facility} />
                   <details>
                     <summary className="cursor-pointer list-none rounded-lg border border-red-200 px-3 py-1.5 text-center text-xs font-semibold text-red-600 hover:bg-red-50">
@@ -109,13 +109,15 @@ export function FacilitiesTab({
   );
 }
 
+// The uppercase label floats just above the value box (absolute) so the
+// box itself sits in line with the avatar and the action buttons.
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-fv-text-secondary">
+    <div className="relative min-w-0">
+      <span className="absolute -top-[15px] left-0 text-[10px] font-semibold uppercase tracking-wide text-fv-text-secondary">
         {label}
       </span>
-      <div className="mt-1 truncate rounded-lg border border-fv-bg-soft bg-fv-bg-app px-3 py-1.5 text-[13px] text-fv-text-primary">
+      <div className="truncate rounded-lg border border-fv-bg-soft bg-fv-bg-app px-3 py-1.5 text-[13px] text-fv-text-primary">
         {value}
       </div>
     </div>

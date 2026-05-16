@@ -28,7 +28,7 @@ export function FacilityModal({ facility }: { facility: Facility | null }) {
         <button
           type="button"
           onClick={() => ref.current?.showModal()}
-          className="w-full rounded-lg border border-fv-border bg-fv-bg-card px-3 py-1.5 text-xs font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
+          className="rounded-lg border border-fv-border bg-fv-bg-card px-3 py-1.5 text-xs font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
         >
           Edit
         </button>
