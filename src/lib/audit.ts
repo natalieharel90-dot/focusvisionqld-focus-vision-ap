@@ -34,6 +34,7 @@ export type StaffAuditEventType =
   | "patient.setup_item_completed"
   | "patient.activated"
   | "analytics.viewed"
+  | "dashboard.viewed"
   | "analytics.exported"
   | "analytics.refreshed"
   | "settings.analytics_targets_updated"
