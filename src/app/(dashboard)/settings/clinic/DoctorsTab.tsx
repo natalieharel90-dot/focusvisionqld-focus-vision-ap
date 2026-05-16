@@ -2,6 +2,7 @@ import { initials } from "@/lib/bulk-push";
 import { AddRoleModal } from "./AddRoleModal";
 import { DoctorModal, type Doctor } from "./DoctorModal";
 import {
+  deleteStaffAction,
   saveDoctorAction,
   saveDoctorVideoAction,
   toggleDoctorActiveAction,
@@ -235,40 +236,64 @@ export function DoctorsTab({
                 </p>
               ) : null}
 
-              {/* Activate / deactivate (soft-delete) */}
+              {/* Activate / deactivate / permanently delete */}
               {canEdit ? (
-                <form action={toggleDoctorActiveAction} className="mt-2">
-                  <input type="hidden" name="id" value={doctor.id} />
-                  <input
-                    type="hidden"
-                    name="active"
-                    value={doctor.active ? "false" : "true"}
-                  />
-                  {doctor.active ? (
-                    <details>
-                      <summary className="cursor-pointer text-xs font-semibold text-red-600">
-                        Remove from roster
-                      </summary>
+                <div className="mt-2 flex flex-wrap items-start gap-3">
+                  <form action={toggleDoctorActiveAction}>
+                    <input type="hidden" name="id" value={doctor.id} />
+                    <input
+                      type="hidden"
+                      name="active"
+                      value={doctor.active ? "false" : "true"}
+                    />
+                    {doctor.active ? (
+                      <details>
+                        <summary className="cursor-pointer text-xs font-semibold text-red-600">
+                          Remove from roster
+                        </summary>
+                        <button
+                          type="submit"
+                          className="mt-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                        >
+                          Yes, deactivate {doctor.name}
+                        </button>
+                        <p className="mt-1 text-[10px] text-fv-text-secondary">
+                          Deactivating removes them from surgeon dropdowns but
+                          keeps their history. They can be reactivated anytime.
+                        </p>
+                      </details>
+                    ) : (
                       <button
                         type="submit"
-                        className="mt-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                        className="rounded-md border border-fv-border px-3 py-1.5 text-xs font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
                       >
-                        Yes, deactivate {doctor.name}
+                        Reactivate {doctor.name}
                       </button>
-                      <p className="mt-1 text-[10px] text-fv-text-secondary">
-                        Deactivating removes them from surgeon dropdowns but
-                        keeps their history. They can be reactivated anytime.
-                      </p>
+                    )}
+                  </form>
+
+                  {!doctor.active ? (
+                    <details>
+                      <summary className="cursor-pointer text-xs font-semibold text-red-600">
+                        Delete permanently
+                      </summary>
+                      <form action={deleteStaffAction} className="mt-1.5">
+                        <input type="hidden" name="id" value={doctor.id} />
+                        <button
+                          type="submit"
+                          className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                        >
+                          Yes, delete {doctor.name} permanently
+                        </button>
+                        <p className="mt-1 max-w-xs text-[10px] text-fv-text-secondary">
+                          Removes their account entirely. Only works if they
+                          have no clinical or audit records. This cannot be
+                          undone.
+                        </p>
+                      </form>
                     </details>
-                  ) : (
-                    <button
-                      type="submit"
-                      className="rounded-md border border-fv-border px-3 py-1.5 text-xs font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
-                    >
-                      Reactivate {doctor.name}
-                    </button>
-                  )}
-                </form>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           ))}

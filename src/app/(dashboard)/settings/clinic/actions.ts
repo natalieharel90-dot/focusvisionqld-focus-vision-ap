@@ -294,6 +294,53 @@ export async function toggleDoctorActiveAction(formData: FormData) {
   back("doctors");
 }
 
+// Permanently deletes a deactivated staff member — removes their auth
+// account, which cascades the staff_users row. This only succeeds when
+// nothing references them: any clinical record (procedures, messages,
+// flags) or audit event blocks the delete via its foreign key, so the
+// append-only audit log is never cascade-deleted. They stay deactivated.
+export async function deleteStaffAction(formData: FormData) {
+  const { supabase } = await requireEditor();
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) back("doctors", "Missing staff id.");
+
+  const { data: staff } = await supabase
+    .from("staff_users")
+    .select("name, active")
+    .eq("id", id)
+    .maybeSingle();
+  if (!staff) back("doctors", "Staff member not found.");
+  if (staff!.active) {
+    back("doctors", "Deactivate this staff member before deleting them.");
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    back("doctors", "Staff deletion isn't configured on this environment.");
+  }
+  const admin = createClient(url!, serviceKey!, {
+    auth: { persistSession: false },
+  });
+
+  const { error } = await admin.auth.admin.deleteUser(id);
+  if (error) {
+    back(
+      "doctors",
+      "Can't delete — this staff member is referenced by clinical or audit records. They remain deactivated."
+    );
+  }
+
+  await recordStaffAudit(supabase, "settings.doctor_updated", {
+    entity_type: "staff_user",
+    entity_id: id,
+    old_value: { name: staff!.name },
+    new_value: { change: "deleted" },
+  });
+  revalidatePath("/settings/clinic");
+  back("doctors");
+}
+
 // Adds a new staff roster role to the managed staff_roles list.
 export async function addRoleAction(formData: FormData) {
   const { supabase } = await requireEditor();
