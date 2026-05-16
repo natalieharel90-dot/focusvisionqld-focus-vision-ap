@@ -1149,30 +1149,43 @@ export type Database = {
       }
       patient_pinned_content: {
         Row: {
+          ad_hoc_message: string | null
+          content_id: string | null
           created_at: string
           created_by_staff_id: string | null
           id: string
           kind: string
-          label: string
+          label: string | null
           patient_id: string
         }
         Insert: {
+          ad_hoc_message?: string | null
+          content_id?: string | null
           created_at?: string
           created_by_staff_id?: string | null
           id?: string
           kind: string
-          label: string
+          label?: string | null
           patient_id: string
         }
         Update: {
+          ad_hoc_message?: string | null
+          content_id?: string | null
           created_at?: string
           created_by_staff_id?: string | null
           id?: string
           kind?: string
-          label?: string
+          label?: string | null
           patient_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "patient_pinned_content_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "patient_pinned_content_created_by_staff_id_fkey"
             columns: ["created_by_staff_id"]
@@ -2128,6 +2141,29 @@ export type Database = {
       generate_scheduled_reports: { Args: never; Returns: undefined }
       is_staff: { Args: never; Returns: boolean }
       mark_thread_read: { Args: { p_thread_id: string }; Returns: undefined }
+      my_postop_content: {
+        Args: never
+        Returns: {
+          active: boolean
+          audience: string
+          body: string | null
+          created_at: string
+          days_range: string | null
+          id: string
+          media_url: string | null
+          procedures: string[]
+          title: string
+          topics: string[]
+          type: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "content_items"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       prune_old_reports: { Args: never; Returns: undefined }
       record_patient_audit: {
         Args: { p_event_type: string; p_new_value: Json }
