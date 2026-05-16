@@ -4,7 +4,10 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { initials } from "@/lib/bulk-push";
 import { averageRating } from "@/lib/feedback";
-import { replyToFeedbackAction } from "./actions";
+import {
+  markFeedbackContactedAction,
+  replyToFeedbackAction,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -343,16 +346,16 @@ export default async function StaffFeedbackPage({
           </li>
         ) : (
           pagedRows.map((r) => (
-            <li key={r.id}>
-              <Link
-                href={reviewHref({ filter, q, page, feedback: r.id })}
-                className="flex items-start gap-3 rounded-xl border border-fv-bg-soft bg-fv-bg-card p-4 hover:bg-fv-bg-soft/50"
-              >
+            <li
+              key={r.id}
+              className="rounded-xl border border-fv-bg-soft bg-fv-bg-card p-4"
+            >
+              <div className="flex items-start gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fv-bg-soft text-xs font-semibold text-fv-text-secondary">
                   {initials(patientName.get(r.patient_id) ?? "?")}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold text-fv-text-primary">
                       {patientName.get(r.patient_id) ?? "Unknown patient"}
                     </span>
@@ -378,19 +381,53 @@ export default async function StaffFeedbackPage({
                         Acknowledged
                       </span>
                     ) : null}
-                  </span>
+                  </div>
                   {r.comment ? (
-                    <span className="mt-1 block text-sm text-fv-text-primary">
+                    <p className="mt-1 text-sm text-fv-text-primary">
                       {r.comment}
-                    </span>
+                    </p>
                   ) : null}
                   {r.staff_mention ? (
-                    <span className="mt-0.5 block text-xs text-fv-text-secondary">
+                    <p className="mt-0.5 text-xs text-fv-text-secondary">
                       Mentioned: {r.staff_mention}
-                    </span>
+                    </p>
                   ) : null}
-                </span>
-              </Link>
+                </div>
+              </div>
+
+              {/* Per-review actions */}
+              <div className="mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-fv-bg-soft pt-3">
+                {r.acknowledged_at ? (
+                  <span className="text-xs font-medium text-fv-text-secondary">
+                    ✓ Contacted
+                  </span>
+                ) : (
+                  <form action={markFeedbackContactedAction}>
+                    <input type="hidden" name="feedback_id" value={r.id} />
+                    <input type="hidden" name="filter" value={filter} />
+                    <input type="hidden" name="q" value={q} />
+                    <input type="hidden" name="page" value={page} />
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-fv-border px-3 py-1.5 text-xs font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
+                    >
+                      Mark as contacted
+                    </button>
+                  </form>
+                )}
+                <Link
+                  href={reviewHref({ filter, q, page, feedback: r.id })}
+                  className="rounded-lg border border-fv-border px-3 py-1.5 text-xs font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
+                >
+                  Message patient
+                </Link>
+                <Link
+                  href={`/patients/${r.patient_id}`}
+                  className="rounded-lg bg-fv-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                >
+                  View patient
+                </Link>
+              </div>
             </li>
           ))
         )}

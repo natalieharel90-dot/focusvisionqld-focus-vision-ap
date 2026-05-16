@@ -6,28 +6,27 @@ import { redirect } from "next/navigation";
 import { recordStaffAudit } from "@/lib/audit";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
+// Builds a /reviews URL that preserves the staff member's filter,
+// search and page, optionally carrying an error message.
+function reviewsUrl(formData: FormData, error?: string): string {
+  const p = new URLSearchParams();
+  const filter = String(formData.get("filter") ?? "").trim();
+  const q = String(formData.get("q") ?? "").trim();
+  const page = String(formData.get("page") ?? "").trim();
+  if (filter && filter !== "all") p.set("filter", filter);
+  if (q) p.set("q", q);
+  if (page && page !== "1") p.set("page", page);
+  if (error) p.set("error", error);
+  const s = p.toString();
+  return `/reviews${s ? `?${s}` : ""}`;
+}
+
 // Replies to a feedback row: sends the staff message into the patient's
 // thread and marks the feedback acknowledged (spec §5.9 staff side).
 export async function replyToFeedbackAction(formData: FormData) {
   const feedbackId = String(formData.get("feedback_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
-
-  // Preserve the staff member's filter + search when we redirect back.
-  const params = new URLSearchParams();
-  const filter = String(formData.get("filter") ?? "").trim();
-  const q = String(formData.get("q") ?? "").trim();
-  const page = String(formData.get("page") ?? "").trim();
-  if (filter && filter !== "all") params.set("filter", filter);
-  if (q) params.set("q", q);
-  if (page && page !== "1") params.set("page", page);
-  const reviewsUrl = (extra?: string) => {
-    const p = new URLSearchParams(params);
-    if (extra) p.set("error", extra);
-    const s = p.toString();
-    return `/reviews${s ? `?${s}` : ""}`;
-  };
-
-  const back = (msg?: string): never => redirect(reviewsUrl(msg));
+  const back = (msg?: string): never => redirect(reviewsUrl(formData, msg));
 
   if (!feedbackId) back("Missing feedback id.");
   if (!body) back("Write a reply before sending.");
@@ -71,9 +70,7 @@ export async function replyToFeedbackAction(formData: FormData) {
 
   await supabase
     .from("message_threads")
-    .update({
-      last_message_at: new Date().toISOString(),
-    })
+    .update({ last_message_at: new Date().toISOString() })
     .eq("id", thread!.id);
 
   const { error: ackError } = await supabase
@@ -93,5 +90,48 @@ export async function replyToFeedbackAction(formData: FormData) {
   });
 
   revalidatePath("/reviews");
-  redirect(reviewsUrl());
+  redirect(reviewsUrl(formData));
+}
+
+// Marks a feedback row acknowledged without sending a message — for when
+// the patient was contacted by phone or in person.
+export async function markFeedbackContactedAction(formData: FormData) {
+  const feedbackId = String(formData.get("feedback_id") ?? "");
+  const back = (msg?: string): never => redirect(reviewsUrl(formData, msg));
+  if (!feedbackId) back("Missing feedback id.");
+
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  const { data: feedback } = await supabase
+    .from("feedback")
+    .select("id, patient_id, acknowledged_at")
+    .eq("id", feedbackId)
+    .maybeSingle();
+  if (!feedback) back("Feedback not found.");
+
+  // Already acknowledged — nothing to do, just return to the list.
+  if (!feedback!.acknowledged_at) {
+    const { error } = await supabase
+      .from("feedback")
+      .update({
+        acknowledged_at: new Date().toISOString(),
+        acknowledged_by_staff_id: user.id,
+      })
+      .eq("id", feedbackId);
+    if (error) back(error.message);
+
+    await recordStaffAudit(supabase, "feedback.acknowledged", {
+      patient_id: feedback!.patient_id,
+      entity_type: "feedback",
+      entity_id: feedbackId,
+      new_value: { contacted: true },
+    });
+  }
+
+  revalidatePath("/reviews");
+  redirect(reviewsUrl(formData));
 }
