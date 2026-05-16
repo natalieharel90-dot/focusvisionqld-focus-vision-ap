@@ -205,12 +205,12 @@ export default async function AnalyticsPage({
     supabase.from("staff_users").select("id, name").eq("role", "surgeon"),
     supabase
       .from("feedback")
-      .select("target, rating")
+      .select("target, rating, patient_id")
       .gte("submitted_at", filters.from)
       .lte("submitted_at", `${filters.to}T23:59:59`),
     supabase
       .from("procedures")
-      .select("patient_id, procedure_type, surgery_date")
+      .select("patient_id, procedure_type, surgery_date, surgeon_id")
       .eq("status", "active"),
     supabase
       .from("check_ins")
@@ -276,7 +276,43 @@ export default async function AnalyticsPage({
   const doses = filterDoses(allDoses, filters);
   const bd = zoneBreakdown(checkIns);
   const heatmap = procedureZoneHeatmap(checkIns);
-  const surgeons = surgeonStats(checkIns, doses);
+  const surgeonStatById = new Map(
+    surgeonStats(checkIns, doses).map((s) => [s.surgeon_id, s])
+  );
+
+  // Per-surgeon table — patients, adherence, avg patient rating, flag rate.
+  const patientsBySurgeon = new Map<string, number>();
+  const surgeonByPatient = new Map<string, string>();
+  for (const p of procedures) {
+    patientsBySurgeon.set(
+      p.surgeon_id,
+      (patientsBySurgeon.get(p.surgeon_id) ?? 0) + 1
+    );
+    surgeonByPatient.set(p.patient_id, p.surgeon_id);
+  }
+  const ratingBySurgeon = new Map<string, { sum: number; n: number }>();
+  for (const f of feedback) {
+    const sid = surgeonByPatient.get(f.patient_id);
+    if (!sid) continue;
+    const e = ratingBySurgeon.get(sid) ?? { sum: 0, n: 0 };
+    e.sum += f.rating;
+    e.n += 1;
+    ratingBySurgeon.set(sid, e);
+  }
+  const surgeonRows = [...patientsBySurgeon.keys()]
+    .map((sid) => {
+      const stat = surgeonStatById.get(sid);
+      const r = ratingBySurgeon.get(sid);
+      return {
+        surgeonId: sid,
+        name: surgeonName.get(sid) ?? "Unknown surgeon",
+        patients: patientsBySurgeon.get(sid) ?? 0,
+        adherence: stat?.adherence ?? null,
+        flagRate: stat?.flagRate ?? 0,
+        avgRating: r && r.n > 0 ? r.sum / r.n : null,
+      };
+    })
+    .sort((a, b) => b.patients - a.patients);
 
   const symptomList = topSymptoms(symptoms, filters);
   const symptomTotal = Math.max(
@@ -825,46 +861,42 @@ export default async function AnalyticsPage({
             </a>
           }
         >
-          {surgeons.length === 0 ? (
+          {surgeonRows.length === 0 ? (
             <p className="text-sm text-fv-text-secondary">
-              No data for the selected range.
+              No surgeons with active patients.
             </p>
           ) : (
             <table className="w-full text-left text-sm">
               <thead className="border-b border-fv-bg-soft text-xs uppercase tracking-wide text-fv-text-secondary">
                 <tr>
                   <th className="py-2">Surgeon</th>
-                  <th className="py-2">Medication adherence</th>
-                  <th className="py-2">Zone-flag rate</th>
+                  <th className="py-2 text-center">Patients</th>
+                  <th className="py-2 text-center">Avg adherence</th>
+                  <th className="py-2 text-center">Avg rating</th>
+                  <th className="py-2 text-center">Flag rate</th>
                 </tr>
               </thead>
               <tbody>
-                {surgeons.map((s) => (
+                {surgeonRows.map((s) => (
                   <tr
-                    key={s.surgeon_id}
+                    key={s.surgeonId}
                     className="border-b border-fv-bg-soft/60"
                   >
                     <td className="py-2 font-medium text-fv-text-primary">
-                      {surgeonName.get(s.surgeon_id) ?? "Unknown surgeon"}
+                      {s.name}
                     </td>
-                    <td className="py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-24 overflow-hidden rounded-full bg-fv-bg-soft">
-                          <span
-                            className="block h-full rounded-full bg-fv-accent-strong"
-                            style={{
-                              width: `${Math.round(
-                                (s.adherence ?? 0) * 100
-                              )}%`,
-                            }}
-                          />
-                        </span>
-                        <span className="text-fv-text-primary">
-                          {pct(s.adherence)}
-                        </span>
-                      </div>
+                    <td className="py-2 text-center text-fv-text-primary">
+                      {s.patients}
                     </td>
-                    <td className="py-2 text-fv-text-primary">
+                    <td className="py-2 text-center font-semibold text-fv-accent-strong">
+                      {pct(s.adherence)}
+                    </td>
+                    <td className="py-2 text-center font-semibold text-fv-accent-strong">
+                      {s.avgRating == null
+                        ? "—"
+                        : `★ ${s.avgRating.toFixed(1)}`}
+                    </td>
+                    <td className="py-2 text-center text-fv-text-primary">
                       {pct(s.flagRate)}
                     </td>
                   </tr>
