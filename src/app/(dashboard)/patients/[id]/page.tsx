@@ -10,7 +10,6 @@ import {
   addNoteAction,
   addProcedureAction,
   dischargePatientAction,
-  pinContentAction,
   readmitPatientAction,
   resolveFlagAction,
   unpinContentAction,
@@ -21,6 +20,7 @@ import {
 } from "./actions";
 import { FlagPatientModal } from "./FlagPatientModal";
 import { NextAppointmentModal } from "./NextAppointmentModal";
+import { PushContentModal } from "./PushContentModal";
 import { DOCUMENT_CATEGORY_ORDER } from "@/lib/documents";
 import { FEATURES, resolveFeature } from "@/lib/feature-flags";
 import {
@@ -338,6 +338,7 @@ export default async function PatientDetailPage({
     featureDefaultsResult,
     pinnedContentResult,
     threadResult,
+    contentItemsResult,
   ] = await Promise.all([
     supabase.from("patients").select("*").eq("id", patientId).maybeSingle(),
     supabase
@@ -383,7 +384,7 @@ export default async function PatientDetailPage({
     supabase.from("feature_defaults").select("feature_key, enabled"),
     supabase
       .from("patient_pinned_content")
-      .select("id, kind, label")
+      .select("id, label, ad_hoc_message, content_id, content_items(title, type)")
       .eq("patient_id", patientId)
       .order("created_at"),
     supabase
@@ -391,9 +392,14 @@ export default async function PatientDetailPage({
       .select("id")
       .eq("patient_id", patientId)
       .maybeSingle(),
+    supabase
+      .from("content_items")
+      .select("id, type, title, audience, procedures")
+      .order("title"),
   ]);
   const pinnedContent = pinnedContentResult.data ?? [];
   const messageThreadId = threadResult.data?.id ?? null;
+  const contentOptions = contentItemsResult.data ?? [];
 
   const patient = patientResult.data as Patient | null;
   if (!patient) notFound();
@@ -1330,44 +1336,16 @@ export default async function PatientDetailPage({
           <Panel
             title="Custom content for this patient"
             action={
-              <details className="relative">
-                <summary className={summaryBtn}>+ Push content</summary>
-                <form
-                  action={pinContentAction}
-                  className="absolute right-0 z-10 mt-2 flex w-[300px] flex-col gap-3 rounded-xl border border-fv-bg-soft bg-fv-bg-card p-4 text-sm shadow-lg"
-                >
-                  <HiddenPatientId id={patient.id} />
-                  <label className="flex flex-col gap-1">
-                    <span className={fieldLabel}>Type</span>
-                    <select name="kind" required className={inputCls}>
-                      <option value="content">Recovery content / video</option>
-                      <option value="document">Document</option>
-                      <option value="message">Reassurance message</option>
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className={fieldLabel}>Label</span>
-                    <input
-                      type="text"
-                      name="label"
-                      required
-                      placeholder="e.g. Halos & glare (LASIK Day 3–7)"
-                      className={inputCls}
-                    />
-                  </label>
-                  <button
-                    type="submit"
-                    className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-                  >
-                    Push to patient
-                  </button>
-                </form>
-              </details>
+              <PushContentModal
+                patientId={patient.id}
+                options={contentOptions}
+                patientProcedure={activeProcedure?.procedure_type ?? null}
+              />
             }
           >
             <p className="text-sm text-fv-text-secondary">
-              Pin videos, documents or reassurance messages to this
-              patient&apos;s app home screen.
+              Pin recovery guides from the library, or a one-off reassurance
+              message, to this patient&apos;s app home screen.
             </p>
             {pinnedContent.length === 0 ? (
               <p className="mt-3 text-sm text-fv-text-secondary">
@@ -1376,13 +1354,16 @@ export default async function PatientDetailPage({
             ) : (
               <div className="mt-3 flex flex-col gap-2">
                 {pinnedContent.map((c) => {
-                  const isMsg = c.kind === "message";
-                  const icon =
-                    c.kind === "message"
-                      ? "💬"
-                      : c.kind === "document"
-                        ? "📄"
-                        : "📺";
+                  const linked = c.content_items;
+                  const isMsg = !linked;
+                  const title = linked
+                    ? linked.title
+                    : c.ad_hoc_message ?? c.label ?? "—";
+                  const icon = linked
+                    ? linked.type === "video"
+                      ? "📺"
+                      : "📄"
+                    : "💬";
                   return (
                     <div
                       key={c.id}
@@ -1393,7 +1374,7 @@ export default async function PatientDetailPage({
                       }`}
                     >
                       <span className="min-w-0 truncate">
-                        {icon} {c.label}
+                        {icon} {title}
                       </span>
                       <form action={unpinContentAction} className="shrink-0">
                         <HiddenPatientId id={patient.id} />

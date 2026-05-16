@@ -559,16 +559,15 @@ export async function readmitPatientAction(formData: FormData) {
 
 // ───── Custom pinned content ──────────────────────────────────────────────
 
-const PINNED_KINDS = ["content", "document", "message"] as const;
-
+// Pins either a content_items row (library pick) or an ad-hoc message to
+// the patient's app home screen — never both.
 export async function pinContentAction(formData: FormData) {
   const patientId = readPatientId(formData);
-  const kind = String(formData.get("kind") ?? "").trim();
-  const label = String(formData.get("label") ?? "").trim();
-  if (!(PINNED_KINDS as ReadonlyArray<string>).includes(kind)) {
-    backWithError(patientId, "Pick a content type.");
+  const contentId = String(formData.get("content_id") ?? "").trim();
+  const adHoc = String(formData.get("ad_hoc_message") ?? "").trim();
+  if (!contentId && !adHoc) {
+    backWithError(patientId, "Pick a guide from the library or write a message.");
   }
-  if (!label) backWithError(patientId, "A label is required.");
 
   const supabase = createSupabaseServerClient();
   const {
@@ -578,8 +577,9 @@ export async function pinContentAction(formData: FormData) {
 
   const { error } = await supabase.from("patient_pinned_content").insert({
     patient_id: patientId,
-    kind,
-    label,
+    kind: contentId ? "content" : "message",
+    content_id: contentId || null,
+    ad_hoc_message: adHoc || null,
     created_by_staff_id: user.id,
   });
   if (error) backWithError(patientId, error.message);
@@ -587,7 +587,9 @@ export async function pinContentAction(formData: FormData) {
   await recordStaffAudit(supabase, "patient.details_updated", {
     patient_id: patientId,
     entity_type: "patient_pinned_content",
-    new_value: { kind, label, change: "pinned" },
+    new_value: contentId
+      ? { content_id: contentId, change: "pinned" }
+      : { ad_hoc_message: adHoc, change: "pinned" },
   });
   revalidatePath(`/patients/${patientId}`);
 }
