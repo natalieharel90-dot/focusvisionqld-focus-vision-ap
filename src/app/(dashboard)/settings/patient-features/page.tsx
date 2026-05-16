@@ -105,6 +105,12 @@ export default async function PatientFeaturesSettingsPage({
                 </form>
               </div>
 
+              {feature.note ? (
+                <p className="mt-2 rounded-lg bg-fv-bg-accent-soft px-3 py-2 text-xs text-fv-text-secondary">
+                  {feature.note}
+                </p>
+              ) : null}
+
               {feature.key === "checkin_nudge" ? (
                 <form
                   action={updateFeatureDefaultAction}

@@ -8,7 +8,8 @@ export type FeatureKey =
   | "checkin_nudge"
   | "lockscreen_widget"
   | "feedback_tile"
-  | "preop_tile";
+  | "preop_tile"
+  | "bonus_theme_pack";
 
 export type FeatureMeta = {
   key: FeatureKey;
@@ -18,6 +19,8 @@ export type FeatureMeta = {
   // row exists.
   schemaDefault: boolean;
   hasConfig: boolean;
+  // Optional extra guidance shown beneath the toggle in clinic settings.
+  note?: string;
 };
 
 export const FEATURES: ReadonlyArray<FeatureMeta> = [
@@ -64,6 +67,15 @@ export const FEATURES: ReadonlyArray<FeatureMeta> = [
     description: "Shows the Before-your-surgery tile until the surgery date.",
     schemaDefault: true,
     hasConfig: false,
+  },
+  {
+    key: "bonus_theme_pack",
+    label: "Bonus theme pack",
+    description:
+      "Lets the patient discover a hidden pack of twelve extra app themes.",
+    schemaDefault: false,
+    hasConfig: false,
+    note: "When enabled per patient, the patient can discover the theme pack themselves via the hidden activation in the app. Off by default — enable only for patients you know would enjoy it.",
   },
 ];
 

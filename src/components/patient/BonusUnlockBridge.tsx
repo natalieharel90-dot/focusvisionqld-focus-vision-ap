@@ -28,14 +28,14 @@ export function BonusUnlockBridge({
     if (!pending) return;
 
     void unlockBonusPackAction().then((result) => {
-      if (result.ok) {
-        try {
-          window.localStorage.removeItem(PENDING_KEY);
-        } catch {
-          // ignore
-        }
-        router.refresh();
+      // Clear the flag either way: the patient is authenticated here, so
+      // an { ok: false } means they're not eligible — don't keep retrying.
+      try {
+        window.localStorage.removeItem(PENDING_KEY);
+      } catch {
+        // ignore
       }
+      if (result.ok) router.refresh();
     });
   }, [alreadyUnlocked, router]);
 

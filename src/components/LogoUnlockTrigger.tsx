@@ -19,13 +19,16 @@ type Props = {
   bridgeKey?: string;
 };
 
-// Wraps the Focus Vision logo. 13 clicks within 5s unlocks the bonus
-// theme pack. Used on the patient app logo and the staff dashboard logo.
+// Wraps the Focus Vision logo. 13 clicks within 5s attempt to unlock the
+// bonus theme pack. Used on the patient app logo and the staff dashboard
+// logo. The toast appears only when the unlock actually succeeds — for a
+// patient whose staff have not enabled the pack the 13th click is silent
+// (the action returns { ok: false }), so the feature stays invisible.
 export function LogoUnlockTrigger({ children, action, bridgeKey }: Props) {
   const clicksRef = useRef<number[]>([]);
   const [showToast, setShowToast] = useState(false);
 
-  function handleClick() {
+  async function handleClick() {
     const { clicks, unlocked } = evaluateUnlockClicks(
       clicksRef.current,
       Date.now()
@@ -34,8 +37,6 @@ export function LogoUnlockTrigger({ children, action, bridgeKey }: Props) {
     if (!unlocked) return;
 
     clicksRef.current = [];
-    setShowToast(true);
-    window.setTimeout(() => setShowToast(false), BONUS_TOAST_DURATION_MS);
 
     if (bridgeKey) {
       try {
@@ -44,7 +45,12 @@ export function LogoUnlockTrigger({ children, action, bridgeKey }: Props) {
         // private mode / disabled storage — the server action still runs.
       }
     }
-    void action();
+
+    const result = await action();
+    if (!result.ok) return;
+
+    setShowToast(true);
+    window.setTimeout(() => setShowToast(false), BONUS_TOAST_DURATION_MS);
   }
 
   return (

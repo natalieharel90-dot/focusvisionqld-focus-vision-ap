@@ -1111,6 +1111,9 @@ export default async function PatientDetailPage({
                     : { enabled: clinicDefault },
                   feature.schemaDefault
                 );
+                const overrideBy = flag?.changed_by_staff_id
+                  ? staffById.get(flag.changed_by_staff_id)?.name ?? "staff"
+                  : null;
                 return (
                   <li
                     key={feature.key}
@@ -1122,6 +1125,13 @@ export default async function PatientDetailPage({
                       </div>
                       <div className="text-xs text-fv-text-secondary">
                         {feature.description}
+                      </div>
+                      <div className="mt-1 text-[11px] text-fv-text-muted">
+                        {overrideBy
+                          ? `Explicitly set by ${overrideBy} on ${fmtDate(
+                              flag?.changed_at ?? null
+                            )}`
+                          : "Default at activation"}
                       </div>
                     </div>
                     <form action={setPatientFeatureOverrideAction}>

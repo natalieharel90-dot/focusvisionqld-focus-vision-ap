@@ -57,15 +57,62 @@ describe("resolveFeatureByKey", () => {
   });
 });
 
+describe("bonus theme pack eligibility", () => {
+  it("is OFF by default — no patient flag, no clinic default", () => {
+    expect(
+      resolveFeatureByKey("bonus_theme_pack", new Map(), new Map())
+    ).toBe(false);
+  });
+
+  it("a per-patient override enables/disables it for that patient", () => {
+    const clinicOff = new Map([["bonus_theme_pack", { enabled: false }]]);
+    // Staff enable it for one patient.
+    expect(
+      resolveFeatureByKey(
+        "bonus_theme_pack",
+        new Map([["bonus_theme_pack", { enabled: true }]]),
+        clinicOff
+      )
+    ).toBe(true);
+    // Staff disable it for one patient even though the clinic default is ON.
+    expect(
+      resolveFeatureByKey(
+        "bonus_theme_pack",
+        new Map([["bonus_theme_pack", { enabled: false }]]),
+        new Map([["bonus_theme_pack", { enabled: true }]])
+      )
+    ).toBe(false);
+  });
+
+  it("flipping the clinic default never retroacts onto an existing patient", () => {
+    // An activated patient has a snapshotted flag row; later default flips.
+    const patientFlag = { enabled: false };
+    expect(
+      resolveFeature(patientFlag, { enabled: false }, false)
+    ).toBe(false);
+    expect(
+      resolveFeature(patientFlag, { enabled: true }, false)
+    ).toBe(false);
+  });
+});
+
 describe("FEATURES metadata", () => {
-  it("defines the six optional features", () => {
-    expect(FEATURES).toHaveLength(6);
+  it("defines the seven optional features", () => {
+    expect(FEATURES).toHaveLength(7);
   });
 
   it("surgeon spotlight is OFF by default, eye photo prompt is ON", () => {
     const byKey = new Map(FEATURES.map((f) => [f.key, f]));
     expect(byKey.get("surgeon_spotlight")?.schemaDefault).toBe(false);
     expect(byKey.get("eye_photo_prompt")?.schemaDefault).toBe(true);
+  });
+
+  it("the bonus theme pack is OFF by default and carries a settings note", () => {
+    const byKey = new Map(FEATURES.map((f) => [f.key, f]));
+    const pack = byKey.get("bonus_theme_pack");
+    expect(pack?.schemaDefault).toBe(false);
+    expect(pack?.hasConfig).toBe(false);
+    expect(pack?.note).toBeTruthy();
   });
 
   it("only the check-in nudge carries config", () => {
