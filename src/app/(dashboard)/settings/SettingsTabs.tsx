@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS: ReadonlyArray<{ href: string; label: string }> = [
-  { href: "/settings/clinic", label: "Clinic & Doctors" },
+  { href: "/settings/clinic", label: "Clinic & Staff" },
   { href: "/settings/contact", label: "Contact screen" },
   { href: "/settings/recovery-guidance", label: "Recovery guidance" },
   { href: "/settings/patient-features", label: "Patient app features" },
@@ -32,7 +32,7 @@ export function SettingsTabs() {
           <Link
             key={t.href}
             href={t.href}
-            className={`flex-1 whitespace-nowrap px-2 py-2.5 text-center text-[11px] font-semibold ${
+            className={`flex-1 whitespace-nowrap px-1.5 py-2.5 text-center text-[13px] font-semibold ${
               i > 0 ? "border-l border-fv-border" : ""
             } ${
               active
