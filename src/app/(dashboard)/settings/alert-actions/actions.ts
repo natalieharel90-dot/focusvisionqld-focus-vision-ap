@@ -15,7 +15,9 @@ type AlertLevel = Exclude<
 const VALID_LEVELS: ReadonlyArray<AlertLevel> = ["yellow", "orange", "red"];
 
 function back(message: string): never {
-  redirect(`/settings/alert-actions?error=${encodeURIComponent(message)}`);
+  redirect(
+    `/settings/alert-thresholds?error=${encodeURIComponent(message)}`
+  );
 }
 
 export async function saveAlertActionsAction(formData: FormData) {
@@ -60,5 +62,5 @@ export async function saveAlertActionsAction(formData: FormData) {
     new_value: { alert_level: level, ...update },
   });
 
-  revalidatePath("/settings/alert-actions");
+  revalidatePath("/settings/alert-thresholds");
 }
