@@ -8,6 +8,8 @@ import {
   THEMES,
   THEME_IDS,
   pickRandomBonusTheme,
+  themeSwatch,
+  type ThemeId,
   type ThemePreference,
 } from "@/lib/theme";
 import { updateStaffThemeAction } from "@/app/(dashboard)/theme-actions";
@@ -19,9 +21,9 @@ type Props = {
   bonusUnlocked: boolean;
 };
 
-// Compact appearance control in the sidebar footer. Applies the change
-// to the dashboard root instantly, then persists to staff_users. Bonus
-// themes + sparkle appear only after the pack is unlocked.
+// Appearance control on Settings → Appearance. Applies the change to the
+// dashboard root instantly, then persists to staff_users. Bonus themes +
+// sparkle appear only after the pack is unlocked.
 export function StaffThemePicker({
   initialTheme,
   initialDark,
@@ -61,39 +63,56 @@ export function StaffThemePicker({
     });
   }
 
+  function selectTheme(next: ThemePreference) {
+    setTheme(next);
+    apply(next, dark, sparkle);
+  }
+
   return (
-    <div className="flex flex-col gap-2">
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-fv-text-secondary">
-          Theme
-        </span>
-        <select
-          value={theme}
-          onChange={(e) => {
-            const next = e.target.value as ThemePreference;
-            setTheme(next);
-            apply(next, dark, sparkle);
-          }}
-          className="rounded-md border border-fv-border bg-fv-bg-app px-2 py-1 text-xs text-fv-text-primary"
-        >
-          {THEME_IDS.map((id) => (
-            <option key={id} value={id}>
-              {THEMES[id].label}
-            </option>
-          ))}
-          {bonusUnlocked ? (
-            <optgroup label="Bonus pack ✨">
-              {BONUS_THEME_IDS.map((id) => (
-                <option key={id} value={id}>
-                  {THEMES[id].label}
-                </option>
-              ))}
-              <option value="random">🎲 Random</option>
-            </optgroup>
-          ) : null}
-        </select>
-      </label>
-      <label className="flex cursor-pointer items-center gap-2 text-xs text-fv-text-primary">
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {THEME_IDS.map((id) => (
+          <ThemeButton
+            key={id}
+            id={id}
+            label={THEMES[id].label}
+            active={theme === id}
+            onSelect={() => selectTheme(id)}
+          />
+        ))}
+      </div>
+
+      {bonusUnlocked ? (
+        <div>
+          <div className="text-xs font-medium text-fv-text-secondary">
+            Bonus pack ✨
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {BONUS_THEME_IDS.map((id) => (
+              <ThemeButton
+                key={id}
+                id={id}
+                label={THEMES[id].label}
+                active={theme === id}
+                onSelect={() => selectTheme(id)}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => selectTheme("random")}
+            className={`mt-2 rounded-lg border-2 px-4 py-1.5 text-xs font-semibold ${
+              theme === "random"
+                ? "border-fv-accent-strong bg-fv-accent-strong text-white"
+                : "border-fv-border text-fv-text-primary hover:border-fv-accent"
+            }`}
+          >
+            🎲 Random
+          </button>
+        </div>
+      ) : null}
+
+      <label className="flex cursor-pointer items-center gap-2 text-sm text-fv-text-primary">
         <input
           type="checkbox"
           checked={dark}
@@ -106,7 +125,7 @@ export function StaffThemePicker({
         Dark mode
       </label>
       {bonusUnlocked ? (
-        <label className="flex cursor-pointer items-center gap-2 text-xs text-fv-text-primary">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-fv-text-primary">
           <input
             type="checkbox"
             checked={sparkle}
@@ -120,5 +139,38 @@ export function StaffThemePicker({
         </label>
       ) : null}
     </div>
+  );
+}
+
+function ThemeButton({
+  id,
+  label,
+  active,
+  onSelect,
+}: {
+  id: ThemeId;
+  label: string;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  const sw = themeSwatch(id);
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-2 ${
+        active
+          ? "border-fv-accent-strong"
+          : "border-fv-border hover:border-fv-accent"
+      }`}
+    >
+      <span
+        className="h-9 w-full rounded"
+        style={{ background: sw.bg, borderBottom: `4px solid ${sw.accent}` }}
+      />
+      <span className="text-center text-[11px] font-medium leading-tight text-fv-text-secondary">
+        {label}
+      </span>
+    </button>
   );
 }
