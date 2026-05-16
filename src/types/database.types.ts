@@ -242,6 +242,7 @@ export type Database = {
       }
       bulk_pushes: {
         Row: {
+          attachment_path: string | null
           cohort_filter: Json
           cohort_summary: string
           content_item_ids: string[]
@@ -257,6 +258,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attachment_path?: string | null
           cohort_filter: Json
           cohort_summary: string
           content_item_ids?: string[]
@@ -272,6 +274,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attachment_path?: string | null
           cohort_filter?: Json
           cohort_summary?: string
           content_item_ids?: string[]

@@ -14,6 +14,7 @@ import {
   type FlagStatus,
   type ZoneFilter,
 } from "@/lib/bulk-push";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { sendBulkPushAction } from "./actions";
 
 export type ContentLibraryItem = {
@@ -65,6 +66,37 @@ export function ComposeTab({
   const [scheduledAt, setScheduledAt] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attachmentPath, setAttachmentPath] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  async function handleAttachmentChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+      // Staff may write anywhere in message-attachments; the fan-out
+      // copies this path onto every delivered message.
+      const objectPath = `bulk-push/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("message-attachments")
+        .upload(objectPath, file, {
+          contentType: file.type || undefined,
+          upsert: false,
+        });
+      if (uploadErr) throw uploadErr;
+      setAttachmentPath(objectPath);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
   const [pending, startTransition] = useTransition();
 
   const hits = useMemo(
@@ -95,6 +127,7 @@ export function ComposeTab({
         contentItemIds: selectedContentIds,
         messageTitle: title,
         messageBody: body,
+        attachmentPath,
         scheduleMode,
         scheduledAt:
           scheduleMode === "later" && scheduledAt
@@ -351,6 +384,43 @@ export function ComposeTab({
                   placeholder="Write a friendly note from the care team…"
                   className="mt-2 w-full rounded-md border border-fv-border bg-fv-bg-app px-3 py-2 text-sm"
                 />
+              </div>
+              <div className="mt-4">
+                <div className={fieldLabel}>Attachment (optional)</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                  <label className="cursor-pointer rounded-md border border-fv-border bg-fv-bg-card px-3 py-1.5 font-medium text-fv-text-primary hover:bg-fv-bg-soft">
+                    {attachmentPath
+                      ? "Image attached ✓"
+                      : uploading
+                        ? "Uploading…"
+                        : "📎 Attach an image"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAttachmentChange}
+                      disabled={uploading || attachmentPath !== null}
+                      className="sr-only"
+                    />
+                  </label>
+                  {attachmentPath ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAttachmentPath(null);
+                        setUploadError(null);
+                      }}
+                      className="rounded-md border border-fv-border px-2 py-1.5 font-medium text-fv-text-secondary hover:bg-fv-bg-soft"
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                  {uploadError ? (
+                    <span className="text-red-600">{uploadError}</span>
+                  ) : null}
+                </div>
+                <p className="mt-1 text-xs text-fv-text-secondary">
+                  Delivered with the message to every recipient.
+                </p>
               </div>
             </>
           ) : null}
