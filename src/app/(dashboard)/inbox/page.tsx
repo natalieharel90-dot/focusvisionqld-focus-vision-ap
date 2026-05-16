@@ -13,9 +13,43 @@ import { ThreadRealtime } from "@/components/chat/ThreadRealtime";
 import { StaffComposer } from "./StaffComposer";
 import { InboxFilter } from "./InboxFilter";
 import { ComingSoonButton } from "./ComingSoonButton";
-import { resolveThreadAction } from "./actions";
+import { resolveThreadAction, toggleNotificationPrefAction } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+// Per-staff notification options shown at the foot of the Messages page.
+const NOTIFICATION_PREFS = [
+  {
+    key: "notify_new_message",
+    label: "Push notification — new patient message",
+    desc: "Wakes your phone when any patient sends a message",
+    fallback: true,
+  },
+  {
+    key: "notify_orange_flag",
+    label: "Push notification — Orange zone flag",
+    desc: "Highest-concern patient flags only",
+    fallback: true,
+  },
+  {
+    key: "notify_yellow_flag",
+    label: "Push notification — Yellow zone flag",
+    desc: "Mid-concern patient flags",
+    fallback: false,
+  },
+  {
+    key: "quiet_hours",
+    label: "Quiet hours on my phone",
+    desc: "No push between 7 PM – 7 AM (after-hours nurse on-call still receives)",
+    fallback: true,
+  },
+  {
+    key: "daily_digest_email",
+    label: "Daily digest email",
+    desc: "8 AM summary of yesterday's flags and unread messages",
+    fallback: true,
+  },
+] as const;
 
 type Message = Database["public"]["Tables"]["messages"]["Row"];
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -261,6 +295,13 @@ export default async function StaffInboxPage({
 
   const filterParam = filter === "all" ? "" : `&filter=${filter}`;
 
+  // The signed-in staff member's own notification preferences.
+  const { data: notifPrefs } = await supabase
+    .from("staff_notification_prefs")
+    .select("*")
+    .eq("staff_id", user.id)
+    .maybeSingle();
+
   return (
     <main className="mx-auto max-w-[1400px] px-6 py-8">
       {/* Page header */}
@@ -395,47 +436,52 @@ export default async function StaffInboxPage({
         </section>
       </div>
 
-      {/* How the shared inbox works */}
-      <section className="mt-3.5 rounded-2xl border border-fv-bg-soft bg-[#FAFCFC] p-5">
-        <h3 className="mb-2.5 text-[13px] font-semibold text-fv-text-primary">
-          How the shared inbox works
-        </h3>
-        <ul className="flex flex-col gap-1.5 text-[13px] leading-relaxed text-fv-text-secondary">
-          <li>
-            📬 Every Focus Vision staff member sees every patient thread —
-            clinical staff and reception. Replies from other team members are
-            visible to everyone, so anyone can pick up where a colleague left
-            off. Reception can handle administrative messages (appointment
-            changes, billing questions), keeping clinical staff focused on
-            clinical questions.
-          </li>
-          <li>
-            👤 Each reply is labelled with the staff name and role so the
-            patient knows who is helping them.
-          </li>
-          <li>
-            🔔 Push notifications ping when a new patient message arrives (on
-            the staff mobile app). Each staff member controls their own
-            notification preferences.
-          </li>
-          <li>
-            🗂️ A thread can be assigned to a specific staff member if it needs
-            focused follow-up, or marked Resolved when the patient&apos;s
-            question is fully answered.
-          </li>
-        </ul>
-      </section>
-
-      {/* Notification preferences — deferred to its own session */}
+      {/* Notification preferences */}
       <section className="mt-3.5 rounded-2xl border border-fv-bg-soft bg-fv-bg-card p-5">
         <h3 className="text-[13px] font-semibold text-fv-text-primary">
           Your notification preferences
         </h3>
-        <p className="mt-1 text-sm text-fv-text-secondary">
-          Coming soon — per-staff-member notification controls. Until then,
-          every staff member receives the default notification set (new
-          patient message, Orange and Red zone flags).
+        <p className="mt-0.5 text-xs text-fv-text-secondary">
+          Per staff member — your teammates can set their own.
         </p>
+        <ul className="mt-3 flex flex-col gap-2">
+          {NOTIFICATION_PREFS.map((p) => {
+            const on = notifPrefs ? notifPrefs[p.key] : p.fallback;
+            return (
+              <li
+                key={p.key}
+                className="flex items-center justify-between gap-3 rounded-xl border border-fv-bg-soft p-3"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-fv-text-primary">
+                    {p.label}
+                  </div>
+                  <div className="text-xs text-fv-text-secondary">
+                    {p.desc}
+                  </div>
+                </div>
+                <form action={toggleNotificationPrefAction}>
+                  <input type="hidden" name="pref" value={p.key} />
+                  <input
+                    type="hidden"
+                    name="enabled"
+                    value={(!on).toString()}
+                  />
+                  <button
+                    type="submit"
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      on
+                        ? "bg-fv-accent-strong text-white"
+                        : "border border-fv-border text-fv-text-secondary"
+                    }`}
+                  >
+                    {on ? "ON" : "OFF"}
+                  </button>
+                </form>
+              </li>
+            );
+          })}
+        </ul>
       </section>
     </main>
   );

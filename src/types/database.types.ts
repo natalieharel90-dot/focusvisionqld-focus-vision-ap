@@ -1605,6 +1605,44 @@ export type Database = {
           },
         ]
       }
+      staff_notification_prefs: {
+        Row: {
+          daily_digest_email: boolean
+          notify_new_message: boolean
+          notify_orange_flag: boolean
+          notify_yellow_flag: boolean
+          quiet_hours: boolean
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          daily_digest_email?: boolean
+          notify_new_message?: boolean
+          notify_orange_flag?: boolean
+          notify_yellow_flag?: boolean
+          quiet_hours?: boolean
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          daily_digest_email?: boolean
+          notify_new_message?: boolean
+          notify_orange_flag?: boolean
+          notify_yellow_flag?: boolean
+          quiet_hours?: boolean
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_notification_prefs_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_users: {
         Row: {
           access_tier: number

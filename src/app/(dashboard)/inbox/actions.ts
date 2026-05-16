@@ -5,6 +5,15 @@ import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import type { Database } from "@/types/database.types";
+
+const VALID_NOTIFICATION_PREFS = [
+  "notify_new_message",
+  "notify_orange_flag",
+  "notify_yellow_flag",
+  "quiet_hours",
+  "daily_digest_email",
+] as const;
 
 function back(threadId: string, message: string): never {
   redirect(`/inbox?thread=${threadId}&error=${encodeURIComponent(message)}`);
@@ -59,6 +68,41 @@ export async function sendStaffMessageAction(formData: FormData) {
 
   revalidatePath("/inbox");
   redirect(`/inbox?thread=${threadId}`);
+}
+
+// Toggles one of the signed-in staff member's notification preferences.
+// Returns to the same inbox state — no redirect, the page re-renders.
+export async function toggleNotificationPrefAction(formData: FormData) {
+  const pref = String(formData.get("pref") ?? "");
+  const enabled = formData.get("enabled") === "true";
+  if (!(VALID_NOTIFICATION_PREFS as readonly string[]).includes(pref)) return;
+
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  // pref is validated against the column allow-list above.
+  const patch = {
+    staff_id: user.id,
+    [pref]: enabled,
+  } as Database["public"]["Tables"]["staff_notification_prefs"]["Insert"];
+
+  const { error } = await supabase
+    .from("staff_notification_prefs")
+    .upsert(patch, { onConflict: "staff_id" });
+  if (error) {
+    console.error("[notification-prefs] upsert failed", error.message);
+    return;
+  }
+
+  await recordStaffAudit(supabase, "settings.notification_prefs_updated", {
+    entity_type: "staff_notification_prefs",
+    new_value: { [pref]: enabled },
+  });
+
+  revalidatePath("/inbox");
 }
 
 // Marks a thread resolved — it drops out of the unread count and the
