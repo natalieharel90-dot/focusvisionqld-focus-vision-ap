@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_targets: {
+        Row: {
+          checkin_completion_pct: number
+          id: boolean
+          medication_adherence_pct: number
+          red_alert_rate_pct: number
+          staff_response_hours: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          checkin_completion_pct?: number
+          id?: boolean
+          medication_adherence_pct?: number
+          red_alert_rate_pct?: number
+          staff_response_hours?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          checkin_completion_pct?: number
+          id?: boolean
+          medication_adherence_pct?: number
+          red_alert_rate_pct?: number
+          staff_response_hours?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_targets_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           appointment_type: string
@@ -1497,6 +1535,32 @@ export type Database = {
             foreignKeyName: "routing_rulesets_surgeon_id_fkey"
             columns: ["surgeon_id"]
             isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_analytics_layout: {
+        Row: {
+          card_order: string[]
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          card_order: string[]
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          card_order?: string[]
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_analytics_layout_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
             referencedRelation: "staff_users"
             referencedColumns: ["id"]
           },

@@ -35,6 +35,7 @@ export type StaffAuditEventType =
   | "analytics.viewed"
   | "analytics.exported"
   | "analytics.refreshed"
+  | "settings.analytics_targets_updated"
   | "staff.theme_changed"
   | "staff.bonus_pack_unlocked"
   | "bulkpush.sent"
