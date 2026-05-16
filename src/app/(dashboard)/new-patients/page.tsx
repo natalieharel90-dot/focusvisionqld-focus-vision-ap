@@ -253,14 +253,35 @@ export default async function NewPatientsPage({
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
-      <h1 className="text-2xl font-semibold text-fv-text-primary">
-        New patients · awaiting setup
-      </h1>
-      <p className="mt-1 text-sm text-fv-text-secondary">
-        Patients who have signed up via the app but haven&apos;t been
-        activated yet. Confirm details and assign a surgeon + procedure to
-        start their recovery journey.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-fv-text-primary">
+            New patients · awaiting setup
+          </h1>
+          <p className="mt-1 text-sm text-fv-text-secondary">
+            Patients who have signed up via the app but haven&apos;t been
+            activated yet. Confirm details and assign a surgeon + procedure
+            to start their recovery journey.
+          </p>
+        </div>
+        {/* Search — preserves the active surgeon / date filters. */}
+        <form method="get" className="w-full max-w-xs">
+          <input
+            type="hidden"
+            name="surgeon"
+            value={filters.surgeonId ?? ""}
+          />
+          <input type="hidden" name="from" value={filters.surgeryFrom ?? ""} />
+          <input type="hidden" name="to" value={filters.surgeryTo ?? ""} />
+          <input
+            type="search"
+            name="q"
+            defaultValue={filters.nameSearch ?? ""}
+            placeholder="Search by patient name…"
+            className="w-full rounded-lg border border-fv-bg-soft bg-fv-bg-card px-3 py-2 text-sm focus:border-fv-accent focus:outline-none"
+          />
+        </form>
+      </div>
 
       {/* Stat cards — 4 across, wrapping to 2×2 on narrow screens */}
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -289,8 +310,9 @@ export default async function NewPatientsPage({
       {/* Filter bar */}
       <form
         method="get"
-        className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-fv-bg-card p-4 shadow-sm sm:grid-cols-4"
+        className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-fv-bg-card p-4 shadow-sm sm:grid-cols-3"
       >
+        <input type="hidden" name="q" value={filters.nameSearch ?? ""} />
         <label className="flex flex-col gap-1 text-xs">
           <span className="font-semibold text-fv-text-secondary">Surgeon</span>
           <select
@@ -328,19 +350,7 @@ export default async function NewPatientsPage({
             className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-2 py-1.5 text-sm"
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="font-semibold text-fv-text-secondary">
-            Patient name
-          </span>
-          <input
-            type="search"
-            name="q"
-            defaultValue={filters.nameSearch ?? ""}
-            placeholder="Search…"
-            className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-2 py-1.5 text-sm"
-          />
-        </label>
-        <div className="col-span-2 flex gap-2 sm:col-span-4">
+        <div className="col-span-2 flex gap-2 sm:col-span-3">
           <button
             type="submit"
             className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white"
