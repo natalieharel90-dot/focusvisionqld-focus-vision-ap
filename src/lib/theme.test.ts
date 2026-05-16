@@ -206,6 +206,25 @@ describe("bonus theme pack — twelve extra themes", () => {
     }
   });
 
+  it("each bonus theme has a dark variant that stays legible", () => {
+    const css = buildThemeCss();
+    for (const id of BONUS_THEME_IDS) {
+      const t = THEMES[id];
+      // Surfaces darken, text lightens — the pack is usable in dark mode.
+      expect(luminance(t.dark["--fv-bg-app"]!)).toBeLessThan(
+        luminance(t.light["--fv-bg-app"]!)
+      );
+      expect(luminance(t.dark["--fv-text-primary"]!)).toBeGreaterThan(
+        luminance(t.light["--fv-text-primary"]!)
+      );
+      // The accent keeps its character, not collapsed onto a surface.
+      expect(t.dark["--fv-accent"]).toMatch(/^#[0-9A-F]{6}$/i);
+      expect(t.dark["--fv-accent"]).not.toBe(t.dark["--fv-bg-app"]);
+      // A dark rule is emitted so dark mode actually applies.
+      expect(css).toContain(`[data-theme="${id}"][data-dark]{`);
+    }
+  });
+
   it("isBonusTheme distinguishes bonus from visible themes", () => {
     expect(isBonusTheme("roots")).toBe(true);
     expect(isBonusTheme("midnight")).toBe(true);

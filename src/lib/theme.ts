@@ -79,7 +79,8 @@ export type Theme = {
 
 // Full light palette + dark overrides per the prototype. Dark blocks
 // override surfaces, text, and the accent pair; accent-2 / accent-warm /
-// danger / success cascade from light. Bonus themes are light-only.
+// danger / success cascade from light. Bonus themes carry hand-tuned
+// dark variants too, so the pack stays legible in dark mode.
 export const THEMES: Record<ThemeId, Theme> = {
   calm: {
     id: "calm",
@@ -252,8 +253,10 @@ export const THEMES: Record<ThemeId, Theme> = {
     },
   },
 
-  // ── Bonus theme pack (twelve themes) — light-only; the prototype
-  //    defines no dark variants, so dark mode leaves them unchanged. ──
+  // ── Bonus theme pack (twelve themes). Light palettes are verbatim
+  //    from the prototype; dark variants are hand-tuned here so each
+  //    theme keeps its character and stays easy on the eyes in dark
+  //    mode (the prototype shipped no dark blocks for these). ──
   roots: {
     id: "roots",
     label: "Roots",
@@ -274,7 +277,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       "--fv-success": "#4FB0BB",
       "--fv-border": "#DDD3B8",
     },
-    dark: {},
+    dark: {
+      "--fv-bg-app": "#131F1E",
+      "--fv-bg-card": "#1B2928",
+      "--fv-bg-tile": "#1B2928",
+      "--fv-bg-soft": "#24332F",
+      "--fv-bg-accent-soft": "#1D3837",
+      "--fv-text-primary": "#ECF0E6",
+      "--fv-text-secondary": "#B2C0BA",
+      "--fv-text-muted": "#7F8E89",
+      "--fv-accent": "#6FC8D1",
+      "--fv-accent-strong": "#4FB0BB",
+      "--fv-border": "#2E3C39",
+    },
   },
   gilded: {
     id: "gilded",
@@ -296,7 +311,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       "--fv-success": "#6A8E5C",
       "--fv-border": "#E8D7A8",
     },
-    dark: {},
+    dark: {
+      "--fv-bg-app": "#201A0F",
+      "--fv-bg-card": "#2A2316",
+      "--fv-bg-tile": "#2A2316",
+      "--fv-bg-soft": "#393020",
+      "--fv-bg-accent-soft": "#3D3215",
+      "--fv-text-primary": "#F6EFDA",
+      "--fv-text-secondary": "#CABD97",
+      "--fv-text-muted": "#968969",
+      "--fv-accent": "#E6BD58",
+      "--fv-accent-strong": "#D4A437",
+      "--fv-border": "#3C3322",
+    },
   },
   twilight: {
     id: "twilight",
@@ -318,7 +345,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       "--fv-success": "#6A8E5C",
       "--fv-border": "#DDC9EB",
     },
-    dark: {},
+    dark: {
+      "--fv-bg-app": "#1B1327",
+      "--fv-bg-card": "#251B33",
+      "--fv-bg-tile": "#251B33",
+      "--fv-bg-soft": "#312444",
+      "--fv-bg-accent-soft": "#2E2146",
+      "--fv-text-primary": "#EEE5F4",
+      "--fv-text-secondary": "#C2B2D1",
+      "--fv-text-muted": "#8D7B9F",
+      "--fv-accent": "#A87FD0",
+      "--fv-accent-strong": "#7E4DAB",
+      "--fv-border": "#372A49",
+    },
   },
   scarlet: {
     id: "scarlet",
@@ -340,7 +379,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       "--fv-success": "#6A8E5C",
       "--fv-border": "#ECCFCF",
     },
-    dark: {},
+    dark: {
+      "--fv-bg-app": "#251314",
+      "--fv-bg-card": "#311A1B",
+      "--fv-bg-tile": "#311A1B",
+      "--fv-bg-soft": "#422626",
+      "--fv-bg-accent-soft": "#44211F",
+      "--fv-text-primary": "#F4E3E3",
+      "--fv-text-secondary": "#CFAAAA",
+      "--fv-text-muted": "#A27878",
+      "--fv-accent": "#DE6060",
+      "--fv-accent-strong": "#C13434",
+      "--fv-border": "#492D2D",
+    },
   },
   skyline: {
     id: "skyline",
@@ -362,7 +413,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       "--fv-success": "#5BAAD5",
       "--fv-border": "#E8DDB8",
     },
-    dark: {},
+    dark: {
+      "--fv-bg-app": "#111D25",
+      "--fv-bg-card": "#192932",
+      "--fv-bg-tile": "#192932",
+      "--fv-bg-soft": "#233642",
+      "--fv-bg-accent-soft": "#1D3544",
+      "--fv-text-primary": "#E6EFF4",
+      "--fv-text-secondary": "#ADC2CE",
+      "--fv-text-muted": "#7D96A5",
+      "--fv-accent": "#7CC4E8",
+      "--fv-accent-strong": "#5BAAD5",
+      "--fv-border": "#2B3E49",
+    },
   },
   eclipse: {
     id: "eclipse",
@@ -384,7 +447,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       "--fv-success": "#5C7A4E",
       "--fv-border": "#CACACA",
     },
-    dark: {},
+    dark: {
+      "--fv-bg-app": "#151515",
+      "--fv-bg-card": "#1E1E1E",
+      "--fv-bg-tile": "#1E1E1E",
+      "--fv-bg-soft": "#2B2B2B",
+      "--fv-bg-accent-soft": "#382121",
+      "--fv-text-primary": "#ECECEC",
+      "--fv-text-secondary": "#AFAFAF",
+      "--fv-text-muted": "#7D7D7D",
+      "--fv-accent": "#E2454F",
+      "--fv-accent-strong": "#C8202E",
+      "--fv-border": "#343434",
+    },
   },
   bloom: {
     id: "bloom",
@@ -406,7 +481,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       "--fv-success": "#94D5B8",
       "--fv-border": "#F4D3E2",
     },
-    dark: {},
+    dark: {
+      "--fv-bg-app": "#251420",
+      "--fv-bg-card": "#311D2A",
+      "--fv-bg-tile": "#311D2A",
+      "--fv-bg-soft": "#422938",
+      "--fv-bg-accent-soft": "#39243F",
+      "--fv-text-primary": "#F6E4EE",
+      "--fv-text-secondary": "#D2AFC2",
+      "--fv-text-muted": "#9F7D91",
+      "--fv-accent": "#F09FC4",
+      "--fv-accent-strong": "#E682B0",
+      "--fv-border": "#492E3D",
+    },
   },
   mist: {
     id: "mist",
@@ -428,7 +515,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       "--fv-success": "#7A7A7A",
       "--fv-border": "#D8D6CE",
     },
-    dark: {},
+    dark: {
+      "--fv-bg-app": "#1A1A18",
+      "--fv-bg-card": "#242421",
+      "--fv-bg-tile": "#242421",
+      "--fv-bg-soft": "#32312D",
+      "--fv-bg-accent-soft": "#33322E",
+      "--fv-text-primary": "#ECEBE6",
+      "--fv-text-secondary": "#B5B4AD",
+      "--fv-text-muted": "#83827B",
+      "--fv-accent": "#C9C7BD",
+      "--fv-accent-strong": "#9E9C92",
+      "--fv-border": "#37362F",
+    },
   },
   ember: {
     id: "ember",
@@ -450,7 +549,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       "--fv-success": "#6A8E5C",
       "--fv-border": "#DBC6A6",
     },
-    dark: {},
+    dark: {
+      "--fv-bg-app": "#1E150B",
+      "--fv-bg-card": "#291F12",
+      "--fv-bg-tile": "#291F12",
+      "--fv-bg-soft": "#382A1A",
+      "--fv-bg-accent-soft": "#3C2B17",
+      "--fv-text-primary": "#F4E6D4",
+      "--fv-text-secondary": "#CAB495",
+      "--fv-text-muted": "#968269",
+      "--fv-accent": "#D2925C",
+      "--fv-accent-strong": "#B8723C",
+      "--fv-border": "#3C2E1E",
+    },
   },
   midnight: {
     id: "midnight",
@@ -472,7 +583,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       "--fv-success": "#6A8E5C",
       "--fv-border": "#C2C9DE",
     },
-    dark: {},
+    dark: {
+      "--fv-bg-app": "#0D1126",
+      "--fv-bg-card": "#151A36",
+      "--fv-bg-tile": "#151A36",
+      "--fv-bg-soft": "#1E254A",
+      "--fv-bg-accent-soft": "#1F264D",
+      "--fv-text-primary": "#E4E7F4",
+      "--fv-text-secondary": "#AFB6D1",
+      "--fv-text-muted": "#7D839F",
+      "--fv-accent": "#7180DC",
+      "--fv-accent-strong": "#4A5AC4",
+      "--fv-border": "#29314F",
+    },
   },
   inkwell: {
     id: "inkwell",
@@ -494,7 +617,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       "--fv-success": "#5C5848",
       "--fv-border": "#BFB59A",
     },
-    dark: {},
+    dark: {
+      "--fv-bg-app": "#16140F",
+      "--fv-bg-card": "#1F1D16",
+      "--fv-bg-tile": "#1F1D16",
+      "--fv-bg-soft": "#2C2920",
+      "--fv-bg-accent-soft": "#2F2B21",
+      "--fv-text-primary": "#EDE7D6",
+      "--fv-text-secondary": "#BFB69D",
+      "--fv-text-muted": "#8B8268",
+      "--fv-accent": "#C9BD9C",
+      "--fv-accent-strong": "#B89A6E",
+      "--fv-border": "#343022",
+    },
   },
   limelight: {
     id: "limelight",
@@ -516,7 +651,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       "--fv-success": "#5FAE92",
       "--fv-border": "#F5D2B0",
     },
-    dark: {},
+    dark: {
+      "--fv-bg-app": "#201610",
+      "--fv-bg-card": "#2B2015",
+      "--fv-bg-tile": "#2B2015",
+      "--fv-bg-soft": "#3B2B1D",
+      "--fv-bg-accent-soft": "#283A33",
+      "--fv-text-primary": "#F5E6D6",
+      "--fv-text-secondary": "#CFB39B",
+      "--fv-text-muted": "#9B836F",
+      "--fv-accent": "#F5A468",
+      "--fv-accent-strong": "#F08A3C",
+      "--fv-border": "#3E2E21",
+    },
   },
 };
 
