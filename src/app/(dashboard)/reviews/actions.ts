@@ -10,15 +10,24 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 // thread and marks the feedback acknowledged (spec §5.9 staff side).
 export async function replyToFeedbackAction(formData: FormData) {
   const feedbackId = String(formData.get("feedback_id") ?? "");
-  const target = String(formData.get("target") ?? "clinic");
   const body = String(formData.get("body") ?? "").trim();
 
-  const back = (msg?: string): never =>
-    redirect(
-      `/reviews?target=${target}${
-        msg ? `&error=${encodeURIComponent(msg)}` : ""
-      }`
-    );
+  // Preserve the staff member's filter + search when we redirect back.
+  const params = new URLSearchParams();
+  const filter = String(formData.get("filter") ?? "").trim();
+  const q = String(formData.get("q") ?? "").trim();
+  const page = String(formData.get("page") ?? "").trim();
+  if (filter && filter !== "all") params.set("filter", filter);
+  if (q) params.set("q", q);
+  if (page && page !== "1") params.set("page", page);
+  const reviewsUrl = (extra?: string) => {
+    const p = new URLSearchParams(params);
+    if (extra) p.set("error", extra);
+    const s = p.toString();
+    return `/reviews${s ? `?${s}` : ""}`;
+  };
+
+  const back = (msg?: string): never => redirect(reviewsUrl(msg));
 
   if (!feedbackId) back("Missing feedback id.");
   if (!body) back("Write a reply before sending.");
@@ -84,5 +93,5 @@ export async function replyToFeedbackAction(formData: FormData) {
   });
 
   revalidatePath("/reviews");
-  redirect(`/reviews?target=${target}`);
+  redirect(reviewsUrl());
 }
