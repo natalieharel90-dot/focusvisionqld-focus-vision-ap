@@ -1,7 +1,10 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
 import { recordStaffAudit } from "@/lib/audit";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -117,14 +120,17 @@ export async function saveClinicProfileAction(formData: FormData) {
   back("profile");
 }
 
-// ── Tab 2 · Doctors ──────────────────────────────────────────────────────
+// ── Tab 2 · Staff ────────────────────────────────────────────────────────
+// The staff roster is staff_users. saveDoctorAction edits an existing row;
+// a new staff member needs an auth account (see addStaffAction).
 export async function saveDoctorAction(formData: FormData) {
   const { supabase } = await requireEditor();
   const id = String(formData.get("id") ?? "").trim();
   const str = (k: string) => String(formData.get(k) ?? "").trim();
   const name = str("name");
-  const role = str("role");
-  if (!name) back("doctors", "Doctor name is required.");
+  const role = str("role").toLowerCase();
+  if (!id) back("doctors", "Missing staff id.");
+  if (!name) back("doctors", "Staff name is required.");
 
   // Optional photo upload to the public doctor-photos bucket.
   let photoUrl: string | null = str("photo_url") || null;
@@ -140,36 +146,76 @@ export async function saveDoctorAction(formData: FormData) {
       .data.publicUrl;
   }
 
-  const fields = {
-    name,
-    role,
-    email: str("email") || null,
-    phone: str("phone") || null,
-    bio: str("bio") || null,
-    photo_url: photoUrl,
-  };
+  const { error } = await supabase
+    .from("staff_users")
+    .update({
+      name,
+      display_name: name,
+      role,
+      phone: str("phone") || null,
+      bio: str("bio") || null,
+      photo_url: photoUrl,
+    })
+    .eq("id", id);
+  if (error) back("doctors", error.message);
 
-  let docId = id;
-  if (id) {
-    const { error } = await supabase
-      .from("doctors")
-      .update(fields)
-      .eq("id", id);
-    if (error) back("doctors", error.message);
-  } else {
-    const { data, error } = await supabase
-      .from("doctors")
-      .insert(fields)
-      .select("id")
-      .single();
-    if (error || !data) back("doctors", error?.message ?? "Could not add.");
-    docId = data.id;
+  await recordStaffAudit(supabase, "settings.doctor_updated", {
+    entity_type: "staff_user",
+    entity_id: id,
+    new_value: { name, role, change: "updated" },
+  });
+  revalidatePath("/settings/clinic");
+  back("doctors");
+}
+
+// Adds a new staff member. staff_users.id is an auth.users id, so the
+// account is created via the Admin API (service-role key, server-only),
+// flagged is_invited_only until they complete their own sign-in setup.
+export async function addStaffAction(formData: FormData) {
+  const { supabase } = await requireEditor();
+  const str = (k: string) => String(formData.get(k) ?? "").trim();
+  const name = str("name");
+  const email = str("email").toLowerCase();
+  const role = str("role").toLowerCase();
+  if (!name) back("doctors", "Name is required.");
+  if (!email) back("doctors", "Email is required.");
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    back("doctors", "Staff invites aren't configured on this environment.");
+  }
+
+  const admin = createClient(url!, serviceKey!, {
+    auth: { persistSession: false },
+  });
+  const password = randomBytes(24).toString("base64url");
+  const { data: created, error: createErr } =
+    await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  if (createErr || !created.user) {
+    back("doctors", createErr?.message ?? "Could not create the account.");
+  }
+  const uid = created!.user.id;
+
+  const { error: insErr } = await admin.from("staff_users").insert({
+    id: uid,
+    email,
+    name,
+    display_name: name,
+    role,
+    is_invited_only: true,
+    active: true,
+  });
+  if (insErr) {
+    // Roll back the orphaned auth user so a retry isn't blocked.
+    await admin.auth.admin.deleteUser(uid);
+    back("doctors", insErr.message);
   }
 
   await recordStaffAudit(supabase, "settings.doctor_updated", {
-    entity_type: "doctor",
-    entity_id: docId,
-    new_value: { name, role, change: id ? "updated" : "added" },
+    entity_type: "staff_user",
+    entity_id: uid,
+    new_value: { name, role, change: "added", is_invited_only: true },
   });
   revalidatePath("/settings/clinic");
   back("doctors");
@@ -181,6 +227,19 @@ export async function saveDoctorVideoAction(formData: FormData) {
   const { supabase } = await requireEditor();
   const id = String(formData.get("id") ?? "").trim();
   if (!id) back("doctors", "Missing doctor id.");
+
+  // Welcome videos are a surgeon-only feature.
+  const { data: staff } = await supabase
+    .from("staff_users")
+    .select("role")
+    .eq("id", id)
+    .maybeSingle();
+  if (staff?.role !== "surgeon") {
+    back(
+      "doctors",
+      "Welcome videos can only be uploaded for staff with the Surgeon role."
+    );
+  }
 
   const file = formData.get("video");
   if (!(file instanceof File) || file.size === 0) {
@@ -197,13 +256,13 @@ export async function saveDoctorVideoAction(formData: FormData) {
     .publicUrl;
 
   const { error } = await supabase
-    .from("doctors")
+    .from("staff_users")
     .update({ welcome_video_url: url })
     .eq("id", id);
   if (error) back("doctors", error.message);
 
   await recordStaffAudit(supabase, "settings.doctor_updated", {
-    entity_type: "doctor",
+    entity_type: "staff_user",
     entity_id: id,
     new_value: { welcome_video: "uploaded" },
   });
@@ -211,40 +270,23 @@ export async function saveDoctorVideoAction(formData: FormData) {
   back("doctors");
 }
 
-// Removes a doctor from the clinic roster. The doctors table is a
-// standalone roster (procedures reference staff_users, not this table),
-// so a hard delete is safe.
-export async function deleteDoctorAction(formData: FormData) {
-  const { supabase } = await requireEditor();
-  const id = String(formData.get("id") ?? "").trim();
-  if (!id) back("doctors", "Missing doctor id.");
-
-  const { error } = await supabase.from("doctors").delete().eq("id", id);
-  if (error) back("doctors", error.message);
-
-  await recordStaffAudit(supabase, "settings.doctor_updated", {
-    entity_type: "doctor",
-    entity_id: id,
-    new_value: { change: "removed" },
-  });
-  revalidatePath("/settings/clinic");
-  back("doctors");
-}
-
+// Staff members are never hard-deleted (the row backs an auth account and
+// is referenced by audit history) — "remove" is a soft-delete that sets
+// active = false, which also drops them from the surgeon dropdowns.
 export async function toggleDoctorActiveAction(formData: FormData) {
   const { supabase } = await requireEditor();
   const id = String(formData.get("id") ?? "");
   const active = String(formData.get("active") ?? "") === "true";
-  if (!id) back("doctors", "Missing doctor id.");
+  if (!id) back("doctors", "Missing staff id.");
 
   const { error } = await supabase
-    .from("doctors")
+    .from("staff_users")
     .update({ active })
     .eq("id", id);
   if (error) back("doctors", error.message);
 
   await recordStaffAudit(supabase, "settings.doctor_updated", {
-    entity_type: "doctor",
+    entity_type: "staff_user",
     entity_id: id,
     new_value: { active, change: active ? "reactivated" : "deactivated" },
   });

@@ -21,8 +21,10 @@ export default async function ClinicSettingsPage({
   const [profileRes, doctorsRes, rolesRes] = await Promise.all([
     supabase.from("clinic_profile").select("*").limit(1).maybeSingle(),
     supabase
-      .from("doctors")
-      .select("*")
+      .from("staff_users")
+      .select(
+        "id, name, role, email, phone, photo_url, bio, active, welcome_video_url, is_invited_only"
+      )
       .order("active", { ascending: false })
       .order("name"),
     supabase.from("staff_roles").select("id, name").order("name"),

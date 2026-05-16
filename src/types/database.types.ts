@@ -503,48 +503,6 @@ export type Database = {
         }
         Relationships: []
       }
-      doctors: {
-        Row: {
-          active: boolean
-          bio: string | null
-          created_at: string
-          email: string | null
-          id: string
-          name: string
-          phone: string | null
-          photo_url: string | null
-          role: string
-          updated_at: string
-          welcome_video_url: string | null
-        }
-        Insert: {
-          active?: boolean
-          bio?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          name: string
-          phone?: string | null
-          photo_url?: string | null
-          role: string
-          updated_at?: string
-          welcome_video_url?: string | null
-        }
-        Update: {
-          active?: boolean
-          bio?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          name?: string
-          phone?: string | null
-          photo_url?: string | null
-          role?: string
-          updated_at?: string
-          welcome_video_url?: string | null
-        }
-        Relationships: []
-      }
       documents: {
         Row: {
           category: string
@@ -1676,48 +1634,69 @@ export type Database = {
       staff_users: {
         Row: {
           access_tier: number
+          active: boolean
+          bio: string | null
           bonus_pack_unlocked: boolean
           created_at: string
           dark_mode: boolean
+          display_name: string | null
           email: string
           id: string
+          is_invited_only: boolean
           mfa_secret: string | null
           name: string
-          role: Database["public"]["Enums"]["staff_role"]
+          phone: string | null
+          photo_url: string | null
+          role: string
           sparkle: boolean
           text_size: string
           theme: string
           updated_at: string
+          welcome_video_url: string | null
         }
         Insert: {
           access_tier?: number
+          active?: boolean
+          bio?: string | null
           bonus_pack_unlocked?: boolean
           created_at?: string
           dark_mode?: boolean
+          display_name?: string | null
           email: string
           id: string
+          is_invited_only?: boolean
           mfa_secret?: string | null
           name: string
-          role: Database["public"]["Enums"]["staff_role"]
+          phone?: string | null
+          photo_url?: string | null
+          role: string
           sparkle?: boolean
           text_size?: string
           theme?: string
           updated_at?: string
+          welcome_video_url?: string | null
         }
         Update: {
           access_tier?: number
+          active?: boolean
+          bio?: string | null
           bonus_pack_unlocked?: boolean
           created_at?: string
           dark_mode?: boolean
+          display_name?: string | null
           email?: string
           id?: string
+          is_invited_only?: boolean
           mfa_secret?: string | null
           name?: string
-          role?: Database["public"]["Enums"]["staff_role"]
+          phone?: string | null
+          photo_url?: string | null
+          role?: string
           sparkle?: boolean
           text_size?: string
           theme?: string
           updated_at?: string
+          welcome_video_url?: string | null
         }
         Relationships: []
       }
@@ -2057,24 +2036,28 @@ export type Database = {
         Returns: string
       }
       create_staff_user: {
-        Args: {
-          p_name: string
-          p_role: Database["public"]["Enums"]["staff_role"]
-        }
+        Args: { p_name: string; p_role: string }
         Returns: {
           access_tier: number
+          active: boolean
+          bio: string | null
           bonus_pack_unlocked: boolean
           created_at: string
           dark_mode: boolean
+          display_name: string | null
           email: string
           id: string
+          is_invited_only: boolean
           mfa_secret: string | null
           name: string
-          role: Database["public"]["Enums"]["staff_role"]
+          phone: string | null
+          photo_url: string | null
+          role: string
           sparkle: boolean
           text_size: string
           theme: string
           updated_at: string
+          welcome_video_url: string | null
         }
         SetofOptions: {
           from: "*"
@@ -2117,7 +2100,6 @@ export type Database = {
       procedure_status: "active" | "completed" | "cancelled"
       route_action: "off" | "yellow" | "orange" | "red"
       staff_alert_level: "none" | "yellow" | "orange" | "red"
-      staff_role: "surgeon" | "optometrist" | "nurse" | "reception"
       vision_assessment: "worse" | "same" | "better"
     }
     CompositeTypes: {
@@ -2256,7 +2238,6 @@ export const Constants = {
       procedure_status: ["active", "completed", "cancelled"],
       route_action: ["off", "yellow", "orange", "red"],
       staff_alert_level: ["none", "yellow", "orange", "red"],
-      staff_role: ["surgeon", "optometrist", "nurse", "reception"],
       vision_assessment: ["worse", "same", "better"],
     },
   },

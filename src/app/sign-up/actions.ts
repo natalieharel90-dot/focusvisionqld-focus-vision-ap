@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import type { Database } from "@/types/database.types";
 
 const STAFF_EMAIL_DOMAIN = "@focusvision.com.au";
 
@@ -12,7 +11,9 @@ const STAFF_EMAIL_DOMAIN = "@focusvision.com.au";
 // what name/role to insert into staff_users after the factor is verified.
 const PENDING_STAFF_COOKIE = "fv_pending_staff";
 
-type StaffRole = Database["public"]["Enums"]["staff_role"];
+// Self-service sign-up offers the standard clinical roles. role is plain
+// text on staff_users now; the wider role list lives in staff_roles.
+type StaffRole = "surgeon" | "optometrist" | "nurse" | "reception";
 const STAFF_ROLES: ReadonlyArray<StaffRole> = [
   "surgeon",
   "optometrist",

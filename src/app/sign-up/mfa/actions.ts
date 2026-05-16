@@ -5,13 +5,12 @@ import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import type { Database } from "@/types/database.types";
 
 const PENDING_STAFF_COOKIE = "fv_pending_staff";
 
 type PendingStaff = {
   name: string;
-  role: Database["public"]["Enums"]["staff_role"];
+  role: string;
 };
 
 function backToEnroll(message: string): never {

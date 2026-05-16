@@ -2,9 +2,9 @@ import { initials } from "@/lib/bulk-push";
 import { AddRoleModal } from "./AddRoleModal";
 import { DoctorModal, type Doctor } from "./DoctorModal";
 import {
-  deleteDoctorAction,
   saveDoctorAction,
   saveDoctorVideoAction,
+  toggleDoctorActiveAction,
 } from "./actions";
 
 const fieldLabel =
@@ -44,13 +44,14 @@ export function DoctorsTab({
             Staff
           </h2>
           <p className="mt-0.5 text-xs text-fv-text-secondary">
-            Clinical and admin staff. Each can optionally upload a welcome
-            video that plays for their patients on the patient app.
+            Everyone who works at Focus Vision. Surgeons here are the options
+            shown in every surgeon dropdown across the dashboard. Each surgeon
+            can optionally upload a welcome video for their patients.
           </p>
         </div>
         {canEdit ? (
           <div className="flex shrink-0 flex-col items-stretch gap-2">
-            <DoctorModal doctor={null} roles={roleNames} />
+            <DoctorModal roles={roleNames} />
             <AddRoleModal roles={roles} />
           </div>
         ) : null}
@@ -58,7 +59,7 @@ export function DoctorsTab({
 
       {doctors.length === 0 ? (
         <p className="mt-4 rounded-xl bg-fv-bg-soft/50 p-6 text-center text-sm text-fv-text-secondary">
-          No doctors yet.
+          No staff yet.
         </p>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
@@ -69,7 +70,7 @@ export function DoctorsTab({
                 doctor.active ? "" : "opacity-60"
               }`}
             >
-              {/* Name / role / email — inline editable */}
+              {/* Name / role — inline editable */}
               <form action={saveDoctorAction}>
                 <input type="hidden" name="id" value={doctor.id} />
                 <input type="hidden" name="phone" value={doctor.phone ?? ""} />
@@ -80,11 +81,7 @@ export function DoctorsTab({
                 />
                 <div className="flex flex-wrap items-start gap-4">
                   <label
-                    title={
-                      canEdit
-                        ? "Choose a photo, then Save"
-                        : undefined
-                    }
+                    title={canEdit ? "Choose a photo, then Save" : undefined}
                     className={`mt-5 block h-12 w-12 shrink-0 overflow-hidden rounded-full ${
                       canEdit ? "cursor-pointer" : ""
                     }`}
@@ -134,22 +131,18 @@ export function DoctorsTab({
                         className={fieldInput}
                       >
                         {roleNames.map((r) => (
-                          <option key={r} value={r}>
+                          <option key={r} value={r.toLowerCase()}>
                             {r}
                           </option>
                         ))}
                       </select>
                     </label>
-                    <label>
+                    <div>
                       <span className={fieldLabel}>Email</span>
-                      <input
-                        name="email"
-                        type="email"
-                        defaultValue={doctor.email ?? ""}
-                        disabled={!canEdit}
-                        className={fieldInput}
-                      />
-                    </label>
+                      <div className="mt-1 truncate rounded-lg border border-fv-bg-soft bg-fv-bg-app px-3 py-2 text-sm text-fv-text-secondary">
+                        {doctor.email ?? "—"}
+                      </div>
+                    </div>
                   </div>
                   {canEdit ? (
                     <button
@@ -158,6 +151,18 @@ export function DoctorsTab({
                     >
                       Save
                     </button>
+                  ) : null}
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {doctor.is_invited_only ? (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">
+                      Invited · sign-in not set up
+                    </span>
+                  ) : null}
+                  {!doctor.active ? (
+                    <span className="rounded-full bg-fv-bg-soft px-2 py-0.5 text-[10px] font-semibold text-fv-text-secondary">
+                      Inactive
+                    </span>
                   ) : null}
                 </div>
                 {canEdit ? (
@@ -176,8 +181,8 @@ export function DoctorsTab({
                 ) : null}
               </form>
 
-              {/* Welcome video — its own form (forms cannot nest) */}
-              {canEdit ? (
+              {/* Welcome video — surgeon-only; its own form (no nesting) */}
+              {doctor.role === "surgeon" && canEdit ? (
                 <form
                   action={saveDoctorVideoAction}
                   className={`mt-3 rounded-lg p-3 ${
@@ -191,7 +196,7 @@ export function DoctorsTab({
                     <span className="text-sm text-fv-text-primary">
                       🎬 <strong>Welcome video</strong>
                       {doctor.welcome_video_url
-                        ? " — uploaded · plays for this doctor's patients"
+                        ? " — uploaded · plays for this surgeon's patients"
                         : " — not uploaded · optional"}
                     </span>
                     <div className="flex items-center gap-2">
@@ -224,27 +229,46 @@ export function DoctorsTab({
                     </div>
                   </div>
                 </form>
-              ) : doctor.welcome_video_url ? (
+              ) : doctor.role === "surgeon" && doctor.welcome_video_url ? (
                 <p className="mt-3 text-xs text-fv-text-secondary">
                   🎬 Welcome video uploaded.
                 </p>
               ) : null}
 
+              {/* Activate / deactivate (soft-delete) */}
               {canEdit ? (
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-xs font-semibold text-red-600">
-                    Remove from roster
-                  </summary>
-                  <form action={deleteDoctorAction} className="mt-1.5">
-                    <input type="hidden" name="id" value={doctor.id} />
+                <form action={toggleDoctorActiveAction} className="mt-2">
+                  <input type="hidden" name="id" value={doctor.id} />
+                  <input
+                    type="hidden"
+                    name="active"
+                    value={doctor.active ? "false" : "true"}
+                  />
+                  {doctor.active ? (
+                    <details>
+                      <summary className="cursor-pointer text-xs font-semibold text-red-600">
+                        Remove from roster
+                      </summary>
+                      <button
+                        type="submit"
+                        className="mt-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                      >
+                        Yes, deactivate {doctor.name}
+                      </button>
+                      <p className="mt-1 text-[10px] text-fv-text-secondary">
+                        Deactivating removes them from surgeon dropdowns but
+                        keeps their history. They can be reactivated anytime.
+                      </p>
+                    </details>
+                  ) : (
                     <button
                       type="submit"
-                      className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                      className="rounded-md border border-fv-border px-3 py-1.5 text-xs font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
                     >
-                      Yes, remove {doctor.name}
+                      Reactivate {doctor.name}
                     </button>
-                  </form>
-                </details>
+                  )}
+                </form>
               ) : null}
             </div>
           ))}
