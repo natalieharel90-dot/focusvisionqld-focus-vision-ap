@@ -31,6 +31,18 @@ export function ClinicProfileTab({
 
   return (
     <form action={saveClinicProfileAction} className="flex flex-col gap-5">
+      {/* After-hours notice is edited on Settings → Contact screen; carry
+          the current values so this save does not clear them. */}
+      <input
+        type="hidden"
+        name="after_hours_phone"
+        value={profile.after_hours_phone}
+      />
+      <input
+        type="hidden"
+        name="after_hours_message"
+        value={profile.after_hours_message}
+      />
       <fieldset disabled={!canEdit} className="flex flex-col gap-5">
         <section className="rounded-2xl border border-fv-bg-soft bg-fv-bg-card p-5 shadow-sm">
           <h2 className="text-base font-semibold text-fv-text-primary">
@@ -73,15 +85,6 @@ export function ClinicProfileTab({
               />
             </label>
             <label>
-              <span className={labelClass}>After-hours emergency</span>
-              <input
-                name="after_hours_phone"
-                required
-                defaultValue={profile.after_hours_phone}
-                className={inputClass}
-              />
-            </label>
-            <label>
               <span className={labelClass}>Email</span>
               <input
                 name="email"
@@ -105,16 +108,6 @@ export function ClinicProfileTab({
                 readOnly
                 disabled
                 className={`${inputClass} opacity-60`}
-              />
-            </label>
-            <label className="sm:col-span-2">
-              <span className={labelClass}>After-hours message</span>
-              <textarea
-                name="after_hours_message"
-                required
-                rows={3}
-                defaultValue={profile.after_hours_message}
-                className={inputClass}
               />
             </label>
           </div>

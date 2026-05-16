@@ -369,6 +369,7 @@ export type Database = {
         Row: {
           abn: string | null
           address: string
+          after_hours_label: string
           after_hours_message: string
           after_hours_phone: string
           created_at: string
@@ -384,6 +385,7 @@ export type Database = {
         Insert: {
           abn?: string | null
           address: string
+          after_hours_label?: string
           after_hours_message: string
           after_hours_phone: string
           created_at?: string
@@ -399,6 +401,7 @@ export type Database = {
         Update: {
           abn?: string | null
           address?: string
+          after_hours_label?: string
           after_hours_message?: string
           after_hours_phone?: string
           created_at?: string

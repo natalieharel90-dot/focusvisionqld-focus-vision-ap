@@ -75,7 +75,7 @@ export default async function PatientContactPage() {
             href={`tel:${clinic.after_hours_phone.replace(/[^\d+]/g, "")}`}
             className="mt-3 flex items-center justify-center gap-2 rounded-md bg-fv-accent-strong px-4 py-2.5 text-sm font-semibold text-white"
           >
-            📞 Call after-hours line · {clinic.after_hours_phone}
+            📞 {clinic.after_hours_label} · {clinic.after_hours_phone}
           </a>
           <p className="mt-2 text-xs text-fv-text-secondary">
             {clinic.after_hours_message}

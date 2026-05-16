@@ -13,12 +13,16 @@ import {
 } from "@/lib/clinic-settings";
 import type { Json } from "@/types/database.types";
 
+// Clinic-family tabs span three routes after the Settings reorg — map
+// each tab key to the page it now lives on.
 function back(tab: string, error?: string): never {
-  redirect(
-    `/settings/clinic?tab=${tab}${
-      error ? `&error=${encodeURIComponent(error)}` : ""
-    }`
-  );
+  const route =
+    tab === "facilities"
+      ? "/settings/partners"
+      : tab === "contact" || tab === "templates" || tab === "content"
+        ? "/settings/contact"
+        : "/settings/clinic";
+  redirect(`${route}${error ? `?error=${encodeURIComponent(error)}` : ""}`);
 }
 
 // Every clinic-settings write goes through this. The page is open to all
@@ -30,6 +34,43 @@ async function requireEditor() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
   return { supabase, userId: user.id };
+}
+
+// Saves just the after-hours emergency notice (a targeted clinic_profile
+// update so the rest of the profile is untouched).
+export async function saveAfterHoursNoticeAction(formData: FormData) {
+  const { supabase } = await requireEditor();
+  const str = (k: string) => String(formData.get(k) ?? "").trim();
+  const phone = str("after_hours_phone");
+  const message = str("after_hours_message");
+  const label = str("after_hours_label") || "After hours emergency";
+  if (!phone) back("contact", "After-hours phone is required.");
+  if (!message) back("contact", "Message text is required.");
+
+  const { data: row } = await supabase
+    .from("clinic_profile")
+    .select("id")
+    .limit(1)
+    .maybeSingle();
+  if (!row) back("contact", "No clinic profile row found.");
+
+  const { error } = await supabase
+    .from("clinic_profile")
+    .update({
+      after_hours_phone: phone,
+      after_hours_message: message,
+      after_hours_label: label,
+    })
+    .eq("id", row!.id);
+  if (error) back("contact", error.message);
+
+  await recordStaffAudit(supabase, "settings.clinic_profile_updated", {
+    entity_type: "clinic_profile",
+    entity_id: row!.id,
+    new_value: { after_hours_notice: true },
+  });
+  revalidatePath("/settings/contact");
+  back("contact");
 }
 
 // ── Tab 1 · Clinic profile ───────────────────────────────────────────────
