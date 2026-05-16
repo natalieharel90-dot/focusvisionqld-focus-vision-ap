@@ -337,6 +337,7 @@ export default async function PatientDetailPage({
     featureFlagsResult,
     featureDefaultsResult,
     pinnedContentResult,
+    threadResult,
   ] = await Promise.all([
     supabase.from("patients").select("*").eq("id", patientId).maybeSingle(),
     supabase
@@ -385,8 +386,14 @@ export default async function PatientDetailPage({
       .select("id, kind, label")
       .eq("patient_id", patientId)
       .order("created_at"),
+    supabase
+      .from("message_threads")
+      .select("id")
+      .eq("patient_id", patientId)
+      .maybeSingle(),
   ]);
   const pinnedContent = pinnedContentResult.data ?? [];
+  const messageThreadId = threadResult.data?.id ?? null;
 
   const patient = patientResult.data as Patient | null;
   if (!patient) notFound();
@@ -480,14 +487,6 @@ export default async function PatientDetailPage({
           <p className="mt-1 text-sm text-fv-text-secondary">
             {metaParts.join(" · ")}
           </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <Link
-            href="/inbox"
-            className="rounded-md border border-fv-border px-4 py-2 text-sm font-semibold text-fv-text-primary hover:bg-fv-bg-soft/50"
-          >
-            Message
-          </Link>
         </div>
       </section>
 
@@ -1560,7 +1559,11 @@ export default async function PatientDetailPage({
                 </a>
               ) : null}
               <Link
-                href="/inbox"
+                href={
+                  messageThreadId
+                    ? `/inbox?thread=${messageThreadId}`
+                    : "/inbox"
+                }
                 className="rounded-md border border-fv-bg-soft px-3 py-2 text-left font-medium text-fv-text-primary hover:bg-fv-bg-soft/50"
               >
                 💬 Send in-app message
@@ -1570,12 +1573,6 @@ export default async function PatientDetailPage({
                 className="rounded-md border border-fv-bg-soft px-3 py-2 text-left font-medium text-fv-text-primary hover:bg-fv-bg-soft/50"
               >
                 📅 Schedule check-in
-              </a>
-              <a
-                href="#manual-flags"
-                className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-left font-medium text-amber-800 hover:bg-amber-100"
-              >
-                🚩 Manually flag for review
               </a>
               <a
                 href="#documents"
