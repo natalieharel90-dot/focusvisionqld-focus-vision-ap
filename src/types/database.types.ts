@@ -1150,6 +1150,47 @@ export type Database = {
           },
         ]
       }
+      patient_phone_verifications: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          patient_id: string
+          phone: string
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          patient_id: string
+          phone: string
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          patient_id?: string
+          phone?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_phone_verifications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_pinned_content: {
         Row: {
           ad_hoc_message: string | null
