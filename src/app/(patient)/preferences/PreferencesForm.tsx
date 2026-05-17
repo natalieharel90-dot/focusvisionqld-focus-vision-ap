@@ -362,21 +362,21 @@ function Switch({
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
+  // Flex + justify positions the knob inside the padded track, so it
+  // stays aligned at any root font size (no magic-pixel offsets).
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-        checked ? "bg-fv-accent-strong" : "bg-fv-bg-soft"
+      className={`flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+        checked
+          ? "justify-end bg-fv-accent-strong"
+          : "justify-start bg-fv-bg-soft"
       }`}
     >
-      <span
-        className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-[22px]" : "translate-x-0.5"
-        }`}
-      />
+      <span className="h-6 w-6 rounded-full bg-white shadow-sm" />
     </button>
   );
 }
