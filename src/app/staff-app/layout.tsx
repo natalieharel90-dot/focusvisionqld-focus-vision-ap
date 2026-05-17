@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { initials } from "@/lib/bulk-push";
-import { BottomNav } from "./StaffAppNav";
+import { TopTabs, BottomNav } from "./StaffAppNav";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +82,8 @@ export default async function StaffAppLayout({
           </div>
         </div>
       </header>
+
+      <TopTabs />
 
       <main className="flex-1 pb-24">{children}</main>
 
