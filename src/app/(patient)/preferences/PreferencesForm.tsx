@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 
 import {
   BONUS_THEME_IDS,
@@ -10,14 +10,20 @@ import {
   THEMES,
   THEME_IDS,
   pickRandomBonusTheme,
-  themeSwatch,
   type ThemeId,
 } from "@/lib/theme";
 import { savePreferencesAction, type PreferencesPayload } from "./actions";
 
+type Account = {
+  name: string;
+  email: string | null;
+  phone: string | null;
+};
+
 type Props = {
   initial: PreferencesPayload;
   bonusUnlocked: boolean;
+  account: Account;
 };
 
 // Applies appearance preferences to the patient root container so the
@@ -39,7 +45,15 @@ function applyAppearance(p: PreferencesPayload) {
   else root.removeAttribute("data-motion");
 }
 
-export function PreferencesForm({ initial, bonusUnlocked }: Props) {
+// Three representative colours per theme for the swatch row.
+function themePalette(id: ThemeId): string[] {
+  const p = THEMES[id].light;
+  return [p["--fv-accent"]!, p["--fv-accent-2"]!, p["--fv-bg-app"]!];
+}
+
+const card = "rounded-2xl bg-fv-bg-card p-4 shadow-sm";
+
+export function PreferencesForm({ initial, bonusUnlocked, account }: Props) {
   const [prefs, setPrefs] = useState<PreferencesPayload>(initial);
   const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
@@ -55,103 +69,62 @@ export function PreferencesForm({ initial, bonusUnlocked }: Props) {
     });
   }
 
-  const card = "rounded-2xl bg-fv-bg-card p-5 shadow-sm";
-  const sectionTitle = "text-sm font-semibold text-fv-text-primary";
+  const langLabel =
+    LANGUAGES.find((l) => l.id === prefs.language)?.label ?? "English";
 
   return (
-    <div className="flex flex-col gap-5 px-5 py-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-fv-text-primary">
-          Settings
-        </h1>
-        <span className="text-xs text-fv-text-secondary">
-          {pending
-            ? "Saving…"
-            : status === "saved"
-              ? "Saved ✓"
-              : status === "error"
-                ? "Save failed"
-                : ""}
-        </span>
+    <div className="flex flex-col gap-6 px-5 py-6">
+      <header>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-3xl font-bold text-fv-text-primary">Settings</h1>
+          <span className="mt-2 shrink-0 text-xs text-fv-text-secondary">
+            {pending
+              ? "Saving…"
+              : status === "saved"
+                ? "Saved ✓"
+                : status === "error"
+                  ? "Save failed"
+                  : ""}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-fv-text-secondary">
+          Make the app comfortable for your eyes
+        </p>
       </header>
 
       {/* ── Appearance ── */}
-      <section className={card}>
-        <h2 className={sectionTitle}>Appearance</h2>
-
-        <div className="mt-3">
-          <div className="text-xs font-medium text-fv-text-secondary">
-            Theme
-          </div>
-          <div className="mt-2 grid grid-cols-5 gap-2">
-            {THEME_IDS.map((id: ThemeId) => (
-              <ThemeSwatch
-                key={id}
-                id={id}
-                active={prefs.theme === id}
-                onSelect={() => update({ theme: id })}
-              />
-            ))}
-          </div>
-        </div>
-
-        <ToggleRow
-          label="Dark mode"
+      <Section title="Appearance">
+        <ToggleCard
+          title="Dark mode"
+          sub="Easier in low light & post-op sensitivity"
           checked={prefs.dark_mode}
           onChange={(v) => update({ dark_mode: v })}
         />
+      </Section>
 
-        <div className="mt-3">
-          <div className="text-xs font-medium text-fv-text-secondary">
-            Text size
-          </div>
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            {TEXT_SIZES.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => update({ text_size: s.id })}
-                className={`rounded-md border py-1.5 text-sm font-medium ${
-                  prefs.text_size === s.id
-                    ? "border-fv-accent-strong bg-fv-accent-strong text-white"
-                    : "border-fv-border text-fv-text-primary"
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
+      {/* ── Colour theme ── */}
+      <Section title="Colour theme">
+        <div className="grid grid-cols-2 gap-3">
+          {THEME_IDS.map((id) => (
+            <ThemeCard
+              key={id}
+              id={id}
+              active={prefs.theme === id}
+              onSelect={() => update({ theme: id })}
+            />
+          ))}
         </div>
-
-        <ToggleRow
-          label="High contrast"
-          checked={prefs.high_contrast}
-          onChange={(v) => update({ high_contrast: v })}
-        />
-        <ToggleRow
-          label="Reduce motion"
-          checked={prefs.reduce_motion}
-          onChange={(v) => update({ reduce_motion: v })}
-        />
-
-        <Link
-          href="/home?tour=replay"
-          className="mt-3 block rounded-md border border-fv-border py-2 text-center text-sm font-medium text-fv-text-primary hover:bg-fv-bg-soft"
-        >
-          Replay app tour
-        </Link>
-      </section>
+      </Section>
 
       {/* ── Bonus theme pack (only after unlock) ── */}
       {bonusUnlocked ? (
-        <section className={card}>
-          <h2 className={sectionTitle}>Bonus theme pack</h2>
-          <p className="mt-1 text-xs text-fv-text-secondary">
+        <Section title="Bonus theme pack">
+          <p className="-mt-1 text-xs text-fv-text-secondary">
             Twelve extra themes you unlocked. ✨
           </p>
-          <div className="mt-3 grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             {BONUS_THEME_IDS.map((id) => (
-              <ThemeSwatch
+              <ThemeCard
                 key={id}
                 id={id}
                 active={prefs.theme === id}
@@ -159,14 +132,14 @@ export function PreferencesForm({ initial, bonusUnlocked }: Props) {
               />
             ))}
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => update({ theme: "random", sparkle: false })}
-              className={`rounded-md border py-2 text-xs font-semibold ${
+              className={`rounded-xl border-2 py-2.5 text-sm font-semibold ${
                 prefs.theme === "random" && !prefs.sparkle
-                  ? "border-fv-accent-strong bg-fv-accent-strong text-white"
-                  : "border-fv-border text-fv-text-primary"
+                  ? "border-fv-accent-strong text-fv-text-primary"
+                  : "border-transparent bg-fv-bg-card text-fv-text-primary shadow-sm"
               }`}
             >
               🎲 Random
@@ -174,66 +147,314 @@ export function PreferencesForm({ initial, bonusUnlocked }: Props) {
             <button
               type="button"
               onClick={() => update({ theme: "random", sparkle: true })}
-              className={`rounded-md border py-2 text-xs font-semibold ${
+              className={`rounded-xl border-2 py-2.5 text-sm font-semibold ${
                 prefs.theme === "random" && prefs.sparkle
-                  ? "border-fv-accent-strong bg-fv-accent-strong text-white"
-                  : "border-fv-border text-fv-text-primary"
+                  ? "border-fv-accent-strong text-fv-text-primary"
+                  : "border-transparent bg-fv-bg-card text-fv-text-primary shadow-sm"
               }`}
             >
               🎲 Random + Sparkle
             </button>
           </div>
-          <ToggleRow
-            label="✨ Sparkle overlay"
+          <ToggleCard
+            title="✨ Sparkle overlay"
+            sub="A little celebration shimmer"
             checked={prefs.sparkle}
             onChange={(v) => update({ sparkle: v })}
           />
-        </section>
+        </Section>
       ) : null}
 
-      {/* ── Language ── */}
-      <section className={card}>
-        <h2 className={sectionTitle}>Language</h2>
-        <select
-          value={prefs.language}
-          onChange={(e) => update({ language: e.target.value })}
-          className="mt-3 w-full rounded-md border border-fv-border bg-fv-bg-app px-3 py-2 text-sm text-fv-text-primary"
-        >
-          {LANGUAGES.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.label}
-            </option>
-          ))}
-        </select>
-      </section>
-
-      {/* ── Notifications ── */}
-      <section className={card}>
-        <h2 className={sectionTitle}>Notifications</h2>
-        <p className="mt-1 text-xs text-fv-text-secondary">
-          Choices are saved now; delivery wiring lands in a later update.
-        </p>
-        <ToggleRow
-          label="Medication reminders"
+      {/* ── Reminders ── */}
+      <Section title="Reminders">
+        <ToggleCard
+          title="Medication reminders"
+          sub="Notifications + reminder sound"
           checked={prefs.notify_medication}
           onChange={(v) => update({ notify_medication: v })}
         />
-        <ToggleRow
-          label="Daily check-in nudge"
+        <ChoiceCard
+          title="Snooze duration"
+          sub="When you tap Snooze, the reminder fires again after this long."
+        >
+          <Segmented
+            value={prefs.snooze_minutes}
+            onChange={(v) => update({ snooze_minutes: v })}
+            options={[5, 10, 15, 30].map((n) => ({
+              value: n,
+              label: `${n} min`,
+            }))}
+          />
+        </ChoiceCard>
+        <ToggleCard
+          title="Daily check-in reminder"
+          sub="Every morning at 9:00 AM"
           checked={prefs.notify_checkin}
           onChange={(v) => update({ notify_checkin: v })}
         />
-        <ToggleRow
-          label="Message notifications"
+        <ToggleCard
+          title="Message notifications"
+          sub="When your care team replies to you"
           checked={prefs.notify_messages}
           onChange={(v) => update({ notify_messages: v })}
         />
-      </section>
+        <ToggleCard
+          title="Friendly nudge if I forget"
+          sub="If I haven't done my check-in by mid-afternoon, send me a gentle reminder. Off by default."
+          checked={prefs.notify_checkin_nudge}
+          onChange={(v) => update({ notify_checkin_nudge: v })}
+        />
+        <ToggleCard
+          title="Quiet hours"
+          sub="No reminders 10 PM – 7 AM"
+          checked={prefs.quiet_hours}
+          onChange={(v) => update({ quiet_hours: v })}
+        />
+        <ToggleCard
+          title="Travelling? Lock to original timezone"
+          sub="Off (default): reminders follow your phone's clock. On: reminders stay on Brisbane time even if you travel."
+          checked={prefs.lock_timezone}
+          onChange={(v) => update({ lock_timezone: v })}
+        />
+        <ToggleCard
+          title="Lock screen widget"
+          sub="Show your next dose on your phone's lock screen — no need to unlock."
+          checked={prefs.lock_screen_widget}
+          onChange={(v) => update({ lock_screen_widget: v })}
+        />
+      </Section>
+
+      {/* ── Language ── */}
+      <Section title="Language">
+        <div className={`flex items-center gap-3 ${card}`}>
+          <div className="shrink-0">
+            <div className="font-semibold text-fv-text-primary">
+              App language
+            </div>
+            <div className="mt-0.5 text-sm text-fv-text-secondary">
+              Currently in {langLabel}
+            </div>
+          </div>
+          <select
+            value={prefs.language}
+            onChange={(e) => update({ language: e.target.value })}
+            className="ml-auto min-w-0 flex-1 rounded-xl border border-fv-border bg-fv-bg-app px-3 py-2.5 text-sm font-medium text-fv-text-primary"
+          >
+            {LANGUAGES.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </Section>
+
+      {/* ── Accessibility ── */}
+      <Section title="Accessibility">
+        <ChoiceCard
+          title="Larger text"
+          sub="Increase the size of text throughout the app"
+        >
+          <Segmented
+            value={prefs.text_size}
+            onChange={(v) => update({ text_size: v })}
+            options={TEXT_SIZES.map((s) => ({ value: s.id, label: s.label }))}
+          />
+        </ChoiceCard>
+        <ToggleCard
+          title="Higher contrast"
+          sub="Stronger colour contrast for easier reading"
+          checked={prefs.high_contrast}
+          onChange={(v) => update({ high_contrast: v })}
+        />
+        <ToggleCard
+          title="Reduce motion"
+          sub="Minimise animations and transitions"
+          checked={prefs.reduce_motion}
+          onChange={(v) => update({ reduce_motion: v })}
+        />
+        <ToggleCard
+          title="Voice control"
+          sub="Hands-free check-ins and medication marking"
+          checked={prefs.voice_control}
+          onChange={(v) => update({ voice_control: v })}
+        />
+        <InfoNote icon={<InfoIcon />}>
+          Fully optimised for VoiceOver (iPhone) and TalkBack (Android). All
+          app features remain accessible with screen readers.
+        </InfoNote>
+        <LinkCard
+          title="Replay app tour"
+          sub="See the welcome walkthrough again"
+          href="/home?tour=replay"
+        />
+      </Section>
+
+      {/* ── Account ── */}
+      <Section title="Account">
+        <Link
+          href="/preferences/account"
+          className={`flex items-center justify-between gap-3 ${card}`}
+        >
+          <div className="min-w-0">
+            <div className="font-semibold text-fv-text-primary">
+              {account.name}
+            </div>
+            <div className="mt-0.5 truncate text-sm text-fv-text-secondary">
+              {[account.email, account.phone].filter(Boolean).join(" · ") ||
+                "No contact details on file"}
+            </div>
+          </div>
+          <Chevron />
+        </Link>
+      </Section>
+
+      {/* ── Privacy & data ── */}
+      <Section title="Privacy & data">
+        <LinkCard
+          title="Privacy policy"
+          sub="How we handle your information"
+          href="/preferences/privacy"
+        />
+        <LinkCard
+          title="Download my data"
+          sub="Export a copy of everything you've shared"
+          href="/preferences/data"
+        />
+        <LinkCard
+          title="Delete my account"
+          sub="Request account deletion (clinical records retained per law)"
+          href="/preferences/delete"
+        />
+        <InfoNote icon={<LockIcon />}>
+          Your information is encrypted at rest and in transit. Data is stored
+          in Australia and never shared outside Focus Vision and your care
+          team.
+        </InfoNote>
+      </Section>
     </div>
   );
 }
 
-function ThemeSwatch({
+// ── Building blocks ──────────────────────────────────────────────────────
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-sm font-bold uppercase tracking-wide text-fv-text-secondary">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function Switch({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+        checked ? "bg-fv-accent-strong" : "bg-fv-bg-soft"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+          checked ? "translate-x-[22px]" : "translate-x-0.5"
+        }`}
+      />
+    </button>
+  );
+}
+
+function ToggleCard({
+  title,
+  sub,
+  checked,
+  onChange,
+}: {
+  title: string;
+  sub?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className={`flex items-center justify-between gap-4 ${card}`}>
+      <div className="min-w-0">
+        <div className="font-semibold text-fv-text-primary">{title}</div>
+        {sub ? (
+          <div className="mt-0.5 text-sm text-fv-text-secondary">{sub}</div>
+        ) : null}
+      </div>
+      <Switch checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
+function ChoiceCard({
+  title,
+  sub,
+  children,
+}: {
+  title: string;
+  sub?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={card}>
+      <div className="font-semibold text-fv-text-primary">{title}</div>
+      {sub ? (
+        <div className="mt-0.5 text-sm text-fv-text-secondary">{sub}</div>
+      ) : null}
+      <div className="mt-3">{children}</div>
+    </div>
+  );
+}
+
+function Segmented<T extends string | number>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: ReadonlyArray<{ value: T; label: string }>;
+}) {
+  return (
+    <div className="flex gap-1 rounded-xl bg-fv-bg-soft p-1">
+      {options.map((o) => (
+        <button
+          key={String(o.value)}
+          type="button"
+          onClick={() => onChange(o.value)}
+          className={`flex-1 rounded-lg px-2 py-2 text-sm font-semibold ${
+            value === o.value
+              ? "bg-fv-bg-card text-fv-text-primary shadow-sm"
+              : "text-fv-text-secondary"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ThemeCard({
   id,
   active,
   onSelect,
@@ -242,47 +463,106 @@ function ThemeSwatch({
   active: boolean;
   onSelect: () => void;
 }) {
-  const sw = themeSwatch(id);
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`flex flex-col items-center gap-1 rounded-lg border-2 p-1.5 ${
-        active ? "border-fv-accent-strong" : "border-fv-border"
+      className={`flex flex-col gap-3 rounded-2xl border-2 bg-fv-bg-card p-4 text-left shadow-sm ${
+        active ? "border-fv-accent-strong" : "border-transparent"
       }`}
     >
-      <span
-        className="h-8 w-full rounded"
-        style={{
-          background: sw.bg,
-          borderBottom: `4px solid ${sw.accent}`,
-        }}
-      />
-      <span className="text-[10px] text-fv-text-secondary">
-        {THEMES[id].label.split(" ")[0]}
+      <span className="font-semibold text-fv-text-primary">
+        {THEMES[id].label}
+      </span>
+      <span className="flex gap-1.5">
+        {themePalette(id).map((colour, i) => (
+          <span
+            key={i}
+            className="h-9 flex-1 rounded-lg"
+            style={{ background: colour }}
+          />
+        ))}
       </span>
     </button>
   );
 }
 
-function ToggleRow({
-  label,
-  checked,
-  onChange,
+function LinkCard({
+  title,
+  sub,
+  href,
 }: {
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
+  title: string;
+  sub: string;
+  href: string;
 }) {
   return (
-    <label className="mt-3 flex cursor-pointer items-center justify-between">
-      <span className="text-sm text-fv-text-primary">{label}</span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-5 w-5 rounded border-fv-border"
-      />
-    </label>
+    <Link
+      href={href}
+      className={`flex items-center justify-between gap-3 ${card}`}
+    >
+      <div className="min-w-0">
+        <div className="font-semibold text-fv-text-primary">{title}</div>
+        <div className="mt-0.5 text-sm text-fv-text-secondary">{sub}</div>
+      </div>
+      <Chevron />
+    </Link>
+  );
+}
+
+function InfoNote({
+  icon,
+  children,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl bg-fv-bg-soft/70 p-4 text-sm text-fv-text-secondary">
+      <span className="mt-0.5 shrink-0 text-fv-accent-strong">{icon}</span>
+      <p className="leading-relaxed">{children}</p>
+    </div>
+  );
+}
+
+function Chevron() {
+  return (
+    <span aria-hidden className="shrink-0 text-lg text-fv-text-secondary">
+      ›
+    </span>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-5 w-5"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4M12 8h.01" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-5 w-5"
+    >
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
   );
 }

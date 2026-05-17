@@ -16,6 +16,12 @@ export type PreferencesPayload = {
   notify_medication: boolean;
   notify_checkin: boolean;
   notify_messages: boolean;
+  snooze_minutes: number;
+  notify_checkin_nudge: boolean;
+  quiet_hours: boolean;
+  lock_timezone: boolean;
+  lock_screen_widget: boolean;
+  voice_control: boolean;
 };
 
 const VISIBLE_THEMES: string[] = [...THEME_IDS];
@@ -23,6 +29,7 @@ const VISIBLE_THEMES: string[] = [...THEME_IDS];
 const BONUS_THEMES: string[] = [...BONUS_THEME_IDS, "random"];
 const SIZES = ["small", "normal", "large"];
 const LANGS = ["en", "zh", "vi", "ar"];
+const SNOOZE_MINUTES = [5, 10, 15, 30];
 
 export type SaveResult = { ok: boolean; error?: string };
 
@@ -48,6 +55,9 @@ export async function savePreferencesAction(
   }
   if (!LANGS.includes(payload.language)) {
     return { ok: false, error: "Invalid language." };
+  }
+  if (!SNOOZE_MINUTES.includes(payload.snooze_minutes)) {
+    return { ok: false, error: "Invalid snooze duration." };
   }
 
   const { data: before } = await supabase
@@ -75,6 +85,12 @@ export async function savePreferencesAction(
       notify_medication: payload.notify_medication,
       notify_checkin: payload.notify_checkin,
       notify_messages: payload.notify_messages,
+      snooze_minutes: payload.snooze_minutes,
+      notify_checkin_nudge: payload.notify_checkin_nudge,
+      quiet_hours: payload.quiet_hours,
+      lock_timezone: payload.lock_timezone,
+      lock_screen_widget: payload.lock_screen_widget,
+      voice_control: payload.voice_control,
     },
     { onConflict: "patient_id" }
   );

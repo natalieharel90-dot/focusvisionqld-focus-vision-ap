@@ -1819,16 +1819,22 @@ export type Database = {
           dark_mode: boolean
           high_contrast: boolean
           language: string
+          lock_screen_widget: boolean
+          lock_timezone: boolean
           notify_checkin: boolean
+          notify_checkin_nudge: boolean
           notify_medication: boolean
           notify_messages: boolean
           onboarding_completed_at: string | null
           patient_id: string
+          quiet_hours: boolean
           reduce_motion: boolean
+          snooze_minutes: number
           sparkle: boolean
           text_size: string
           theme: string
           updated_at: string
+          voice_control: boolean
         }
         Insert: {
           bonus_pack_unlocked?: boolean
@@ -1836,16 +1842,22 @@ export type Database = {
           dark_mode?: boolean
           high_contrast?: boolean
           language?: string
+          lock_screen_widget?: boolean
+          lock_timezone?: boolean
           notify_checkin?: boolean
+          notify_checkin_nudge?: boolean
           notify_medication?: boolean
           notify_messages?: boolean
           onboarding_completed_at?: string | null
           patient_id: string
+          quiet_hours?: boolean
           reduce_motion?: boolean
+          snooze_minutes?: number
           sparkle?: boolean
           text_size?: string
           theme?: string
           updated_at?: string
+          voice_control?: boolean
         }
         Update: {
           bonus_pack_unlocked?: boolean
@@ -1853,16 +1865,22 @@ export type Database = {
           dark_mode?: boolean
           high_contrast?: boolean
           language?: string
+          lock_screen_widget?: boolean
+          lock_timezone?: boolean
           notify_checkin?: boolean
+          notify_checkin_nudge?: boolean
           notify_medication?: boolean
           notify_messages?: boolean
           onboarding_completed_at?: string | null
           patient_id?: string
+          quiet_hours?: boolean
           reduce_motion?: boolean
+          snooze_minutes?: number
           sparkle?: boolean
           text_size?: string
           theme?: string
           updated_at?: string
+          voice_control?: boolean
         }
         Relationships: [
           {
