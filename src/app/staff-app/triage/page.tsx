@@ -216,7 +216,7 @@ function TriageCard({ item, accent }: { item: TriageItem; accent: string }) {
           </Link>
         ) : null}
         <Link
-          href={`/patients/${item.patientId}`}
+          href={`/staff-app/patients/${item.patientId}`}
           className="flex-1 rounded-md bg-fv-accent-strong py-1.5 text-center text-xs font-semibold text-white"
         >
           Open

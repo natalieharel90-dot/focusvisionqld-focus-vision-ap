@@ -244,7 +244,7 @@ export default async function StaffAppToday() {
             return (
               <Link
                 key={t.id}
-                href={`/patients/${t.patient_id}`}
+                href={`/staff-app/patients/${t.patient_id}`}
                 className="flex items-center gap-3 rounded-xl border border-fv-bg-soft bg-fv-bg-card p-3"
               >
                 <span

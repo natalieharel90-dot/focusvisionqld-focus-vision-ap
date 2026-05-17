@@ -110,7 +110,7 @@ export default async function StaffAppPatients({
           return (
             <li key={r.id}>
               <Link
-                href={`/patients/${r.id}`}
+                href={`/staff-app/patients/${r.id}`}
                 className="flex items-center gap-3 py-3"
               >
                 <span
