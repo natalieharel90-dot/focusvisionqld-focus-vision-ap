@@ -36,13 +36,13 @@ export default async function DownloadDataPage() {
           Download my data
         </h1>
         <p className="mt-1 text-sm text-fv-text-secondary">
-          Export a copy of everything you've shared
+          Export a copy of everything you&apos;ve shared
         </p>
       </header>
 
       <section className="rounded-2xl bg-fv-bg-card p-5 shadow-sm">
         <h2 className="font-semibold text-fv-text-primary">
-          What's included
+          What&apos;s included
         </h2>
         <ul className="mt-3 flex flex-col gap-2">
           {INCLUDED.map((item) => (
