@@ -90,9 +90,9 @@ export function MessageList({
         const showDay = !prev || dayKey(prev.sent_at) !== dayKey(m.sent_at);
 
         return (
-          <li key={m.id} className="contents">
+          <li key={m.id} className="flex flex-col gap-3">
             {showDay ? (
-              <div className="my-1 text-center text-xs font-semibold text-fv-text-secondary">
+              <div className="text-center text-xs font-semibold text-fv-text-secondary">
                 {dayLabel(m.sent_at)}
               </div>
             ) : null}

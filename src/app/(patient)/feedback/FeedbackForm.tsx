@@ -120,15 +120,15 @@ export function FeedbackForm({
 
   function submit() {
     setError(null);
-    const payload: FeedbackSection[] = [
-      {
-        target: selected,
-        rating: state.rating,
-        comment: state.comment,
-        staffMention: state.staffMention,
-        contactRequested: state.contactRequested,
-      },
-    ];
+    // Submit every rated section, not just the visible tab — the action
+    // keeps only sections with a 1-5 rating.
+    const payload: FeedbackSection[] = FEEDBACK_TARGETS.map((t) => ({
+      target: t.key,
+      rating: sections[t.key].rating,
+      comment: sections[t.key].comment,
+      staffMention: sections[t.key].staffMention,
+      contactRequested: sections[t.key].contactRequested,
+    }));
     startTransition(async () => {
       const result = await submitFeedbackAction(payload);
       if (result.ok) router.push("/feedback?done=1");
@@ -240,7 +240,10 @@ export function FeedbackForm({
 
       <button
         type="button"
-        disabled={state.rating === 0 || pending}
+        disabled={
+          !FEEDBACK_TARGETS.some((t) => sections[t.key].rating >= 1) ||
+          pending
+        }
         onClick={submit}
         className="rounded-2xl bg-fv-accent-strong px-4 py-4 text-base font-bold text-white hover:opacity-95 disabled:opacity-50"
       >

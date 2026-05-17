@@ -102,7 +102,7 @@ export function SymptomsCard({
             </div>
           ) : null}
 
-          <div className="mt-4 rounded-r-lg border-l-4 border-red-400 bg-red-50 p-3 text-sm text-red-800">
+          <div className="mt-4 rounded-r-lg border-l-4 border-amber-400 bg-amber-50 p-3 text-sm text-amber-900">
             <strong>If symptoms are severe</strong> — sudden vision loss,
             severe pain, or a chemical splash —{" "}
             {clinicPhone ? (

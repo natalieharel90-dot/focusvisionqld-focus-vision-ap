@@ -48,7 +48,10 @@ export async function sendPatientMessageAction(formData: FormData) {
     body,
     attachments: attachmentPath ? [attachmentPath] : [],
   });
-  if (insertError) back(insertError.message);
+  if (insertError) {
+    console.error("[messages] send failed", insertError);
+    back("Your message couldn't be sent. Please try again.");
+  }
 
   await supabase
     .from("message_threads")

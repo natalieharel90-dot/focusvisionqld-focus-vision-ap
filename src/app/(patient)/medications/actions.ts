@@ -27,7 +27,10 @@ export async function markTakenAction(formData: FormData) {
     .update({ taken_at: new Date().toISOString() })
     .eq("id", doseId);
 
-  if (error) back(error.message);
+  if (error) {
+    console.error("[medications] mark taken failed", error);
+    back("Couldn't update that dose. Please try again.");
+  }
   revalidatePath("/medications");
 }
 
@@ -51,7 +54,10 @@ export async function snoozeAction(formData: FormData) {
     .select("scheduled_at, snooze_count")
     .eq("id", doseId)
     .single();
-  if (readError) back(readError.message);
+  if (readError) {
+    console.error("[medications] snooze read failed", readError);
+    back("Couldn't snooze that dose. Please try again.");
+  }
 
   const next = new Date(
     new Date(dose!.scheduled_at).getTime() + minutes * 60_000
@@ -74,7 +80,8 @@ export async function snoozeAction(formData: FormData) {
         "Can't snooze that long — another dose for this medication is already scheduled at that time."
       );
     }
-    back(updateError.message);
+    console.error("[medications] snooze update failed", updateError);
+    back("Couldn't snooze that dose. Please try again.");
   }
   revalidatePath("/medications");
 }

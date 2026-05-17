@@ -17,8 +17,10 @@ export async function requestAccountDeletionAction(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/patient-sign-in");
 
-  await supabase.rpc("record_patient_audit", {
+  await supabase.rpc("record_patient_audit_event", {
     p_event_type: "patient.account_deletion_requested",
+    p_entity_type: "patient",
+    p_entity_id: user.id,
     p_new_value: { reason, requested_at: new Date().toISOString() },
   });
 

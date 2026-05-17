@@ -19,8 +19,11 @@ export async function patientSignInAction(formData: FormData) {
     email,
     password,
   });
-  if (error) backWithError(error.message);
-  if (!data.user) backWithError("Sign-in failed.");
+  if (error) {
+    console.error("[patient-sign-in] failed", error.message);
+    backWithError("Sign-in failed — please check your email and password.");
+  }
+  if (!data.user) backWithError("Sign-in failed — please try again.");
 
   // Confirm this auth user is actually a patient. Reject anyone who isn't,
   // including staff users (who must sign in via /sign-in).

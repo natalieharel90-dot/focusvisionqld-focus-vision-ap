@@ -79,10 +79,13 @@ export default async function MedicationsPage({
   const medById = new Map(meds.map((m) => [m.id, m]));
   const medIds = meds.map((m) => m.id);
 
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date();
-  endOfDay.setHours(23, 59, 59, 999);
+  // Day boundaries in the clinic's timezone (Brisbane, UTC+10, no DST) so
+  // "today's doses" doesn't drift by ~10 hours on a UTC server.
+  const brisbaneDay = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Australia/Brisbane",
+  });
+  const startOfDay = new Date(`${brisbaneDay}T00:00:00+10:00`);
+  const endOfDay = new Date(`${brisbaneDay}T23:59:59.999+10:00`);
 
   const { data: doses } =
     medIds.length === 0

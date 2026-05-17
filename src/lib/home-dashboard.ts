@@ -54,31 +54,36 @@ export function median(values: ReadonlyArray<number>): number | null {
     : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
-// Minutes of overlap with business hours (Mon–Fri 08:00–17:00, local
-// clock) between two timestamps. Used for the message response-time KPI.
+// Brisbane is UTC+10 year-round (Queensland has no daylight saving).
+const BRISBANE_OFFSET_MS = 10 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Minutes of overlap with clinic business hours (Mon–Fri 08:00–17:00
+// Brisbane time) between two timestamps. Used for the message
+// response-time KPI. Computed in the clinic timezone — not the server's —
+// so the figure is correct on a UTC host.
 export function businessMinutesBetween(
   startIso: string,
   endIso: string
 ): number {
-  const start = new Date(startIso);
-  const end = new Date(endIso);
+  // Shift into "Brisbane-local" time: the shifted epoch's UTC getters
+  // then read as Brisbane wall-clock values.
+  const start = new Date(startIso).getTime() + BRISBANE_OFFSET_MS;
+  const end = new Date(endIso).getTime() + BRISBANE_OFFSET_MS;
   if (!(end > start)) return 0;
 
   let total = 0;
   const cursor = new Date(start);
-  cursor.setHours(0, 0, 0, 0);
-  while (cursor <= end) {
-    const day = cursor.getDay(); // 0 = Sun … 6 = Sat
+  cursor.setUTCHours(0, 0, 0, 0);
+  while (cursor.getTime() <= end) {
+    const day = cursor.getUTCDay(); // 0 = Sun … 6 = Sat
     if (day >= 1 && day <= 5) {
-      const open = new Date(cursor);
-      open.setHours(8, 0, 0, 0);
-      const close = new Date(cursor);
-      close.setHours(17, 0, 0, 0);
-      const from = Math.max(start.getTime(), open.getTime());
-      const to = Math.min(end.getTime(), close.getTime());
+      const dayStart = cursor.getTime();
+      const from = Math.max(start, dayStart + 8 * 60 * 60 * 1000);
+      const to = Math.min(end, dayStart + 17 * 60 * 60 * 1000);
       if (to > from) total += (to - from) / 60_000;
     }
-    cursor.setDate(cursor.getDate() + 1);
+    cursor.setTime(cursor.getTime() + DAY_MS);
   }
   return Math.round(total);
 }

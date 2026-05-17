@@ -247,7 +247,7 @@ export default async function CheckInDonePage({
 
       {/* Severe-symptoms warning from the recovery guidance */}
       {content?.warning ? (
-        <section className="rounded-r-2xl rounded-bl-2xl border-l-4 border-red-400 bg-red-50 p-4 text-sm leading-relaxed text-red-800">
+        <section className="rounded-r-2xl rounded-bl-2xl border-l-4 border-amber-400 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
           {content.warning}
         </section>
       ) : null}

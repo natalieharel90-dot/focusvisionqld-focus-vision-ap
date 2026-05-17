@@ -81,7 +81,8 @@ export async function submitCheckInAction(formData: FormData) {
     if (code === "23505") {
       back("You've already submitted today's check-in. Come back tomorrow.");
     }
-    back(err instanceof Error ? err.message : "Submission failed.");
+    console.error("[check-in] submit failed", err);
+    back("Something went wrong saving your check-in. Please try again.");
   }
 
   if (photoPath) {
