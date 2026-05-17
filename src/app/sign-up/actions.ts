@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
-const STAFF_EMAIL_DOMAIN = "@focusvision.com.au";
+// Staff may register with a Focus Vision or Queensland Eye Institute
+// address. Keep in sync with create_staff_user (DB) and the sign-up page.
+const STAFF_EMAIL_DOMAINS = ["@focusvision.com.au", "@qei.org.au"];
 
 // Carried across the redirect to /sign-up/mfa so the enrollment page knows
 // what name/role to insert into staff_users after the factor is verified.
@@ -37,8 +39,10 @@ export async function signUpAction(formData: FormData) {
   if (!password || password.length < 8) {
     backToSignUp("Password must be at least 8 characters.");
   }
-  if (!email.endsWith(STAFF_EMAIL_DOMAIN)) {
-    backToSignUp(`Email must end with ${STAFF_EMAIL_DOMAIN}.`);
+  if (!STAFF_EMAIL_DOMAINS.some((d) => email.endsWith(d))) {
+    backToSignUp(
+      `Email must end with ${STAFF_EMAIL_DOMAINS.join(" or ")}.`
+    );
   }
   if (!STAFF_ROLES.includes(role)) {
     backToSignUp("Pick a valid role.");

@@ -37,7 +37,8 @@ export default function SignUpPage({
             Staff registration
           </h1>
           <p className="text-center text-sm text-fv-text-secondary">
-            Restricted to <code>@focusvision.com.au</code> emails.
+            Restricted to <code>@focusvision.com.au</code> and{" "}
+            <code>@qei.org.au</code> emails.
           </p>
         </div>
 
