@@ -60,6 +60,14 @@ export default async function MedicationsPage({
   // Lazily create today's medication_doses rows (SECURITY DEFINER RPC).
   await supabase.rpc("ensure_todays_doses", { p_patient_id: user.id });
 
+  // The patient's chosen snooze duration (Settings → Reminders).
+  const { data: prefs } = await supabase
+    .from("user_preferences")
+    .select("snooze_minutes")
+    .eq("patient_id", user.id)
+    .maybeSingle();
+  const snoozeMinutes = prefs?.snooze_minutes ?? 10;
+
   const { data: medications } = await supabase
     .from("medications")
     .select("*")
@@ -196,12 +204,16 @@ export default async function MedicationsPage({
                     {isDue ? (
                       <form action={snoozeAction}>
                         <input type="hidden" name="dose_id" value={d.id} />
-                        <input type="hidden" name="minutes" value={15} />
+                        <input
+                          type="hidden"
+                          name="minutes"
+                          value={snoozeMinutes}
+                        />
                         <button
                           type="submit"
                           className="rounded-full border border-fv-border px-3 py-1.5 text-xs font-semibold text-fv-text-primary"
                         >
-                          🕐 Snooze
+                          🕐 Snooze {snoozeMinutes}m
                         </button>
                       </form>
                     ) : null}

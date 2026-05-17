@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
-const VALID_SNOOZE_MINUTES = new Set([15, 30, 60]);
+// Matches the snooze_minutes options on the Settings screen.
+const VALID_SNOOZE_MINUTES = new Set([5, 10, 15, 30]);
 
 function back(message: string): never {
   redirect(`/medications?error=${encodeURIComponent(message)}`);
