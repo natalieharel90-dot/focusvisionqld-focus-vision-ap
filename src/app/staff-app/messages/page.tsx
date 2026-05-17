@@ -21,10 +21,12 @@ function avatarColor(seed: string): string {
 }
 
 function relTime(iso: string): string {
-  const day = new Date(iso).toLocaleDateString("en-CA");
-  const today = new Date().toLocaleDateString("en-CA");
+  const tz = { timeZone: "Australia/Brisbane" } as const;
+  const day = new Date(iso).toLocaleDateString("en-CA", tz);
+  const today = new Date().toLocaleDateString("en-CA", tz);
   const yesterday = new Date(Date.now() - 86_400_000).toLocaleDateString(
-    "en-CA"
+    "en-CA",
+    tz
   );
   if (day === today) {
     return new Date(iso)

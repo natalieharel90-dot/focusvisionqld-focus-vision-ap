@@ -400,7 +400,7 @@ export default async function StaffInboxPage({
                           {last
                             ? `${
                                 last.sender_type === "patient" ? "" : "You: "
-                              }${last.body}`
+                              }${last.body.trim() || "📎 Attachment"}`
                             : "No messages yet"}
                         </div>
                       </div>

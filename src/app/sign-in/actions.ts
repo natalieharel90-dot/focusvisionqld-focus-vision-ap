@@ -19,14 +19,16 @@ export async function signInWithPasswordAction(formData: FormData) {
   const supabase = createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    backToSignIn(error.message);
+    console.error("[sign-in] failed", error.message);
+    backToSignIn("Sign-in failed — check your email and password.");
   }
 
   // Determine whether the user has MFA enrolled and needs to step up.
   const { data: aal, error: aalError } =
     await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if (aalError) {
-    backToSignIn(aalError.message);
+    console.error("[sign-in] AAL check failed", aalError.message);
+    backToSignIn("Sign-in failed — please try again.");
   }
 
   if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") {

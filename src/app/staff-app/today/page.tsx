@@ -89,11 +89,12 @@ export default async function StaffAppToday() {
   );
   const flaggedSet = new Set((flagsRes.data ?? []).map((f) => f.patient_id));
 
-  const today = new Date().toLocaleDateString("en-CA");
+  const tz = { timeZone: "Australia/Brisbane" } as const;
+  const today = new Date().toLocaleDateString("en-CA", tz);
   const myApptsToday = (apptsRes.data ?? []).filter(
     (a) =>
       a.scheduled_at &&
-      new Date(a.scheduled_at).toLocaleDateString("en-CA") === today
+      new Date(a.scheduled_at).toLocaleDateString("en-CA", tz) === today
   );
 
   // Threads assigned to me with an unread patient message — awaiting reply.

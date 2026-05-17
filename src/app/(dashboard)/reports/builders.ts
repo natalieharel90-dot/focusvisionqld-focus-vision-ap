@@ -243,7 +243,14 @@ async function buildSurgeon(
   );
   const checkIns = checkInsRes.data ?? [];
 
-  // Adherence across this surgeon's patients.
+  // Adherence across this surgeon's patients — bounded to the report
+  // period (doses scheduled inside [from, to]), matching the monthly
+  // report. `to` is inclusive, so the upper bound is the day after.
+  const toExclusive = new Date(
+    Date.parse(`${to}T00:00:00Z`) + 86_400_000
+  )
+    .toISOString()
+    .slice(0, 10);
   const medIds = (medsRes.data ?? []).map((m) => m.id);
   let scheduled = 0;
   let taken = 0;
@@ -251,7 +258,9 @@ async function buildSurgeon(
     const { data: doses } = await supabase
       .from("medication_doses")
       .select("taken_at")
-      .in("medication_id", medIds);
+      .in("medication_id", medIds)
+      .gte("scheduled_at", from)
+      .lt("scheduled_at", toExclusive);
     scheduled = doses?.length ?? 0;
     taken = (doses ?? []).filter((d) => d.taken_at).length;
   }

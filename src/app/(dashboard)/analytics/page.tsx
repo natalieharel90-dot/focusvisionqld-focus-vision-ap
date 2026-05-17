@@ -62,9 +62,14 @@ function pct(v: number | null): string {
 }
 
 // The previous range of equal length, immediately before [from, to].
+// Tolerates a malformed / inverted range (no comparable prior window)
+// rather than throwing on new Date(NaN).
 function previousRange(from: string, to: string) {
   const f = Date.parse(`${from}T00:00:00Z`);
   const t = Date.parse(`${to}T00:00:00Z`);
+  if (!Number.isFinite(f) || !Number.isFinite(t) || t < f) {
+    return { from, to, days: 1 };
+  }
   const days = Math.round((t - f) / 86_400_000) + 1;
   const prevTo = f - 86_400_000;
   const prevFrom = prevTo - (days - 1) * 86_400_000;
@@ -244,8 +249,17 @@ export default async function AnalyticsPage({
   );
   const feedback = feedbackResult.data ?? [];
   const procedures = proceduresResult.data ?? [];
+  // Most-recent procedure per patient — sort ascending so the latest
+  // surgery wins the Map's last-write, deterministically (a patient with
+  // two procedures otherwise flipped between them across refreshes).
+  const proceduresByDateAsc = [...procedures].sort((a, b) =>
+    (a.surgery_date ?? "").localeCompare(b.surgery_date ?? "")
+  );
   const procByPatient = new Map(
-    procedures.map((p) => [p.patient_id, p.procedure_type.toLowerCase()])
+    proceduresByDateAsc.map((p) => [
+      p.patient_id,
+      p.procedure_type.toLowerCase(),
+    ])
   );
   // Procedure types in play — the canonical set plus any custom procedure
   // the clinic has added, so every procedure-typed control stays in sync.
@@ -281,15 +295,21 @@ export default async function AnalyticsPage({
   );
 
   // Per-surgeon table — patients, adherence, avg patient rating, flag rate.
-  const patientsBySurgeon = new Map<string, number>();
+  // Count distinct patients (not procedures), and attribute each patient
+  // to their most-recent surgeon.
+  const patientSetBySurgeon = new Map<string, Set<string>>();
   const surgeonByPatient = new Map<string, string>();
   for (const p of procedures) {
-    patientsBySurgeon.set(
-      p.surgeon_id,
-      (patientsBySurgeon.get(p.surgeon_id) ?? 0) + 1
-    );
+    const set = patientSetBySurgeon.get(p.surgeon_id) ?? new Set<string>();
+    set.add(p.patient_id);
+    patientSetBySurgeon.set(p.surgeon_id, set);
+  }
+  for (const p of proceduresByDateAsc) {
     surgeonByPatient.set(p.patient_id, p.surgeon_id);
   }
+  const patientsBySurgeon = new Map<string, number>(
+    [...patientSetBySurgeon].map(([sid, set]) => [sid, set.size])
+  );
   const ratingBySurgeon = new Map<string, { sum: number; n: number }>();
   for (const f of feedback) {
     const sid = surgeonByPatient.get(f.patient_id);
@@ -343,15 +363,40 @@ export default async function AnalyticsPage({
     inRange(p.surgery_date, prev.from, prev.to)
   ).length;
 
-  // App-active rate — share of active recoveries that checked in this week.
+  // App-active rate — of patients currently in active recovery (surgery
+  // within the last 90 days, not in the future), the share who checked in
+  // within the last 7 days. Numerator and denominator are the same
+  // patient set, so the rate is well-defined without clamping.
+  const todayBris = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Australia/Brisbane",
+  });
+  const recoveryWindowStart = new Date(Date.now() - 90 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const recoveringPatients = new Set(
+    procedures
+      .filter(
+        (p) =>
+          p.surgery_date != null &&
+          p.surgery_date >= recoveryWindowStart &&
+          p.surgery_date <= todayBris
+      )
+      .map((p) => p.patient_id)
+  );
   const weekAgo = Date.now() - 7 * 86_400_000;
-  const activeThisWeek = new Set(
+  const checkedInThisWeek = new Set(
     rawCheckIns
       .filter((c) => Date.parse(c.created_at) >= weekAgo)
       .map((c) => c.patient_id)
-  ).size;
+  );
+  let activeThisWeek = 0;
+  for (const pid of recoveringPatients) {
+    if (checkedInThisWeek.has(pid)) activeThisWeek += 1;
+  }
   const appActiveRate =
-    activeCur > 0 ? Math.min(1, activeThisWeek / activeCur) : null;
+    recoveringPatients.size > 0
+      ? activeThisWeek / recoveringPatients.size
+      : null;
 
   // Recovery curve — average check-in zone severity by recovery day.
   const severity = (zone: string, alert: string): number =>
