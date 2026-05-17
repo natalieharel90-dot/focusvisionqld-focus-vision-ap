@@ -21,28 +21,6 @@ function useActiveKey(): TabKey {
   return match?.key ?? "today";
 }
 
-// The text tab strip under the dark header (matches the prototype).
-export function TopTabs() {
-  const active = useActiveKey();
-  return (
-    <nav className="flex border-b border-fv-bg-soft bg-fv-bg-card">
-      {TABS.map((t) => (
-        <Link
-          key={t.key}
-          href={t.href}
-          className={`flex-1 whitespace-nowrap border-b-2 px-1 py-3 text-center text-[13px] font-semibold ${
-            active === t.key
-              ? "border-fv-accent-strong text-fv-text-primary"
-              : "border-transparent text-fv-text-secondary"
-          }`}
-        >
-          {t.label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
-
 function Icon({ name }: { name: TabKey }) {
   const common = {
     viewBox: "0 0 24 24",
