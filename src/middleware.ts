@@ -3,8 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 
 import type { Database } from "@/types/database.types";
 
-// Public paths that don't require an authenticated staff session.
-// Everything else under "/" is treated as protected.
+// Public paths that don't require an authenticated session.
 const PUBLIC_PATHS = new Set([
   "/sign-in",
   "/sign-in/mfa",
@@ -16,15 +15,23 @@ const PUBLIC_PATHS = new Set([
   "/patient-sign-in",
 ]);
 
-// Paths that live in the (patient) route group. Unauthenticated access
-// should bounce to /patient-sign-in, not the staff /sign-in. Keep in sync
-// as the patient app grows.
+// Every route that belongs to the patient app. Anything protected that is
+// NOT in this list is treated as a staff route. Keep this complete — a
+// missing entry would bounce patients off a real patient screen.
 const PATIENT_PROTECTED_PREFIXES = [
   "/home",
   "/check-in",
   "/medications",
   "/messages",
   "/preferences",
+  "/documents",
+  "/contact",
+  "/feedback",
+  "/pre-op",
+  "/videos",
+  "/appointments",
+  "/welcome",
+  "/verify-phone",
 ];
 
 function isPatientProtectedPath(pathname: string): boolean {
@@ -98,18 +105,38 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Role gates on /audit and /analytics. Server-side — non-permitted
-  // staff get a hard 403 from middleware, never reaching the page.
-  const onAudit = pathname === "/audit" || pathname.startsWith("/audit/");
-  const onAnalytics =
-    pathname === "/analytics" || pathname.startsWith("/analytics/");
-  if (onAudit || onAnalytics) {
+  // ── Staff routes ────────────────────────────────────────────────────
+  // Everything protected that isn't a patient route is staff territory.
+  // The signed-in user must be a staff member AND have completed MFA
+  // (aal2); /audit and /analytics carry extra access-tier gates.
+  if (!isPatientProtectedPath(pathname)) {
     const { data: staff } = await supabase
       .from("staff_users")
       .select("access_tier, role")
       .eq("id", user.id)
       .maybeSingle();
-    if (onAudit && staff?.access_tier !== 1) {
+
+    if (!staff) {
+      // A patient (or any non-staff account) reached a staff route.
+      const url = request.nextUrl.clone();
+      url.pathname = "/home";
+      return NextResponse.redirect(url);
+    }
+
+    // Staff sign-in requires TOTP; a session that has a second factor
+    // enrolled but hasn't completed it must finish MFA first.
+    const { data: aal } =
+      await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal && aal.currentLevel !== "aal2" && aal.nextLevel === "aal2") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/sign-in/mfa";
+      return NextResponse.redirect(url);
+    }
+
+    const onAudit = pathname === "/audit" || pathname.startsWith("/audit/");
+    const onAnalytics =
+      pathname === "/analytics" || pathname.startsWith("/analytics/");
+    if (onAudit && staff.access_tier !== 1) {
       return new NextResponse(
         "403 Forbidden — the audit log requires tier-1 (Owner / Admin / Clinical Lead) access.",
         { status: 403, headers: { "content-type": "text/plain" } }
@@ -117,7 +144,7 @@ export async function middleware(request: NextRequest) {
     }
     if (
       onAnalytics &&
-      !(staff?.access_tier === 1 || staff?.role === "surgeon")
+      !(staff.access_tier === 1 || staff.role === "surgeon")
     ) {
       return new NextResponse(
         "403 Forbidden — analytics is restricted to Owner / Admin / Clinical Lead and Surgeons.",

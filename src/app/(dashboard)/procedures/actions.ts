@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 import {
   parseTemplateAppointments,
   parseTemplateMedications,
@@ -42,11 +42,7 @@ export async function saveTemplateAction(formData: FormData) {
   const cleanMeds = parseTemplateMedications(medications);
   const cleanAppts = parseTemplateAppointments(appointments);
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   if (templateId) {
     const { data: before } = await supabase
@@ -61,7 +57,7 @@ export async function saveTemplateAction(formData: FormData) {
         default_medications: cleanMeds,
         default_appointments: cleanAppts,
         linked_routing_ruleset_id: linkedRulesetId,
-        updated_by: user.id,
+        updated_by: userId,
       })
       .eq("id", templateId);
     if (error) backToEditor(templateId, error.message);
@@ -91,8 +87,8 @@ export async function saveTemplateAction(formData: FormData) {
       default_medications: cleanMeds,
       default_appointments: cleanAppts,
       linked_routing_ruleset_id: linkedRulesetId,
-      created_by: user.id,
-      updated_by: user.id,
+      created_by: userId,
+      updated_by: userId,
     })
     .select("id")
     .single();
@@ -119,15 +115,11 @@ export async function archiveTemplateAction(formData: FormData) {
   const templateId = String(formData.get("template_id") ?? "").trim();
   if (!templateId) redirect("/procedures");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const { error } = await supabase
     .from("procedure_templates")
-    .update({ archived_at: new Date().toISOString(), archived_by: user.id })
+    .update({ archived_at: new Date().toISOString(), archived_by: userId })
     .eq("id", templateId);
   if (error) backToEditor(templateId, error.message);
 

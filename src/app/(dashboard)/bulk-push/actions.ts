@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaffTier } from "@/lib/require-staff";
 import { canSendBulkPush, type CohortFilter } from "@/lib/bulk-push";
 import type { Json } from "@/types/database.types";
 
@@ -31,18 +31,10 @@ export type SendBulkPushResult =
 export async function sendBulkPushAction(
   input: SendBulkPushInput
 ): Promise<SendBulkPushResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Not signed in." };
-
-  const { data: staff } = await supabase
-    .from("staff_users")
-    .select("access_tier")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (!staff) return { ok: false, error: "Not a staff member." };
+  // Bulk-push send is a tier-2-or-better action. requireStaffTier redirects
+  // non-staff / under-tier callers before any work runs.
+  const { supabase, userId, staff } = await requireStaffTier(2);
+  // Defensive: keep the existing canSendBulkPush check as the source of truth.
   if (!canSendBulkPush(staff.access_tier)) {
     return {
       ok: false,
@@ -70,10 +62,15 @@ export async function sendBulkPushAction(
   let finalBody = body;
   let contentItemIds: string[] = [];
   if (needsContent) {
+    // Re-fetch by id, but constrain to deliverable content: only post-op /
+    // both audiences, and only active items — so pre-op-only or archived
+    // content can't be slipped into a post-op cohort push.
     const { data: items } = await supabase
       .from("content_items")
       .select("id, type, title, body, media_url")
-      .in("id", input.contentItemIds);
+      .in("id", input.contentItemIds)
+      .in("audience", ["post_op", "both"])
+      .eq("active", true);
     const found = items ?? [];
     contentItemIds = found.map((i) => i.id);
     const block = found
@@ -114,7 +111,7 @@ export async function sendBulkPushAction(
   const { data: push, error: insertError } = await supabase
     .from("bulk_pushes")
     .insert({
-      sender_staff_id: user.id,
+      sender_staff_id: userId,
       cohort_filter: input.cohortFilter as unknown as Json,
       cohort_summary: input.cohortSummary,
       content_type: input.contentType,

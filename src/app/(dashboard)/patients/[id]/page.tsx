@@ -81,16 +81,19 @@ function fmtDateTime(value: string | null): string {
   });
 }
 
-// "Today" / "Yesterday" / "11 May" for a check-in's date.
+// "Today" / "Yesterday" / "11 May" for a check-in's date. Day boundaries
+// are evaluated in the clinic's timezone (Australia/Brisbane), not the
+// server's local time — on a UTC host the bare en-CA dates would be wrong.
 function relativeDay(iso: string): string {
-  const day = new Date(iso).toLocaleDateString("en-CA");
-  const today = new Date().toLocaleDateString("en-CA");
-  const yesterday = new Date(Date.now() - 86_400_000).toLocaleDateString(
-    "en-CA"
-  );
+  const brisbane = (d: Date) =>
+    d.toLocaleDateString("en-CA", { timeZone: "Australia/Brisbane" });
+  const day = brisbane(new Date(iso));
+  const today = brisbane(new Date());
+  const yesterday = brisbane(new Date(Date.now() - 86_400_000));
   if (day === today) return "Today";
   if (day === yesterday) return "Yesterday";
   return new Date(iso).toLocaleDateString("en-AU", {
+    timeZone: "Australia/Brisbane",
     day: "numeric",
     month: "short",
   });

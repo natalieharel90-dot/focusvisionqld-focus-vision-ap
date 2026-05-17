@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 
 function back(message: string): never {
   redirect(`/triage?error=${encodeURIComponent(message)}`);
@@ -14,11 +14,7 @@ export async function markCheckInReviewedAction(formData: FormData) {
   const checkInId = String(formData.get("check_in_id") ?? "");
   if (!checkInId) back("Missing check-in id.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const { data: before } = await supabase
     .from("check_ins")
@@ -29,7 +25,7 @@ export async function markCheckInReviewedAction(formData: FormData) {
   const { error } = await supabase
     .from("check_ins")
     .update({
-      reviewed_by: user.id,
+      reviewed_by: userId,
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", checkInId);
@@ -55,11 +51,7 @@ export async function resolveManualFlagAction(formData: FormData) {
   const flagId = String(formData.get("flag_id") ?? "");
   if (!flagId) back("Missing flag id.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const { data: before } = await supabase
     .from("manual_flags")
@@ -71,7 +63,7 @@ export async function resolveManualFlagAction(formData: FormData) {
     .from("manual_flags")
     .update({
       resolved_at: new Date().toISOString(),
-      resolved_by_staff_id: user.id,
+      resolved_by_staff_id: userId,
     })
     .eq("id", flagId);
   if (error) back(error.message);
@@ -84,7 +76,7 @@ export async function resolveManualFlagAction(formData: FormData) {
     new_value: {
       ...(before ?? {}),
       resolved_at: new Date().toISOString(),
-      resolved_by_staff_id: user.id,
+      resolved_by_staff_id: userId,
     },
   });
 

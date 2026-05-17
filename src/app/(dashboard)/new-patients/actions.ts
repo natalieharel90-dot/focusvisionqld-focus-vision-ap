@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 import {
   CHECKLIST_ITEMS,
   deriveStatus,
@@ -28,11 +28,7 @@ export async function completeSetupItemAction(formData: FormData) {
   if (!taskId) back("Missing setup task id.");
   if (!ITEM_KEYS.has(itemKey)) back("Unknown checklist item.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const { data: task, error: loadError } = await supabase
     .from("patient_setup_tasks")
@@ -50,7 +46,7 @@ export async function completeSetupItemAction(formData: FormData) {
     return;
   }
 
-  const nextChecklist = markItemDone(checklist, itemKey, user.id, nowIso);
+  const nextChecklist = markItemDone(checklist, itemKey, userId, nowIso);
   const nextStatus = deriveStatus(nextChecklist);
   const isActivating =
     nextStatus === "activated" && task.status !== "activated";
@@ -61,7 +57,7 @@ export async function completeSetupItemAction(formData: FormData) {
       checklist: nextChecklist,
       status: nextStatus,
       activated_at: isActivating ? nowIso : task.activated_at,
-      activated_by_staff_id: isActivating ? user.id : undefined,
+      activated_by_staff_id: isActivating ? userId : undefined,
     })
     .eq("id", taskId);
   if (updateError) back(updateError.message);

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { recordStaffAudit } from "@/lib/audit";
 import { initials } from "@/lib/bulk-push";
 import { auditEventLabel } from "@/lib/audit-log";
 import {
@@ -75,8 +74,13 @@ export default async function StaffDashboardHomePage() {
   if (!user) redirect("/sign-in");
 
   const now = Date.now();
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  // "Today" is the clinic's day in Australia/Brisbane (UTC+10, no DST),
+  // not the server's local day — a UTC host would otherwise compute the
+  // wrong day boundary. Brisbane midnight = the date's 00:00 at +10:00.
+  const brisbaneToday = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Australia/Brisbane",
+  });
+  const todayStartMs = Date.parse(`${brisbaneToday}T00:00:00+10:00`);
   const iso = (ms: number) => new Date(ms).toISOString();
 
   const [
@@ -162,7 +166,7 @@ export default async function StaffDashboardHomePage() {
 
   // ── KPI: today's check-ins ──
   const checkInsToday = checkIns.filter(
-    (c) => Date.parse(c.created_at) >= todayStart.getTime()
+    (c) => Date.parse(c.created_at) >= todayStartMs
   ).length;
   const expectedToday = activeRecoveries;
   const checkInPct =
@@ -315,9 +319,9 @@ export default async function StaffDashboardHomePage() {
     },
   ].filter((p) => p.show);
 
-  await recordStaffAudit(supabase, "dashboard.viewed", {
-    entity_type: "dashboard",
-  });
+  // Note: a dashboard view is not a patient-record action worth logging.
+  // This page is force-dynamic, so auditing every render flooded the
+  // append-only audit_events table — the audit call was removed.
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">

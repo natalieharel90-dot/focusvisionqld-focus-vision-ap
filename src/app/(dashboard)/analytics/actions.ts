@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 import { ANALYTICS_CARD_KEYS } from "./cards";
 
 function clampPct(raw: string): number {
@@ -16,11 +16,11 @@ function clampPct(raw: string): number {
 // Saves the clinic-wide target percentages and this staff member's
 // preferred stat-card order, from the analytics Edit modal.
 export async function saveAnalyticsSettingsAction(formData: FormData) {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId, staff } = await requireStaff();
+  // Analytics config is open to the analytics-viewing set: tier 1 or surgeon.
+  if (!(staff.access_tier === 1 || staff.role === "surgeon")) {
+    redirect("/");
+  }
 
   const responseHours = Math.max(
     0,
@@ -52,7 +52,7 @@ export async function saveAnalyticsSettingsAction(formData: FormData) {
 
   const { error: targetError } = await supabase
     .from("analytics_targets")
-    .update({ ...targets, updated_by: user.id })
+    .update({ ...targets, updated_by: userId })
     .eq("id", true);
   if (targetError) {
     redirect(`/analytics?error=${encodeURIComponent(targetError.message)}`);
@@ -61,7 +61,7 @@ export async function saveAnalyticsSettingsAction(formData: FormData) {
   const { error: layoutError } = await supabase
     .from("staff_analytics_layout")
     .upsert(
-      { staff_id: user.id, card_order: cardOrder },
+      { staff_id: userId, card_order: cardOrder },
       { onConflict: "staff_id" }
     );
   if (layoutError) {
@@ -81,11 +81,11 @@ export async function saveAnalyticsSettingsAction(formData: FormData) {
 // Refreshes every analytics materialized view via the SECURITY DEFINER
 // refresh_analytics() function. Wired to the "Refresh data" button.
 export async function refreshAnalyticsAction(formData: FormData) {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, staff } = await requireStaff();
+  // Analytics config is open to the analytics-viewing set: tier 1 or surgeon.
+  if (!(staff.access_tier === 1 || staff.role === "surgeon")) {
+    redirect("/");
+  }
 
   const { error } = await supabase.rpc("refresh_analytics");
   if (error) {

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 import { FEATURE_BY_KEY } from "@/lib/feature-flags";
 import type { Database } from "@/types/database.types";
 
@@ -42,6 +42,24 @@ function parseCsvList(raw: string): string[] {
     .filter((s) => s.length > 0);
 }
 
+// A `datetime-local` input gives a wall-clock string like "2026-05-17T14:30"
+// with no timezone. The clinic operates in Australia/Brisbane (UTC+10 all
+// year — Queensland has no DST), so the staff member is entering Brisbane
+// local time. `new Date(str).toISOString()` would (mis)interpret it in the
+// server's timezone; instead append the fixed +10:00 offset so the stored
+// instant is the correct Brisbane wall-clock moment.
+function brisbaneDateTimeLocalToIso(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  // Accept "YYYY-MM-DDTHH:mm" or with seconds.
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(:\d{2})?$/.exec(trimmed);
+  if (!m) return null;
+  const seconds = m[3] ?? ":00";
+  const d = new Date(`${m[1]}T${m[2]}${seconds}+10:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 // ───── Patient details ────────────────────────────────────────────────────
 
 export async function updatePatientDetailsAction(formData: FormData) {
@@ -58,7 +76,7 @@ export async function updatePatientDetailsAction(formData: FormData) {
   if (!email) backWithError(patientId, "Email is required.");
   if (!email.includes("@")) backWithError(patientId, "Enter a valid email.");
 
-  const supabase = createSupabaseServerClient();
+  const { supabase } = await requireStaff();
 
   const { data: before } = await supabase
     .from("patients")
@@ -117,7 +135,7 @@ export async function addProcedureAction(formData: FormData) {
   if (!surgeon_id) backWithError(patientId, "Pick a surgeon.");
   if (!surgery_date) backWithError(patientId, "Surgery date is required.");
 
-  const supabase = createSupabaseServerClient();
+  const { supabase } = await requireStaff();
   const { data, error } = await supabase
     .from("procedures")
     .insert({
@@ -165,7 +183,7 @@ export async function addMedicationAction(formData: FormData) {
   if (!frequency) backWithError(patientId, "Frequency is required.");
   if (!start_date) backWithError(patientId, "Start date is required.");
 
-  const supabase = createSupabaseServerClient();
+  const { supabase } = await requireStaff();
   const { data, error } = await supabase
     .from("medications")
     .insert({
@@ -203,12 +221,7 @@ export async function stopMedicationAction(formData: FormData) {
   if (!stop_reason)
     backWithError(patientId, "Stop reason is required (audit log).");
 
-  const supabase = createSupabaseServerClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   // Snapshot the before-state for the audit row.
   const { data: before } = await supabase
@@ -221,7 +234,7 @@ export async function stopMedicationAction(formData: FormData) {
     .from("medications")
     .update({
       stopped_at: new Date().toISOString(),
-      stopped_by_staff_id: user.id,
+      stopped_by_staff_id: userId,
       stop_reason,
     })
     .eq("id", medicationId)
@@ -262,10 +275,17 @@ export async function addAppointmentAction(formData: FormData) {
       ? (locationRaw as AppointmentLocation)
       : null;
 
-  const scheduled_at = scheduledRaw ? new Date(scheduledRaw).toISOString() : null;
+  // datetime-local is Brisbane wall-clock time — convert with the fixed
+  // +10:00 offset so the stored instant isn't skewed by the server's tz.
+  const scheduled_at = scheduledRaw
+    ? brisbaneDateTimeLocalToIso(scheduledRaw)
+    : null;
+  if (scheduledRaw && !scheduled_at) {
+    backWithError(patientId, "Enter a valid date and time.");
+  }
   const status = scheduled_at ? "confirmed" : "to_book";
 
-  const supabase = createSupabaseServerClient();
+  const { supabase } = await requireStaff();
   const { data, error } = await supabase
     .from("appointments")
     .insert({
@@ -308,9 +328,14 @@ export async function updateAppointmentAction(formData: FormData) {
   const STATUSES = ["to_book", "confirmed", "completed", "cancelled"];
   if (!STATUSES.includes(status)) backWithError(patientId, "Pick a status.");
 
+  // datetime-local is Brisbane wall-clock time — convert with the fixed
+  // +10:00 offset so the stored instant isn't skewed by the server's tz.
   const scheduled_at = scheduledRaw
-    ? new Date(scheduledRaw).toISOString()
+    ? brisbaneDateTimeLocalToIso(scheduledRaw)
     : null;
+  if (scheduledRaw && !scheduled_at) {
+    backWithError(patientId, "Enter a valid date and time.");
+  }
   // The DB CHECK requires a time for any non-to_book status.
   if (status !== "to_book" && !scheduled_at) {
     backWithError(
@@ -324,7 +349,7 @@ export async function updateAppointmentAction(formData: FormData) {
       ? (locationRaw as AppointmentLocation)
       : null;
 
-  const supabase = createSupabaseServerClient();
+  const { supabase } = await requireStaff();
   const { data: before } = await supabase
     .from("appointments")
     .select("*")
@@ -362,11 +387,7 @@ export async function messagePatientAboutAppointmentAction(
   formData: FormData
 ) {
   const patientId = readPatientId(formData);
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   let { data: thread } = await supabase
     .from("message_threads")
@@ -391,7 +412,7 @@ export async function messagePatientAboutAppointmentAction(
   const { error } = await supabase.from("messages").insert({
     thread_id: thread!.id,
     sender_type: "staff",
-    sender_id: user.id,
+    sender_id: userId,
     body,
   });
   if (error) backWithError(patientId, error.message);
@@ -418,17 +439,13 @@ export async function addNoteAction(formData: FormData) {
 
   if (!body) backWithError(patientId, "Note body is required.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const { data, error } = await supabase
     .from("staff_notes")
     .insert({
       patient_id: patientId,
-      author_staff_id: user.id,
+      author_staff_id: userId,
       body,
     })
     .select()
@@ -460,11 +477,7 @@ export async function uploadDocumentAction(formData: FormData) {
   }
   const upload = file as File;
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   // Path must start with the patient's id — Storage RLS keys ownership
   // off the first folder segment.
@@ -487,7 +500,7 @@ export async function uploadDocumentAction(formData: FormData) {
       title,
       filename: upload.name,
       storage_path: storagePath,
-      uploaded_by: user.id,
+      uploaded_by: userId,
     })
     .select()
     .single();
@@ -509,17 +522,13 @@ export async function uploadDocumentAction(formData: FormData) {
 // Discharges the patient — they drop out of the active-recovery lists.
 export async function dischargePatientAction(formData: FormData) {
   const patientId = readPatientId(formData);
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const { error } = await supabase
     .from("patients")
     .update({
       discharged_at: new Date().toISOString(),
-      discharged_by_staff_id: user.id,
+      discharged_by_staff_id: userId,
     })
     .eq("id", patientId);
   if (error) backWithError(patientId, error.message);
@@ -537,11 +546,7 @@ export async function dischargePatientAction(formData: FormData) {
 // Re-admits a discharged patient back into active recovery.
 export async function readmitPatientAction(formData: FormData) {
   const patientId = readPatientId(formData);
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase } = await requireStaff();
 
   const { error } = await supabase
     .from("patients")
@@ -571,18 +576,14 @@ export async function pinContentAction(formData: FormData) {
     backWithError(patientId, "Pick a guide from the library or write a message.");
   }
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const { error } = await supabase.from("patient_pinned_content").insert({
     patient_id: patientId,
     kind: contentId ? "content" : "message",
     content_id: contentId || null,
     ad_hoc_message: adHoc || null,
-    created_by_staff_id: user.id,
+    created_by_staff_id: userId,
   });
   if (error) backWithError(patientId, error.message);
 
@@ -601,11 +602,7 @@ export async function unpinContentAction(formData: FormData) {
   const id = String(formData.get("id") ?? "").trim();
   if (!id) backWithError(patientId, "Missing content id.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase } = await requireStaff();
 
   const { error } = await supabase
     .from("patient_pinned_content")
@@ -633,11 +630,7 @@ export async function setPatientFeatureOverrideAction(formData: FormData) {
     backWithError(patientId, "Unknown feature.");
   }
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   // changed_by_staff_id marks this as an explicit staff override (vs the
   // NULL left by the activation snapshot).
@@ -646,7 +639,7 @@ export async function setPatientFeatureOverrideAction(formData: FormData) {
       patient_id: patientId,
       feature_key: featureKey,
       enabled,
-      changed_by_staff_id: user.id,
+      changed_by_staff_id: userId,
       changed_at: new Date().toISOString(),
     },
     { onConflict: "patient_id,feature_key" }
@@ -673,17 +666,13 @@ export async function raiseFlagAction(formData: FormData) {
     backWithError(patientId, "Pick an alert level.");
   if (!reason) backWithError(patientId, "Reason is required.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const { data, error } = await supabase
     .from("manual_flags")
     .insert({
       patient_id: patientId,
-      raised_by_staff_id: user.id,
+      raised_by_staff_id: userId,
       alert_level,
       reason,
     })
@@ -707,11 +696,7 @@ export async function resolveFlagAction(formData: FormData) {
   const flagId = String(formData.get("flag_id") ?? "");
   if (!flagId) backWithError(patientId, "Flag id missing.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const { data: before } = await supabase
     .from("manual_flags")
@@ -723,7 +708,7 @@ export async function resolveFlagAction(formData: FormData) {
     .from("manual_flags")
     .update({
       resolved_at: new Date().toISOString(),
-      resolved_by_staff_id: user.id,
+      resolved_by_staff_id: userId,
     })
     .eq("id", flagId)
     .select()

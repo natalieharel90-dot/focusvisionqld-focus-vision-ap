@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 import type { Database } from "@/types/database.types";
 
 type RouteAction = Database["public"]["Enums"]["route_action"];
@@ -47,11 +47,7 @@ export async function saveRoutingRulesAction(formData: FormData) {
   if (procedureType) qs.set("procedure", procedureType);
   if (surgeonId) qs.set("surgeon", surgeonId);
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase } = await requireStaff();
 
   // Collect all rule:* fields posted from the form.
   // Field name format: route:<item_key>:<item_value>

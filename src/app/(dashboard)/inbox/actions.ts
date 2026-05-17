@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 import type { Database } from "@/types/database.types";
 
 const VALID_NOTIFICATION_PREFS = [
@@ -27,11 +27,7 @@ export async function sendStaffMessageAction(formData: FormData) {
   if (!threadId) redirect("/inbox");
   if (!body && !attachmentPath) back(threadId, "Type a reply before sending.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   // Fetch the thread's patient id so we can audit-log against them.
   const { data: thread, error: threadError } = await supabase
@@ -46,7 +42,7 @@ export async function sendStaffMessageAction(formData: FormData) {
     .insert({
       thread_id: threadId,
       sender_type: "staff",
-      sender_id: user.id,
+      sender_id: userId,
       body,
       attachments: attachmentPath ? [attachmentPath] : [],
     })
@@ -77,15 +73,11 @@ export async function toggleNotificationPrefAction(formData: FormData) {
   const enabled = formData.get("enabled") === "true";
   if (!(VALID_NOTIFICATION_PREFS as readonly string[]).includes(pref)) return;
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   // pref is validated against the column allow-list above.
   const patch = {
-    staff_id: user.id,
+    staff_id: userId,
     [pref]: enabled,
   } as Database["public"]["Tables"]["staff_notification_prefs"]["Insert"];
 
@@ -113,11 +105,7 @@ export async function resolveThreadAction(formData: FormData) {
   const threadId = String(formData.get("thread_id") ?? "");
   if (!threadId) redirect("/inbox");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase } = await requireStaff();
 
   const { data: thread, error } = await supabase
     .from("message_threads")

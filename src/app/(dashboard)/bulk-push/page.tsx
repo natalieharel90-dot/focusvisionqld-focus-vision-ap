@@ -51,6 +51,7 @@ async function loadComposeData(supabase: SupabaseServer): Promise<{
         .from("content_items")
         .select("id, type, title, body")
         .in("audience", ["post_op", "both"])
+        .eq("active", true)
         .order("title"),
     ]);
 

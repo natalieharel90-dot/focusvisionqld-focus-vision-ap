@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 import { FEATURE_BY_KEY } from "@/lib/feature-flags";
 import type { Json } from "@/types/database.types";
 
@@ -25,15 +25,11 @@ export async function updateFeatureDefaultAction(formData: FormData) {
 
   if (!FEATURE_BY_KEY.has(featureKey)) back("Unknown feature.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const patch: { enabled: boolean; updated_by: string; config?: Json } = {
     enabled,
-    updated_by: user.id,
+    updated_by: userId,
   };
   if (featureKey === "checkin_nudge" && nudgeTime) {
     patch.config = { nudge_time: nudgeTime } as unknown as Json;

@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 import {
   WEEKDAYS,
   canDisableContactOption,
@@ -29,14 +29,12 @@ function back(tab: string, error?: string): never {
 }
 
 // Every clinic-settings write goes through this. The page is open to all
-// staff; table RLS still enforces that only staff can write.
+// staff; this guard now verifies the caller is actually a staff member
+// (server actions are independently callable — a logged-in non-staff user
+// must not be able to invoke them) and redirects non-staff to sign-in.
 async function requireEditor() {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
-  return { supabase, userId: user.id };
+  const { supabase, userId } = await requireStaff();
+  return { supabase, userId };
 }
 
 // Saves just the after-hours emergency notice (a targeted clinic_profile
@@ -562,6 +560,12 @@ export async function moveTemplateAction(formData: FormData) {
       .update({ order_index })
       .eq("id", rowId);
   }
+
+  await recordStaffAudit(supabase, "settings.message_template_updated", {
+    entity_type: "message_template",
+    entity_id: id,
+    new_value: { change: "reordered", direction, category },
+  });
   revalidatePath("/settings/clinic");
   back("templates");
 }
@@ -678,6 +682,12 @@ export async function moveContactOptionAction(formData: FormData) {
       .update({ order_index })
       .eq("id", rowId);
   }
+
+  await recordStaffAudit(supabase, "settings.contact_options_updated", {
+    entity_type: "contact_option",
+    entity_id: id,
+    new_value: { change: "reordered", direction },
+  });
   revalidatePath("/settings/clinic");
   back("contact");
 }

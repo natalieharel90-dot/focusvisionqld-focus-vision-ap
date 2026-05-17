@@ -112,9 +112,15 @@ export default async function TriagePage({
   const supabase = createSupabaseServerClient();
   const filter = searchParams.filter ?? "all";
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayIso = todayStart.toISOString();
+  // "Today" is the clinic's day in Australia/Brisbane (UTC+10, no DST),
+  // not the server's local day — a UTC host would compute the wrong
+  // boundary for "resolved today".
+  const brisbaneToday = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Australia/Brisbane",
+  });
+  const todayIso = new Date(
+    `${brisbaneToday}T00:00:00+10:00`
+  ).toISOString();
 
   const [checkInsResult, manualFlagsResult, resolvedCheckInsResult, resolvedFlagsResult] =
     await Promise.all([
@@ -127,6 +133,7 @@ export default async function TriagePage({
       supabase
         .from("manual_flags")
         .select("*")
+        .in("alert_level", ["yellow", "orange", "red"])
         .is("resolved_at", null)
         .order("created_at", { ascending: false }),
       supabase

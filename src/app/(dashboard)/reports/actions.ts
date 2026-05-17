@@ -4,27 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaffTier } from "@/lib/require-staff";
 import { isReportType, type ReportType } from "@/lib/reports";
 import type { Json } from "@/types/database.types";
 
 // Reports are tier-1/tier-2 only; Reception (tier 3) is denied — enforced
-// server-side here as well as in the page.
+// server-side via requireStaffTier (also redirects non-staff to sign-in).
 async function requireReportAccess() {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
-  const { data: me } = await supabase
-    .from("staff_users")
-    .select("access_tier")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (me?.access_tier !== 1 && me?.access_tier !== 2) {
-    redirect("/reports?error=You+do+not+have+access+to+reports.");
-  }
-  return { supabase, userId: user.id };
+  const { supabase, userId } = await requireStaffTier(2);
+  return { supabase, userId };
 }
 
 // Builds the parameters object for a report type from the submitted form.

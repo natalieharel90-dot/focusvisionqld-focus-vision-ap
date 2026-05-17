@@ -1,9 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 import { applyTemplateToPatient } from "@/lib/templates";
 import { deriveStatus, freshChecklist } from "@/lib/setup-tasks";
 import type { Database } from "@/types/database.types";
@@ -17,6 +18,44 @@ const NEW_PATIENT_PASSWORD = "welcome-to-focus-vision";
 
 function back(message: string): never {
   redirect(`/patients/new?error=${encodeURIComponent(message)}`);
+}
+
+// Service-role admin client — server-only, used to undo a partially-created
+// patient if a step after auth-user creation fails. Returns null when the
+// environment isn't configured for admin operations.
+function adminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return null;
+  return createClient<Database>(url, serviceKey, {
+    auth: { persistSession: false },
+  });
+}
+
+// Best-effort rollback of a half-created patient. createPatientAction does
+// 5+ separate writes and can't be a real DB transaction from the client, so
+// if a step fails mid-way we delete what was created — the patients row and
+// the auth user — to avoid orphaned records. If cleanup itself fails the
+// staff member is told the partial record exists so they can fix it.
+async function cleanupAndFail(
+  patientId: string,
+  message: string
+): Promise<never> {
+  const admin = adminClient();
+  let cleaned = false;
+  if (admin) {
+    // Delete the patients row first (it's referenced by the auth user via id).
+    await admin.from("patients").delete().eq("id", patientId);
+    const { error } = await admin.auth.admin.deleteUser(patientId);
+    cleaned = !error;
+  }
+  if (cleaned) {
+    back(message);
+  }
+  back(
+    `${message} A partial patient record (id ${patientId}) could not be ` +
+      `fully cleaned up — please remove it manually or contact an admin.`
+  );
 }
 
 export async function createPatientAction(formData: FormData) {
@@ -36,11 +75,7 @@ export async function createPatientAction(formData: FormData) {
   if (!surgeryDate) back("Surgery date is required.");
   if (!templateId) back("Pick a procedure template.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase } = await requireStaff();
 
   // Resolve the template — gives us surgeon + procedure, and lets us
   // refuse archived templates.
@@ -62,6 +97,8 @@ export async function createPatientAction(formData: FormData) {
   if (authError) back(authError.message);
   const patientId = newUserId as string;
 
+  // From here on the auth user exists — any failure must roll it (and the
+  // patients row, once inserted) back to avoid orphaned records.
   const { error: patientError } = await supabase.from("patients").insert({
     id: patientId,
     email,
@@ -70,7 +107,7 @@ export async function createPatientAction(formData: FormData) {
     last_name: lastName,
     date_of_birth: dob,
   });
-  if (patientError) back(patientError.message);
+  if (patientError) await cleanupAndFail(patientId, patientError.message);
 
   // The procedure record — stamped with source_template_id.
   const { error: procedureError } = await supabase
@@ -85,7 +122,7 @@ export async function createPatientAction(formData: FormData) {
       facility_id: facilityId,
       status: "active",
     });
-  if (procedureError) back(procedureError.message);
+  if (procedureError) await cleanupAndFail(patientId, procedureError.message);
 
   // Materialise the template's default medications + appointments.
   let applied: { medicationCount: number; appointmentCount: number };
@@ -96,7 +133,12 @@ export async function createPatientAction(formData: FormData) {
       surgeryDate,
     });
   } catch (err) {
-    back(err instanceof Error ? err.message : "Failed to apply template.");
+    await cleanupAndFail(
+      patientId,
+      err instanceof Error ? err.message : "Failed to apply template."
+    );
+    // cleanupAndFail always redirects (throws) — unreachable, satisfies CFA.
+    throw err;
   }
 
   // Open the messaging thread so the patient can reach the clinic.

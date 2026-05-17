@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 import type { Database } from "@/types/database.types";
 
 type AlertLevel = Exclude<
@@ -24,11 +24,7 @@ export async function saveAlertActionsAction(formData: FormData) {
   const level = String(formData.get("alert_level") ?? "") as AlertLevel;
   if (!VALID_LEVELS.includes(level)) back("Invalid alert level.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const update = {
     email_clinic: formData.get("email_clinic") === "on",
@@ -40,7 +36,7 @@ export async function saveAlertActionsAction(formData: FormData) {
       String(formData.get("additional_email") ?? "").trim() || null,
     oncall_number:
       String(formData.get("oncall_number") ?? "").trim() || null,
-    updated_by: user.id,
+    updated_by: userId,
   };
 
   const { data: before } = await supabase

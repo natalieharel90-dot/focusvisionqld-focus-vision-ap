@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 import {
   bucketZoneRows,
   computeZoneContentDiff,
@@ -61,11 +61,7 @@ export async function saveZoneContentAction(formData: FormData) {
     warning: String(formData.get("warning") ?? "").trim() || null,
   };
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const isDefaultTier = procedureType === null && surgeonId === null;
 
@@ -110,7 +106,7 @@ export async function saveZoneContentAction(formData: FormData) {
           today_tip: stored.today_tip,
           instructions: stored.instructions,
           warning: stored.warning,
-          updated_by: user.id,
+          updated_by: userId,
         },
         { onConflict: "zone,procedure_type,surgeon_id" }
       );

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 
 function back(message: string): never {
   redirect(`/settings/symptoms?error=${encodeURIComponent(message)}`);
@@ -19,11 +19,7 @@ export async function addSymptomAction(formData: FormData) {
   if (!/^[a-z][a-z0-9_]*$/.test(key))
     back("Key must be snake_case (letters, digits, underscores; start with a letter).");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase } = await requireStaff();
 
   const { data, error } = await supabase
     .from("symptom_options")
@@ -48,11 +44,7 @@ export async function deleteSymptomAction(formData: FormData) {
   const id = String(formData.get("symptom_id") ?? "");
   if (!id) back("Missing symptom id.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase } = await requireStaff();
 
   const { data: before } = await supabase
     .from("symptom_options")

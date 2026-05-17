@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireStaff } from "@/lib/require-staff";
 
 // Builds a /reviews URL that preserves the staff member's filter,
 // search and page, optionally carrying an error message.
@@ -31,11 +31,7 @@ export async function replyToFeedbackAction(formData: FormData) {
   if (!feedbackId) back("Missing feedback id.");
   if (!body) back("Write a reply before sending.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const { data: feedback } = await supabase
     .from("feedback")
@@ -63,7 +59,7 @@ export async function replyToFeedbackAction(formData: FormData) {
   const { error: messageError } = await supabase.from("messages").insert({
     thread_id: thread!.id,
     sender_type: "staff",
-    sender_id: user.id,
+    sender_id: userId,
     body,
   });
   if (messageError) back(messageError.message);
@@ -77,7 +73,7 @@ export async function replyToFeedbackAction(formData: FormData) {
     .from("feedback")
     .update({
       acknowledged_at: new Date().toISOString(),
-      acknowledged_by_staff_id: user.id,
+      acknowledged_by_staff_id: userId,
     })
     .eq("id", feedbackId);
   if (ackError) back(ackError.message);
@@ -100,11 +96,7 @@ export async function markFeedbackContactedAction(formData: FormData) {
   const back = (msg?: string): never => redirect(reviewsUrl(formData, msg));
   if (!feedbackId) back("Missing feedback id.");
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  const { supabase, userId } = await requireStaff();
 
   const { data: feedback } = await supabase
     .from("feedback")
@@ -119,7 +111,7 @@ export async function markFeedbackContactedAction(formData: FormData) {
       .from("feedback")
       .update({
         acknowledged_at: new Date().toISOString(),
-        acknowledged_by_staff_id: user.id,
+        acknowledged_by_staff_id: userId,
       })
       .eq("id", feedbackId);
     if (error) back(error.message);
