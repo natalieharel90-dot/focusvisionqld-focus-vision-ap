@@ -7,9 +7,9 @@ import {
   AUDIT_EXPORT_CAP,
   AUDIT_PAGE_SIZE,
   auditCategory,
-  auditEventLabel,
+  auditRowMatches,
   canAccessAuditLog,
-  type AuditCategory,
+  coerceAuditCategory,
 } from "@/lib/audit-log";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { AuditTable, type AuditRow } from "./AuditTable";
@@ -67,11 +67,7 @@ export default async function AuditPage({
     );
   }
 
-  const category = (
-    AUDIT_CATEGORIES.some((c) => c.key === first(searchParams.category))
-      ? first(searchParams.category)
-      : "all"
-  ) as AuditCategory;
+  const category = coerceAuditCategory(first(searchParams.category));
   const q = (first(searchParams.q) ?? "").trim();
   const page = Math.max(1, Math.floor(Number(first(searchParams.page)) || 1));
 
@@ -145,25 +141,17 @@ export default async function AuditPage({
     { label: "Anomalies", value: "0", sub: "None flagged" },
   ];
 
-  // ── Category + search filter ──
-  const ql = q.toLowerCase();
-  const filtered = allRows.filter((r) => {
-    if (category !== "all" && auditCategory(r.event_type) !== category) {
-      return false;
-    }
-    if (ql) {
-      const hay = [
-        r.actor_name ?? "",
-        r.patient_name ?? "",
-        r.event_type,
-        auditEventLabel(r.event_type),
-      ]
-        .join(" ")
-        .toLowerCase();
-      if (!hay.includes(ql)) return false;
-    }
-    return true;
-  });
+  // ── Category + search filter ── (shared with the CSV export)
+  const filtered = allRows.filter((r) => auditRowMatches(r, category, q));
+
+  // The Export CSV link carries the active filters so the download
+  // matches exactly what's on screen.
+  const exportParams = new URLSearchParams();
+  if (category !== "all") exportParams.set("category", category);
+  if (q) exportParams.set("q", q);
+  const exportHref = exportParams.toString()
+    ? `/audit/export?${exportParams.toString()}`
+    : "/audit/export";
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / AUDIT_PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -207,7 +195,7 @@ export default async function AuditPage({
             />
           </form>
           <a
-            href="/audit/export"
+            href={exportHref}
             className="shrink-0 rounded-lg bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
           >
             Export CSV

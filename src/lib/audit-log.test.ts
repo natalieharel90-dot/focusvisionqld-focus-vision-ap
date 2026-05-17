@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  auditEventMatchesFilters,
   auditEventsToCsv,
+  auditRowMatches,
   canAccessAuditLog,
-  defaultDateRange,
-  parseAuditFilters,
+  coerceAuditCategory,
   summarizeAuditEvent,
   type AuditCsvRow,
   type AuditEventLike,
-  type AuditFilters,
+  type AuditRowLike,
 } from "./audit-log";
 
 describe("canAccessAuditLog — tier-1-only gate", () => {
@@ -28,144 +27,56 @@ describe("canAccessAuditLog — tier-1-only gate", () => {
   });
 });
 
-describe("parseAuditFilters", () => {
-  const NOW = new Date("2026-05-15T12:00:00Z");
-
-  it("defaults to the last 7 days when no range given", () => {
-    const f = parseAuditFilters({}, NOW);
-    expect(f.from).toBe("2026-05-08");
-    expect(f.to).toBe("2026-05-15");
+describe("coerceAuditCategory", () => {
+  it("keeps a valid category key", () => {
+    expect(coerceAuditCategory("record_edits")).toBe("record_edits");
+    expect(coerceAuditCategory("manual_flags")).toBe("manual_flags");
   });
-
-  it("reads explicit filter values from query params", () => {
-    const f = parseAuditFilters(
-      {
-        from: "2026-01-01",
-        to: "2026-02-01",
-        actor: "staff-1",
-        patient: "patient-9",
-        events: ["staff.signed_in", "patient.created"],
-        page: "3",
-      },
-      NOW
-    );
-    expect(f).toEqual({
-      from: "2026-01-01",
-      to: "2026-02-01",
-      actorStaffId: "staff-1",
-      patientId: "patient-9",
-      eventTypes: ["staff.signed_in", "patient.created"],
-      page: 3,
-    });
-  });
-
-  it("parses a comma-joined events string", () => {
-    const f = parseAuditFilters({ events: "a,b,c" }, NOW);
-    expect(f.eventTypes).toEqual(["a", "b", "c"]);
-  });
-
-  it("clamps an invalid page to 1", () => {
-    expect(parseAuditFilters({ page: "0" }, NOW).page).toBe(1);
-    expect(parseAuditFilters({ page: "-2" }, NOW).page).toBe(1);
-    expect(parseAuditFilters({ page: "abc" }, NOW).page).toBe(1);
+  it("falls back to 'all' for anything unrecognised", () => {
+    expect(coerceAuditCategory("nonsense")).toBe("all");
+    expect(coerceAuditCategory(undefined)).toBe("all");
+    expect(coerceAuditCategory(null)).toBe("all");
   });
 });
 
-describe("defaultDateRange", () => {
-  it("spans 7 days back through today", () => {
-    const { from, to } = defaultDateRange(new Date("2026-05-15T00:00:00Z"));
-    expect(from).toBe("2026-05-08");
-    expect(to).toBe("2026-05-15");
-  });
-});
-
-describe("auditEventMatchesFilters — filter combinations", () => {
-  const base: AuditFilters = {
-    from: "2026-05-01",
-    to: "2026-05-31",
-    actorStaffId: null,
-    patientId: null,
-    eventTypes: [],
-    page: 1,
-  };
-  const event = (over: Partial<AuditEventLike>): AuditEventLike => ({
-    created_at: "2026-05-15T10:00:00Z",
-    actor_staff_id: "staff-1",
+describe("auditRowMatches — shared table + export filter", () => {
+  const row = (over: Partial<AuditRowLike>): AuditRowLike => ({
     event_type: "patient.created",
-    patient_id: "patient-1",
-    old_value: null,
-    new_value: { x: 1 },
+    actor_name: "Dr Maria Chen",
+    patient_name: "Test Patient One",
     ...over,
   });
 
-  it("date range only: in-range passes, out-of-range fails", () => {
-    expect(auditEventMatchesFilters(event({}), base)).toBe(true);
+  it("category 'all' with no query matches every row", () => {
+    expect(auditRowMatches(row({}), "all", "")).toBe(true);
     expect(
-      auditEventMatchesFilters(
-        event({ created_at: "2026-04-30T10:00:00Z" }),
-        base
-      )
-    ).toBe(false);
-    expect(
-      auditEventMatchesFilters(
-        event({ created_at: "2026-06-01T10:00:00Z" }),
-        base
-      )
-    ).toBe(false);
-  });
-
-  it("includes the full final day (end-of-day boundary)", () => {
-    expect(
-      auditEventMatchesFilters(
-        event({ created_at: "2026-05-31T23:30:00Z" }),
-        base
-      )
+      auditRowMatches(row({ event_type: "staff.signed_in" }), "all", "")
     ).toBe(true);
   });
 
-  it("actor filter restricts to one staff member", () => {
-    const f = { ...base, actorStaffId: "staff-1" };
-    expect(auditEventMatchesFilters(event({}), f)).toBe(true);
-    expect(
-      auditEventMatchesFilters(event({ actor_staff_id: "staff-2" }), f)
-    ).toBe(false);
+  it("a category chip restricts to that category", () => {
+    // patient.created buckets to record_edits.
+    expect(auditRowMatches(row({}), "record_edits", "")).toBe(true);
+    expect(auditRowMatches(row({}), "message_activity", "")).toBe(false);
   });
 
-  it("patient filter restricts to one patient", () => {
-    const f = { ...base, patientId: "patient-1" };
-    expect(auditEventMatchesFilters(event({}), f)).toBe(true);
-    expect(
-      auditEventMatchesFilters(event({ patient_id: "patient-2" }), f)
-    ).toBe(false);
+  it("the search query matches actor name, patient name and event", () => {
+    expect(auditRowMatches(row({}), "all", "maria")).toBe(true);
+    expect(auditRowMatches(row({}), "all", "patient one")).toBe(true);
+    expect(auditRowMatches(row({}), "all", "created")).toBe(true);
+    expect(auditRowMatches(row({}), "all", "no-such-thing")).toBe(false);
   });
 
-  it("event_type multi-select: empty matches all, non-empty restricts", () => {
-    expect(auditEventMatchesFilters(event({}), base)).toBe(true);
-    const f = {
-      ...base,
-      eventTypes: ["staff.signed_in", "message.sent_to_patient"],
-    };
-    expect(auditEventMatchesFilters(event({}), f)).toBe(false);
-    expect(
-      auditEventMatchesFilters(
-        event({ event_type: "staff.signed_in" }),
-        f
-      )
-    ).toBe(true);
+  it("category and query must both hold (AND)", () => {
+    expect(auditRowMatches(row({}), "record_edits", "maria")).toBe(true);
+    expect(auditRowMatches(row({}), "message_activity", "maria")).toBe(false);
+    expect(auditRowMatches(row({}), "record_edits", "nobody")).toBe(false);
   });
 
-  it("combined filters: all conditions must hold (AND)", () => {
-    const f: AuditFilters = {
-      ...base,
-      actorStaffId: "staff-1",
-      patientId: "patient-1",
-      eventTypes: ["patient.created"],
-    };
-    expect(auditEventMatchesFilters(event({}), f)).toBe(true);
-    // one mismatch ⇒ excluded
-    expect(
-      auditEventMatchesFilters(event({ patient_id: "patient-X" }), f)
-    ).toBe(false);
+  it("tolerates null actor / patient names", () => {
+    const r = row({ actor_name: null, patient_name: null });
+    expect(auditRowMatches(r, "all", "")).toBe(true);
+    expect(auditRowMatches(r, "all", "maria")).toBe(false);
   });
 });
 

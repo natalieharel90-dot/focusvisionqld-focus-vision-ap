@@ -95,95 +95,49 @@ export function canAccessAuditLog(
   return accessTier === 1;
 }
 
-// Event types offered in the filter multi-select.
-export const AUDIT_EVENT_TYPES: ReadonlyArray<string> = [
-  "staff.signed_in",
-  "staff.signed_out",
-  "staff.created",
-  "patient.created",
-  "patient.procedure_added",
-  "patient.medication_added",
-  "patient.medication_stopped",
-  "patient.appointment_scheduled",
-  "patient.note_added",
-  "patient.flag_raised",
-  "patient.flag_resolved",
-  "patient.check_in_reviewed",
-  "patient.template_applied",
-  "message.sent_to_patient",
-  "settings.routing_rules_updated",
-  "settings.alert_actions_updated",
-  "settings.symptom_added",
-  "settings.symptom_toggled",
-  "settings.template_created",
-  "settings.template_updated",
-  "settings.template_archived",
-  "settings.recovery_guidance_updated",
-  "audit.viewed",
-  "audit.exported",
-];
+// ── Filtering ──────────────────────────────────────────────────────────────
 
-export type AuditFilters = {
-  from: string; // YYYY-MM-DD inclusive
-  to: string; // YYYY-MM-DD inclusive (interpreted as end-of-day)
-  actorStaffId: string | null;
-  patientId: string | null;
-  eventTypes: string[]; // empty ⇒ all
-  page: number; // 1-based
+export type AuditRowLike = {
+  event_type: string;
+  actor_name: string | null;
+  patient_name: string | null;
 };
 
-// Default date window: the last 7 days (today inclusive).
-export function defaultDateRange(now: Date = new Date()): {
-  from: string;
-  to: string;
-} {
-  const to = now.toISOString().slice(0, 10);
-  const fromDate = new Date(now);
-  fromDate.setUTCDate(fromDate.getUTCDate() - 7);
-  const from = fromDate.toISOString().slice(0, 10);
-  return { from, to };
+// The single filter predicate behind both the on-screen audit table and
+// the CSV export — a category chip plus a free-text query matched against
+// the actor name, patient name, raw event type and its friendly label.
+// Keeping one predicate keeps the export in lockstep with the view.
+export function auditRowMatches(
+  row: AuditRowLike,
+  category: AuditCategory,
+  query: string
+): boolean {
+  if (category !== "all" && auditCategory(row.event_type) !== category) {
+    return false;
+  }
+  const q = query.trim().toLowerCase();
+  if (q !== "") {
+    const haystack = [
+      row.actor_name ?? "",
+      row.patient_name ?? "",
+      row.event_type,
+      auditEventLabel(row.event_type),
+    ]
+      .join(" ")
+      .toLowerCase();
+    if (!haystack.includes(q)) return false;
+  }
+  return true;
 }
 
-type RawParam = string | string[] | undefined;
-
-function firstString(v: RawParam): string | undefined {
-  if (Array.isArray(v)) return v[0];
-  return v;
+// Coerces a raw search-param value into a valid category (default "all").
+export function coerceAuditCategory(value: unknown): AuditCategory {
+  return AUDIT_CATEGORIES.some((c) => c.key === value)
+    ? (value as AuditCategory)
+    : "all";
 }
 
-function stringList(v: RawParam): string[] {
-  if (Array.isArray(v)) return v.filter((x) => x.length > 0);
-  if (typeof v === "string" && v.length > 0) return v.split(",").filter(Boolean);
-  return [];
-}
-
-// Parse Next.js searchParams into a normalized filter object.
-export function parseAuditFilters(
-  sp: Record<string, RawParam>,
-  now: Date = new Date()
-): AuditFilters {
-  const def = defaultDateRange(now);
-  const pageRaw = Number(firstString(sp.page));
-  return {
-    from: firstString(sp.from) || def.from,
-    to: firstString(sp.to) || def.to,
-    actorStaffId: firstString(sp.actor) || null,
-    patientId: firstString(sp.patient) || null,
-    eventTypes: stringList(sp.events),
-    page: Number.isInteger(pageRaw) && pageRaw >= 1 ? pageRaw : 1,
-  };
-}
-
-// Inclusive UTC bounds for a YYYY-MM-DD filter range.
-export function filterDateBounds(filters: Pick<AuditFilters, "from" | "to">): {
-  fromIso: string;
-  toIso: string;
-} {
-  return {
-    fromIso: `${filters.from}T00:00:00.000Z`,
-    toIso: `${filters.to}T23:59:59.999Z`,
-  };
-}
+// ── Summary + CSV ──────────────────────────────────────────────────────────
 
 export type AuditEventLike = {
   created_at: string;
@@ -193,31 +147,6 @@ export type AuditEventLike = {
   old_value: unknown;
   new_value: unknown;
 };
-
-// Pure predicate mirroring the server-side SQL query semantics. Used by
-// tests to assert filter combinations select the expected rows.
-export function auditEventMatchesFilters(
-  event: AuditEventLike,
-  filters: AuditFilters
-): boolean {
-  const ts = new Date(event.created_at).getTime();
-  const { fromIso, toIso } = filterDateBounds(filters);
-  if (ts < new Date(fromIso).getTime()) return false;
-  if (ts > new Date(toIso).getTime()) return false;
-  if (filters.actorStaffId && event.actor_staff_id !== filters.actorStaffId) {
-    return false;
-  }
-  if (filters.patientId && event.patient_id !== filters.patientId) {
-    return false;
-  }
-  if (
-    filters.eventTypes.length > 0 &&
-    !filters.eventTypes.includes(event.event_type)
-  ) {
-    return false;
-  }
-  return true;
-}
 
 // Short summary shown in the table's Summary column. The full before →
 // after JSON lives in the detail drawer.
