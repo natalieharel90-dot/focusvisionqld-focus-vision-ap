@@ -4,6 +4,7 @@ import { createHash, randomInt } from "node:crypto";
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { sendSms } from "@/lib/sms";
 
 const CODE_TTL_MIN = 10;
 const RESEND_THROTTLE_MS = 30_000;
@@ -75,12 +76,24 @@ export async function sendPhoneCodeAction(formData: FormData) {
     });
   if (error) back("Couldn't send a code right now. Please try again.");
 
-  // TODO: deliver `code` to `phone` via the clinic's SMS provider.
-  console.log(`[dev] phone verification code for ${phone}: ${code}`);
-  // Surfaced only in local development — never on a deployed environment.
+  // Deliver the code by SMS.
+  const sms = await sendSms(
+    phone,
+    `Your Focus Vision verification code is ${code}. It expires in 10 minutes.`
+  );
+
+  // In local development the code is surfaced on screen so the flow can be
+  // tested without a configured SMS provider.
   if (process.env.NODE_ENV === "development") {
+    console.log(`[dev] phone verification code for ${phone}: ${code}`);
     redirect(`/verify-phone?devcode=${code}`);
   }
+
+  if (!sms.ok) {
+    console.error("[verify-phone] SMS send failed:", sms.error);
+    back("Couldn't send a verification code right now. Please try again.");
+  }
+
   redirect("/verify-phone");
 }
 
