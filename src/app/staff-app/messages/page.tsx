@@ -118,7 +118,7 @@ export default async function StaffAppMessages() {
           return (
             <li key={t.id}>
               <Link
-                href={`/inbox?thread=${t.id}`}
+                href={`/staff-app/messages/${t.id}`}
                 className="flex gap-3 px-4 py-3.5"
               >
                 <div className="relative shrink-0">

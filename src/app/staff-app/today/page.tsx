@@ -167,7 +167,7 @@ export default async function StaffAppToday() {
           awaiting.map((t) => (
             <Link
               key={t.id}
-              href={`/inbox?thread=${t.id}`}
+              href={`/staff-app/messages/${t.id}`}
               className="rounded-xl border-l-4 border-fv-accent-strong bg-fv-bg-card p-3 shadow-sm"
             >
               <div className="flex items-center gap-2">

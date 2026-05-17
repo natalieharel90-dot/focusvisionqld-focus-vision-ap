@@ -209,7 +209,7 @@ function TriageCard({ item, accent }: { item: TriageItem; accent: string }) {
         ) : null}
         {item.threadId ? (
           <Link
-            href={`/inbox?thread=${item.threadId}`}
+            href={`/staff-app/messages/${item.threadId}`}
             className="flex-1 rounded-md border border-fv-border py-1.5 text-center text-xs font-semibold text-fv-text-primary"
           >
             💬 Reply
