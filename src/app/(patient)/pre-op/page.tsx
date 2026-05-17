@@ -1,17 +1,22 @@
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { loadPatientFeatures } from "@/lib/patient-features-server";
-import {
-  DEFAULT_SURGERY_DAY_TEXT,
-  PREOP_CHECKLIST,
-  isPreOp,
-  selectPreopContent,
-  selectSurgeryDayText,
-  surgeryCountdownLabel,
-} from "@/lib/preop";
+import { summariseHours, type OpeningHours } from "@/lib/contact";
+import { PREOP_CHECKLIST, isPreOp, selectPreopContent } from "@/lib/preop";
 
 export const dynamic = "force-dynamic";
+
+type ContentItem = {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  media_url: string | null;
+  procedures: string[];
+  audience: string;
+};
 
 function brisbaneToday(): string {
   return new Date().toLocaleDateString("en-CA", {
@@ -21,11 +26,24 @@ function brisbaneToday(): string {
 
 function fmtDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-AU", {
-    weekday: "long",
+    weekday: "short",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+}
+
+// Stable gradient per video — content_items has no stored thumbnail.
+const GRADIENTS = [
+  "from-sky-500 to-teal-700",
+  "from-teal-500 to-teal-700",
+  "from-amber-300 via-lime-300 to-teal-500",
+  "from-cyan-500 to-teal-700",
+];
+function gradientFor(seed: string): string {
+  let h = 0;
+  for (const c of seed) h += c.charCodeAt(0);
+  return GRADIENTS[h % GRADIENTS.length]!;
 }
 
 export default async function PreOpPage() {
@@ -43,7 +61,7 @@ export default async function PreOpPage() {
 
   const { data: procedures } = await supabase
     .from("procedures")
-    .select("id, procedure_type, eye, surgeon_id, surgery_date, source_template_id")
+    .select("id, procedure_type, surgeon_id, surgery_date, facility_id")
     .eq("patient_id", user.id)
     .order("surgery_date", { ascending: true });
 
@@ -56,142 +74,262 @@ export default async function PreOpPage() {
 
   const upcoming = preOpProcedures[0]!;
 
-  const [{ data: surgeonRows }, { data: contentRows }, { data: templateRows }] =
+  const [{ data: surgeonRow }, { data: contentRows }, { data: clinic }] =
     await Promise.all([
       supabase
         .from("staff_users")
-        .select("id, name")
-        .in(
-          "id",
-          [...new Set(preOpProcedures.map((p) => p.surgeon_id))]
-        ),
-      supabase.from("content_items").select("*"),
+        .select("name")
+        .eq("id", upcoming.surgeon_id)
+        .maybeSingle(),
       supabase
-        .from("procedure_templates")
-        .select("id, procedure_type, surgery_day_text"),
+        .from("content_items")
+        .select("id, type, title, body, media_url, procedures, audience"),
+      supabase
+        .from("clinic_profile")
+        .select("phone, opening_hours")
+        .limit(1)
+        .maybeSingle(),
     ]);
 
-  const surgeonName = new Map(
-    (surgeonRows ?? []).map((s) => [s.id, s.name])
-  );
+  let facilityName: string | null = null;
+  if (upcoming.facility_id) {
+    const { data: facility } = await supabase
+      .from("partner_facilities")
+      .select("name")
+      .eq("id", upcoming.facility_id)
+      .maybeSingle();
+    facilityName = facility?.name ?? null;
+  }
 
   const content = selectPreopContent(
-    contentRows ?? [],
+    (contentRows ?? []) as ContentItem[],
     upcoming.procedure_type
   );
+  const videos = content.filter((c) => c.type === "video");
+  const questions = content.filter((c) => c.type === "faq");
 
-  const surgeryDayText = selectSurgeryDayText(
-    templateRows ?? [],
-    upcoming.source_template_id,
-    upcoming.procedure_type,
-    DEFAULT_SURGERY_DAY_TEXT
-  );
+  const surgeonName = surgeonRow?.name ?? "Your surgeon";
+  const hours = clinic
+    ? summariseHours((clinic.opening_hours ?? {}) as OpeningHours)
+    : "";
 
   return (
-    <main className="flex flex-col gap-5 px-5 py-6">
-      {/* Countdown */}
-      <section className="rounded-2xl bg-fv-accent-strong p-5 text-white">
-        <div className="text-xs font-semibold uppercase tracking-wide opacity-90">
-          Before your surgery
-        </div>
-        <h1 className="mt-1 text-2xl font-semibold">
-          {surgeryCountdownLabel(upcoming.surgery_date, today)}
+    <main className="flex flex-col gap-6 px-5 py-6">
+      <header>
+        <h1 className="text-3xl font-bold text-fv-text-primary">
+          Pre-op information
         </h1>
-        <p className="mt-1 text-sm opacity-90">
-          {fmtDate(upcoming.surgery_date)}
+        <p className="mt-1 text-sm text-fv-text-secondary">
+          Everything you need to know before surgery day
         </p>
+      </header>
+
+      {/* Your surgery */}
+      <section className="flex items-center gap-3 rounded-2xl bg-fv-bg-card p-4 shadow-sm">
+        <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-fv-bg-accent-soft text-fv-accent-strong">
+          <CalendarIcon />
+        </span>
+        <div className="min-w-0">
+          <div className="text-xs font-bold uppercase tracking-wide text-fv-text-secondary">
+            Your surgery
+          </div>
+          <div className="font-bold text-fv-text-primary">
+            {upcoming.procedure_type.toUpperCase()} · {surgeonName}
+          </div>
+          <div className="mt-0.5 text-sm text-fv-text-secondary">
+            Scheduled for {fmtDate(upcoming.surgery_date)}
+            {facilityName ? ` at ${facilityName}` : ""}
+          </div>
+        </div>
       </section>
 
-      {/* Procedures */}
-      <section className="rounded-2xl bg-fv-bg-card p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-fv-text-primary">
-          Your procedure{preOpProcedures.length > 1 ? "s" : ""}
-        </h2>
-        <ul className="mt-3 flex flex-col gap-2">
-          {preOpProcedures.map((p) => (
-            <li key={p.id} className="text-sm">
-              <span className="font-medium text-fv-text-primary">
-                {p.procedure_type.toUpperCase()} · {p.eye} eye
-              </span>
-              <span className="block text-xs text-fv-text-secondary">
-                {surgeonName.get(p.surgeon_id) ?? "Your surgeon"} ·{" "}
-                {fmtDate(p.surgery_date)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* What to expect on surgery day */}
-      <section className="rounded-2xl bg-fv-bg-card p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-fv-text-primary">
-          What to expect on surgery day
-        </h2>
-        <p className="mt-2 whitespace-pre-wrap text-sm text-fv-text-secondary">
-          {surgeryDayText}
-        </p>
-      </section>
-
-      {/* Pre-op checklist */}
-      <section className="rounded-2xl bg-fv-bg-card p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-fv-text-primary">
-          Getting ready
-        </h2>
-        <ul className="mt-3 flex flex-col gap-2">
-          {PREOP_CHECKLIST.map((item) => (
-            <li
-              key={item}
-              className="flex items-start gap-2 text-sm text-fv-text-secondary"
-            >
-              <span aria-hidden className="text-fv-accent-strong">
-                ✓
-              </span>
-              {item}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* Pre-op content */}
-      {content.length > 0 ? (
-        <section>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fv-text-secondary">
-            Helpful before your visit
-          </h2>
+      {/* Day-before checklist */}
+      <Section title="Day-before checklist">
+        <div className="rounded-2xl bg-fv-bg-card p-5 shadow-sm">
           <ul className="flex flex-col gap-3">
-            {content.map((item) => (
+            {PREOP_CHECKLIST.map((item) => (
               <li
-                key={item.id}
-                className="rounded-2xl bg-fv-bg-card p-4 shadow-sm"
+                key={item}
+                className="flex gap-3 text-sm leading-relaxed text-fv-text-primary"
               >
-                <div className="flex items-center gap-2">
-                  <span aria-hidden className="text-lg">
-                    {item.type === "video" ? "▶️" : "📄"}
-                  </span>
-                  <span className="text-sm font-semibold text-fv-text-primary">
-                    {item.title}
-                  </span>
-                </div>
-                {item.body ? (
-                  <p className="mt-1 text-sm text-fv-text-secondary">
-                    {item.body}
-                  </p>
-                ) : null}
-                {item.type === "video" && item.media_url ? (
-                  <a
-                    href={item.media_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-block text-sm font-medium text-fv-accent-strong"
-                  >
-                    Watch video →
-                  </a>
-                ) : null}
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-fv-accent" />
+                <span>{item}</span>
               </li>
             ))}
           </ul>
-        </section>
+        </div>
+      </Section>
+
+      {/* Videos */}
+      {videos.length > 0 ? (
+        <Section title="Videos to watch before surgery">
+          {videos.map((v) => {
+            const card = (
+              <div className="overflow-hidden rounded-2xl bg-fv-bg-card shadow-sm">
+                <div
+                  className={`grid h-44 place-items-center bg-gradient-to-br ${gradientFor(
+                    v.id
+                  )}`}
+                >
+                  <span className="grid h-16 w-16 place-items-center rounded-full bg-white text-fv-accent-strong">
+                    <PlayIcon />
+                  </span>
+                </div>
+                <div className="p-4">
+                  <div className="font-semibold text-fv-text-primary">
+                    {v.title}
+                  </div>
+                  {v.body ? (
+                    <div className="mt-0.5 text-sm text-fv-text-secondary">
+                      {v.body}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            );
+            return v.media_url ? (
+              <a key={v.id} href={v.media_url} target="_blank" rel="noreferrer">
+                {card}
+              </a>
+            ) : (
+              <div key={v.id}>{card}</div>
+            );
+          })}
+        </Section>
+      ) : null}
+
+      {/* Common questions */}
+      {questions.length > 0 ? (
+        <Section title="Common questions">
+          {questions.map((q) => {
+            const inner = (
+              <>
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-fv-bg-accent-soft text-fv-accent-strong">
+                  <QuestionIcon />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-fv-text-primary">
+                    {q.title}
+                  </span>
+                  {q.body ? (
+                    <span className="mt-0.5 block text-sm text-fv-text-secondary">
+                      {q.body}
+                    </span>
+                  ) : null}
+                </span>
+                {q.media_url ? (
+                  <span
+                    aria-hidden
+                    className="shrink-0 self-center text-lg text-fv-text-secondary"
+                  >
+                    ›
+                  </span>
+                ) : null}
+              </>
+            );
+            const cls =
+              "flex items-start gap-3 rounded-2xl bg-fv-bg-card p-4 shadow-sm";
+            return q.media_url ? (
+              <a
+                key={q.id}
+                href={q.media_url}
+                target="_blank"
+                rel="noreferrer"
+                className={cls}
+              >
+                {inner}
+              </a>
+            ) : (
+              <div key={q.id} className={cls}>
+                {inner}
+              </div>
+            );
+          })}
+        </Section>
+      ) : null}
+
+      {/* Day-of contact */}
+      {clinic?.phone ? (
+        <Section title="Day-of contact">
+          <div className="rounded-2xl bg-fv-bg-accent-soft px-5 py-5 text-center">
+            <div className="text-xs font-bold uppercase tracking-wide text-fv-text-secondary">
+              If you have questions before surgery
+            </div>
+            <a
+              href={`tel:${clinic.phone.replace(/[^\d+]/g, "")}`}
+              className="mt-1 block text-3xl font-bold text-fv-text-primary"
+            >
+              {clinic.phone}
+            </a>
+            {hours ? (
+              <div className="mt-0.5 text-sm text-fv-text-secondary">
+                {hours}
+              </div>
+            ) : null}
+          </div>
+        </Section>
       ) : null}
     </main>
+  );
+}
+
+// ── Building blocks ──────────────────────────────────────────────────────
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-sm font-bold uppercase tracking-wide text-fv-text-secondary">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-6 w-6"
+    >
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
+function QuestionIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-6 w-6"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+      <path d="M8 5v14l11-7z" />
+    </svg>
   );
 }

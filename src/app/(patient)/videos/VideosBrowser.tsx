@@ -56,7 +56,7 @@ export function VideosBrowser({
       ? items
       : items.filter((i) => i.topics.includes(active));
   const videos = filtered.filter((i) => i.type === "video");
-  const articles = filtered.filter((i) => i.type !== "video");
+  const articles = filtered.filter((i) => i.type === "article");
 
   const chips = [{ key: FOR_YOU, label: "For you" }, ...topics.map((t) => ({ key: t, label: t }))];
 

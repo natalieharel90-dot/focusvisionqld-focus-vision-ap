@@ -45,6 +45,7 @@ export function ContentTab({
             <option value="all">All types</option>
             <option value="article">Article</option>
             <option value="video">Video</option>
+            <option value="faq">FAQ</option>
           </select>
           <button
             type="submit"

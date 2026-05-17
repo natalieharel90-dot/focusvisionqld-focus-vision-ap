@@ -39,15 +39,16 @@ export const DEFAULT_SURGERY_DAY_TEXT =
   "clothing. Don't drink anything after midnight unless your surgeon's " +
   "instructions say otherwise.";
 
-// Standard practical pre-op checklist (spec §5.10). Informational only —
-// patients don't tick these off.
+// Standard practical day-before checklist (spec §5.10). Informational
+// only — patients don't tick these off.
 export const PREOP_CHECKLIST: ReadonlyArray<string> = [
-  "Stop wearing contact lenses 24 hours before surgery",
-  "Don't drink anything after midnight unless your surgeon says otherwise",
-  "Don't wear eye makeup, perfume or aftershave on the day",
-  "Wear loose, comfortable clothing",
-  "Arrange someone to drive you home",
-  "Bring your sunglasses, photo ID and any paperwork",
+  "Do not wear contact lenses for 24 hours before surgery",
+  "Avoid eye makeup, perfume, and aftershave on surgery day",
+  "Have a light meal 2 hours before — do not fast unless told to",
+  "Arrange a driver — you cannot drive yourself home",
+  "Bring sunglasses for the trip home",
+  "Wear comfortable, loose-fitting clothes",
+  "Bring your photo ID and any pre-op paperwork",
 ];
 
 // Pre-op content for a patient: items aimed at pre-op (or both) audiences,

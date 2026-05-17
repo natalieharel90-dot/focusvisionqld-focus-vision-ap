@@ -65,6 +65,7 @@ export function ContentModal({ item }: { item: ContentItem | null }) {
               >
                 <option value="article">Article</option>
                 <option value="video">Video</option>
+                <option value="faq">FAQ</option>
               </select>
             </label>
             <label>
