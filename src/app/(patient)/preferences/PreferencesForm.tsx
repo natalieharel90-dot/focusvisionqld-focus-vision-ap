@@ -5,7 +5,6 @@ import { useState, useTransition, type ReactNode } from "react";
 
 import {
   BONUS_THEME_IDS,
-  LANGUAGES,
   TEXT_SIZES,
   THEMES,
   THEME_IDS,
@@ -68,9 +67,6 @@ export function PreferencesForm({ initial, bonusUnlocked, account }: Props) {
       setStatus(result.ok ? "saved" : "error");
     });
   }
-
-  const langLabel =
-    LANGUAGES.find((l) => l.id === prefs.language)?.label ?? "English";
 
   return (
     <div className="flex flex-col gap-6 px-5 py-6">
@@ -224,30 +220,8 @@ export function PreferencesForm({ initial, bonusUnlocked, account }: Props) {
         />
       </Section>
 
-      {/* ── Language ── */}
-      <Section title="Language">
-        <div className={`flex items-center gap-3 ${card}`}>
-          <div className="shrink-0">
-            <div className="font-semibold text-fv-text-primary">
-              App language
-            </div>
-            <div className="mt-0.5 text-sm text-fv-text-secondary">
-              Currently in {langLabel}
-            </div>
-          </div>
-          <select
-            value={prefs.language}
-            onChange={(e) => update({ language: e.target.value })}
-            className="ml-auto min-w-0 flex-1 rounded-xl border border-fv-border bg-fv-bg-app px-3 py-2.5 text-sm font-medium text-fv-text-primary"
-          >
-            {LANGUAGES.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </Section>
+      {/* Language selection is hidden until the patient app has a real
+          translation layer — the stored preference column is kept. */}
 
       {/* ── Accessibility ── */}
       <Section title="Accessibility">
