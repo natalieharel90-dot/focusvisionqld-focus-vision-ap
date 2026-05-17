@@ -5,18 +5,20 @@
 // — /settings is the staff dashboard's Settings route and two route
 // groups can't resolve to the same URL.
 
+export type NavIconName = "home" | "check" | "pill" | "message" | "gear";
+
 export type PatientTab = {
   href: string;
   label: string;
-  icon: string;
+  icon: NavIconName;
 };
 
 export const PATIENT_TABS: ReadonlyArray<PatientTab> = [
-  { href: "/home", label: "Home", icon: "🏠" },
-  { href: "/check-in", label: "Check-in", icon: "✓" },
-  { href: "/medications", label: "Meds", icon: "💊" },
-  { href: "/messages", label: "Messages", icon: "💬" },
-  { href: "/preferences", label: "Settings", icon: "⚙️" },
+  { href: "/home", label: "Home", icon: "home" },
+  { href: "/check-in", label: "Check-in", icon: "check" },
+  { href: "/medications", label: "Meds", icon: "pill" },
+  { href: "/messages", label: "Messages", icon: "message" },
+  { href: "/preferences", label: "Settings", icon: "gear" },
 ];
 
 export function isTabActive(pathname: string, href: string): boolean {
