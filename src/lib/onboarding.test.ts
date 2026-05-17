@@ -25,28 +25,19 @@ describe("shouldShowOnboarding — fires on first sign-in only", () => {
 });
 
 describe("ONBOARDING_STEPS", () => {
-  it("is a 6-step tour", () => {
-    expect(ONBOARDING_STEPS).toHaveLength(6);
+  it("is a 5-slide intro carousel", () => {
+    expect(ONBOARDING_STEPS).toHaveLength(5);
   });
 
-  it("opens and closes with full-screen modals (no target)", () => {
-    expect(ONBOARDING_STEPS[0]!.target).toBeNull();
+  it("opens on welcome and closes on finish", () => {
     expect(ONBOARDING_STEPS[0]!.key).toBe("welcome");
-    expect(ONBOARDING_STEPS[5]!.target).toBeNull();
-    expect(ONBOARDING_STEPS[5]!.key).toBe("finish");
+    expect(ONBOARDING_STEPS[4]!.key).toBe("finish");
   });
 
-  it("steps 2-5 highlight the four home tiles", () => {
-    expect(ONBOARDING_STEPS.slice(1, 5).map((s) => s.target)).toEqual([
-      "check-in",
-      "medications",
-      "messages",
-      "documents",
-    ]);
-  });
-
-  it("every step has body copy", () => {
+  it("every slide has an icon, title and body", () => {
     for (const step of ONBOARDING_STEPS) {
+      expect(step.icon.length).toBeGreaterThan(0);
+      expect(step.title.length).toBeGreaterThan(0);
       expect(step.body.length).toBeGreaterThan(0);
     }
   });

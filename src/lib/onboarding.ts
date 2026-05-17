@@ -1,44 +1,51 @@
 // First-run onboarding tour (spec §5.1) — pure data + helpers. The tour
-// is a 6-step spotlight: steps 1 and 6 are full-screen modals, steps 2-5
-// highlight one home-screen tile each.
+// is a full-screen, 5-slide intro carousel: each slide is an icon, a
+// title and a short line of copy.
+
+export type OnboardingIcon =
+  | "heart"
+  | "clipboard"
+  | "pill"
+  | "message"
+  | "check";
 
 export type OnboardingStep = {
   key: string;
-  // data-tour key of the home tile to spotlight; null = full-screen modal.
-  target: string | null;
+  icon: OnboardingIcon;
+  title: string;
   body: string;
 };
 
 export const ONBOARDING_STEPS: ReadonlyArray<OnboardingStep> = [
   {
     key: "welcome",
-    target: null,
-    body: "Welcome to your Focus Vision Recovery Companion. Let's take a quick tour — about 30 seconds.",
+    icon: "heart",
+    title: "Welcome to Focus Vision",
+    body: "We're here to support you through every step of your recovery. This tour takes about 30 seconds — feel free to skip.",
   },
   {
     key: "check-in",
-    target: "check-in",
-    body: "Tap here each day to do your check-in. It takes about 60 seconds and helps us spot anything that needs attention early.",
+    icon: "clipboard",
+    title: "Your daily check-in",
+    body: "Each day, a quick 60-second check-in helps us spot anything that needs attention early.",
   },
   {
     key: "medications",
-    target: "medications",
-    body: "Your medication reminders live here. Tap a dose to mark it taken, or snooze it if you need more time.",
+    icon: "pill",
+    title: "Medication reminders",
+    body: "Your eye-drop schedule lives here. Mark each dose as you take it, or snooze it if you need more time.",
   },
   {
     key: "messages",
-    target: "messages",
-    body: "Send a message to the Focus Vision team anytime. We usually reply within a few hours during clinic hours.",
-  },
-  {
-    key: "documents",
-    target: "documents",
-    body: "Your consent forms, surgical paperwork, and check-in history are all here — watermarked with your name for privacy.",
+    icon: "message",
+    title: "Message your care team",
+    body: "Reach the Focus Vision team anytime. We usually reply within a couple of hours during clinic hours.",
   },
   {
     key: "finish",
-    target: null,
-    body: "You're set up. We're here whenever you need us.",
+    icon: "check",
+    title: "You're all set",
+    body: "Everything's ready. We're here whenever you need us — let's get started.",
   },
 ];
 

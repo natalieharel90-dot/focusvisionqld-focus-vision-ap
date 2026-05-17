@@ -275,7 +275,6 @@ export default async function PatientHomePage({
     sub: string;
     href: string | null;
     badge?: number;
-    tour?: string;
   };
   const tiles: Tile[] = [
     {
@@ -289,7 +288,6 @@ export default async function PatientHomePage({
           : "None scheduled",
       href: "/medications",
       badge: dosesToday,
-      tour: "medications",
     },
     {
       key: "videos",
@@ -304,7 +302,6 @@ export default async function PatientHomePage({
       title: "My documents",
       sub: "Surgery report, scripts, receipts",
       href: "/documents",
-      tour: "documents",
     },
     {
       key: "contact",
@@ -312,7 +309,6 @@ export default async function PatientHomePage({
       title: "Contact clinic",
       sub: "Call, message or book follow-up",
       href: "/contact",
-      tour: "messages",
       badge: unread,
     },
     ...(features.feedback_tile
@@ -396,7 +392,6 @@ export default async function PatientHomePage({
       {/* Today's check-in CTA */}
       <Link
         href="/check-in"
-        data-tour="check-in"
         className="rounded-2xl bg-gradient-to-br from-fv-accent to-fv-accent-strong p-5 text-white shadow-sm"
       >
         <span className="grid h-12 w-12 place-items-center rounded-xl bg-white/20">
@@ -440,7 +435,6 @@ export default async function PatientHomePage({
             <Link
               key={tile.key}
               href={tile.href}
-              data-tour={tile.tour}
               className="flex flex-col rounded-2xl bg-fv-bg-tile p-4 shadow-sm hover:shadow"
             >
               {inner}
