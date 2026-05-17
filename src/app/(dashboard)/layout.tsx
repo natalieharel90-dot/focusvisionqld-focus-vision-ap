@@ -105,7 +105,27 @@ export default async function DashboardLayout({
         navBadges={navBadges}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-end border-b border-fv-bg-soft bg-fv-bg-card px-6 py-2">
+        <header className="fv-dash-header flex items-center justify-end gap-2 border-b border-fv-bg-soft bg-fv-bg-card px-6 py-2">
+          <a
+            href="/help"
+            title="Help centre"
+            aria-label="Help centre"
+            className="grid h-8 w-8 place-items-center rounded-md border border-fv-bg-soft text-fv-text-primary hover:bg-fv-bg-soft"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />
+              <path d="M12 17h.01" />
+            </svg>
+          </a>
           <form action={signOutAction}>
             <button
               type="submit"

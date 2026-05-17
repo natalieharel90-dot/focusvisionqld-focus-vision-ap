@@ -140,3 +140,14 @@ select:focus-visible {
   border-color: var(--fv-accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--fv-accent) 22%, transparent);
 }
+
+/* Print: strip the dashboard chrome so a help article prints cleanly as a
+   quick-reference card — no sidebar, no Help topic tree, no search box. */
+@media print {
+  .fv-dash-sidebar,
+  .fv-dash-header,
+  .fv-help-tree,
+  .fv-help-search {
+    display: none !important;
+  }
+}
