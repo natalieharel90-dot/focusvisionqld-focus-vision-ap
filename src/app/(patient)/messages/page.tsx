@@ -100,15 +100,21 @@ export default async function PatientMessagesPage({
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-7rem)] flex-col gap-4 px-5 py-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-fv-text-primary">
-          Messages
-        </h1>
-        <p className="mt-1 text-sm text-fv-text-secondary">
-          The Focus Vision care team. We usually reply within a few hours
-          during clinic hours.
-        </p>
+    <main className="flex min-h-[calc(100vh-5rem)] flex-col">
+      {/* Conversation header */}
+      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-fv-border bg-fv-bg-card px-5 py-3">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-fv-accent-strong text-sm font-bold tracking-wide text-white">
+          FV
+        </span>
+        <div className="min-w-0">
+          <div className="font-bold text-fv-text-primary">
+            Focus Vision team
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-fv-accent-strong">
+            <span className="h-2 w-2 rounded-full bg-fv-accent-strong" />
+            Usually replies within 2 hours
+          </div>
+        </div>
       </header>
 
       <ThreadRealtime
@@ -118,12 +124,13 @@ export default async function PatientMessagesPage({
       />
 
       {searchParams.error ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="mx-5 mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           {searchParams.error}
         </p>
       ) : null}
 
-      <div className="flex-1">
+      {/* Messages */}
+      <div className="flex-1 px-5 py-4">
         <MessageList
           messages={msgs}
           staffById={staffById}
@@ -132,26 +139,40 @@ export default async function PatientMessagesPage({
         />
       </div>
 
+      {/* Composer */}
       <form
         action={sendPatientMessageAction}
-        className="sticky bottom-20 flex flex-col gap-2 rounded-2xl bg-fv-bg-card p-3 shadow-sm"
+        className="sticky bottom-20 flex items-center gap-2 border-t border-fv-border bg-fv-bg-card px-3 py-3"
       >
+        <AttachmentField
+          bucket="message-attachments"
+          folder={thread.id}
+          compact
+        />
         <textarea
           name="body"
-          rows={2}
+          rows={1}
           required
           placeholder="Type a message…"
-          className="rounded-md border border-fv-bg-soft bg-fv-bg-card px-3 py-2 text-sm"
+          className="min-w-0 flex-1 resize-none rounded-full border border-fv-border bg-fv-bg-app px-4 py-2.5 text-sm text-fv-text-primary placeholder:text-fv-text-secondary"
         />
-        <div className="flex items-center justify-between gap-2">
-          <AttachmentField bucket="message-attachments" folder={thread.id} />
-          <button
-            type="submit"
-            className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white"
+        <button
+          type="submit"
+          aria-label="Send message"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-fv-accent-strong text-white hover:opacity-95"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-5 w-5"
           >
-            Send
-          </button>
-        </div>
+            <path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7z" />
+          </svg>
+        </button>
       </form>
     </main>
   );
