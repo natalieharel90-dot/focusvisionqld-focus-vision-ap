@@ -38,11 +38,16 @@ export function loadHelpArticles(): HelpArticle[] {
   );
 }
 
+// Slug segments are restricted to a safe character set — the section and
+// slug come straight from the URL, so this also blocks path traversal.
+const SAFE_SEGMENT = /^[a-z0-9-]+$/;
+
 // A single article by its section + slug, or null if it doesn't exist.
 export function getHelpArticle(
   section: string,
   slug: string
 ): HelpArticle | null {
+  if (!SAFE_SEGMENT.test(section) || !SAFE_SEGMENT.test(slug)) return null;
   const file = path.join(HELP_DIR, section, `${slug}.md`);
   if (!fs.existsSync(file)) return null;
   const { data, body } = parseFrontmatter(fs.readFileSync(file, "utf8"));
