@@ -368,10 +368,8 @@ export default async function PatientHomePage({
 
       {/* A message for you — Surgeon Spotlight */}
       {spotlight ? (
-        <a
-          href={spotlight.url}
-          target="_blank"
-          rel="noreferrer"
+        <Link
+          href="/welcome"
           className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-fv-accent to-fv-accent-strong p-4 text-white shadow-sm"
         >
           <span className="relative grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white/20 text-sm font-semibold">
@@ -392,7 +390,7 @@ export default async function PatientHomePage({
           <span aria-hidden className="text-white/70">
             ›
           </span>
-        </a>
+        </Link>
       ) : null}
 
       {/* Today's check-in CTA */}

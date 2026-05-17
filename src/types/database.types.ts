@@ -1734,6 +1734,7 @@ export type Database = {
           text_size: string
           theme: string
           updated_at: string
+          welcome_message: string | null
           welcome_video_url: string | null
         }
         Insert: {
@@ -1756,6 +1757,7 @@ export type Database = {
           text_size?: string
           theme?: string
           updated_at?: string
+          welcome_message?: string | null
           welcome_video_url?: string | null
         }
         Update: {
@@ -1778,6 +1780,7 @@ export type Database = {
           text_size?: string
           theme?: string
           updated_at?: string
+          welcome_message?: string | null
           welcome_video_url?: string | null
         }
         Relationships: []
@@ -2157,6 +2160,7 @@ export type Database = {
           text_size: string
           theme: string
           updated_at: string
+          welcome_message: string | null
           welcome_video_url: string | null
         }
         SetofOptions: {

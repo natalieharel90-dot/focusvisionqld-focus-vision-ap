@@ -154,6 +154,7 @@ export async function saveDoctorAction(formData: FormData) {
       role,
       phone: str("phone") || null,
       bio: str("bio") || null,
+      welcome_message: str("welcome_message") || null,
       photo_url: photoUrl,
     })
     .eq("id", id);

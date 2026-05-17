@@ -23,7 +23,7 @@ export default async function ClinicSettingsPage({
     supabase
       .from("staff_users")
       .select(
-        "id, name, role, email, phone, photo_url, bio, active, welcome_video_url, is_invited_only"
+        "id, name, role, email, phone, photo_url, bio, active, welcome_video_url, welcome_message, is_invited_only"
       )
       .order("active", { ascending: false })
       .order("name"),

@@ -14,6 +14,7 @@ export type Doctor = {
   bio: string | null;
   active: boolean;
   welcome_video_url: string | null;
+  welcome_message: string | null;
   is_invited_only: boolean;
 };
 

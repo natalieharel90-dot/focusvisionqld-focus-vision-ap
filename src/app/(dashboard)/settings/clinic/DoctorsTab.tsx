@@ -180,6 +180,20 @@ export function DoctorsTab({
                     />
                   </details>
                 ) : null}
+                {canEdit && doctor.role === "surgeon" ? (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs font-semibold text-fv-accent-strong">
+                      Edit welcome message
+                    </summary>
+                    <textarea
+                      name="welcome_message"
+                      rows={5}
+                      defaultValue={doctor.welcome_message ?? ""}
+                      placeholder="Spoken-style welcome — shown as the transcript on the patient's surgeon spotlight screen…"
+                      className={`${fieldInput} sm:max-w-md`}
+                    />
+                  </details>
+                ) : null}
               </form>
 
               {/* Welcome video — surgeon-only; its own form (no nesting) */}
