@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
   if (chart === "zone-over-time") {
     const { data } = await supabase
-      .from("mv_analytics_check_in_daily")
+      .from("analytics_check_in_daily")
       .select("*");
     const series = zoneOverTime(
       filterCheckIns((data ?? []) as CheckInDailyRow[], filters)
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     rows = series.map((p) => [p.day, p.green, p.yellow, p.orange, p.red]);
   } else if (chart === "adherence-over-time") {
     const { data } = await supabase
-      .from("mv_analytics_dose_daily")
+      .from("analytics_dose_daily")
       .select("*");
     const series = adherenceOverTime(
       filterDoses((data ?? []) as DoseDailyRow[], filters)
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     rows = series.map((p) => [p.day, p.rate]);
   } else if (chart === "completion-by-recovery-day") {
     const { data } = await supabase
-      .from("mv_analytics_checkin_completion")
+      .from("analytics_checkin_completion")
       .select("*");
     const series = completionByRecoveryDay(
       (data ?? []) as CompletionRow[]
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     rows = series.map((p) => [p.recovery_day, p.rate]);
   } else if (chart === "symptom-frequency") {
     const { data } = await supabase
-      .from("mv_analytics_symptom_daily")
+      .from("analytics_symptom_daily")
       .select("*");
     const series = topSymptoms(
       (data ?? []) as SymptomDailyRow[],
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
     rows = series.map((p) => [p.symptom, p.occurrences]);
   } else if (chart === "procedure-zone") {
     const { data } = await supabase
-      .from("mv_analytics_check_in_daily")
+      .from("analytics_check_in_daily")
       .select("*");
     const series = procedureZoneHeatmap(
       filterCheckIns((data ?? []) as CheckInDailyRow[], filters)
@@ -108,8 +108,8 @@ export async function GET(request: NextRequest) {
     ]);
   } else if (chart === "surgeons") {
     const [ci, dd] = await Promise.all([
-      supabase.from("mv_analytics_check_in_daily").select("*"),
-      supabase.from("mv_analytics_dose_daily").select("*"),
+      supabase.from("analytics_check_in_daily").select("*"),
+      supabase.from("analytics_dose_daily").select("*"),
     ]);
     const series = surgeonStats(
       filterCheckIns((ci.data ?? []) as CheckInDailyRow[], filters),

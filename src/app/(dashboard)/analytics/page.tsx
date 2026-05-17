@@ -195,12 +195,12 @@ export default async function AnalyticsPage({
     targetsResult,
     layoutResult,
   ] = await Promise.all([
-    supabase.from("mv_analytics_check_in_daily").select("*"),
-    supabase.from("mv_analytics_dose_daily").select("*"),
-    supabase.from("mv_analytics_checkin_completion").select("*"),
-    supabase.from("mv_analytics_symptom_daily").select("*"),
-    supabase.from("mv_analytics_message_response").select("*"),
-    supabase.from("mv_analytics_onboarding").select("*"),
+    supabase.from("analytics_check_in_daily").select("*"),
+    supabase.from("analytics_dose_daily").select("*"),
+    supabase.from("analytics_checkin_completion").select("*"),
+    supabase.from("analytics_symptom_daily").select("*"),
+    supabase.from("analytics_message_response").select("*"),
+    supabase.from("analytics_onboarding").select("*"),
     supabase.from("patients").select("id", { count: "exact", head: true }),
     supabase.from("staff_users").select("id, name").eq("role", "surgeon"),
     supabase

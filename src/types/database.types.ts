@@ -2051,6 +2051,74 @@ export type Database = {
       }
     }
     Views: {
+      analytics_check_in_daily: {
+        Row: {
+          check_in_count: number | null
+          day: string | null
+          patient_zone: Database["public"]["Enums"]["patient_zone"] | null
+          procedure_type: string | null
+          staff_alert_level:
+            | Database["public"]["Enums"]["staff_alert_level"]
+            | null
+          surgeon_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procedures_surgeon_id_fkey"
+            columns: ["surgeon_id"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_checkin_completion: {
+        Row: {
+          expected_count: number | null
+          recovery_day: number | null
+          submitted_count: number | null
+        }
+        Relationships: []
+      }
+      analytics_dose_daily: {
+        Row: {
+          day: string | null
+          scheduled_count: number | null
+          surgeon_id: string | null
+          taken_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procedures_surgeon_id_fkey"
+            columns: ["surgeon_id"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_message_response: {
+        Row: {
+          day: string | null
+          response_seconds: number | null
+        }
+        Relationships: []
+      }
+      analytics_onboarding: {
+        Row: {
+          created_day: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
+      analytics_symptom_daily: {
+        Row: {
+          day: string | null
+          occurrences: number | null
+          symptom: string | null
+        }
+        Relationships: []
+      }
       mv_analytics_check_in_daily: {
         Row: {
           check_in_count: number | null
@@ -2174,6 +2242,11 @@ export type Database = {
           patient_id: string
           recovery_day: number
         }[]
+      }
+      can_view_analytics: { Args: never; Returns: boolean }
+      confirm_phone_verification: {
+        Args: { p_code_hash: string }
+        Returns: string
       }
       create_patient_auth_user: {
         Args: { p_email: string; p_password: string }
