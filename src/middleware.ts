@@ -168,7 +168,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Run on everything except static files and Next internals. Auth pages
-    // are matched but allowed through by isPublicPath above.
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // are matched but allowed through by isPublicPath above. sw.js and
+    // manifest.json must be excluded — a service worker cannot load
+    // through the redirect the middleware would otherwise apply.
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
