@@ -8,9 +8,10 @@ export const dynamic = "force-dynamic";
 const INCLUDED = [
   "Your profile and procedure details",
   "Every daily check-in you've completed",
+  "Photos you've added to your check-ins",
   "Your medications and dose history",
   "Appointments",
-  "The documents your clinic has shared with you",
+  "The documents your clinic has shared with you — the files themselves",
   "Feedback you've sent",
   "Your app preferences",
 ];
@@ -56,15 +57,15 @@ export default async function DownloadDataPage() {
           ))}
         </ul>
         <p className="mt-3 text-xs leading-relaxed text-fv-text-secondary">
-          Your export is a JSON file. Photo and document files themselves
-          aren&apos;t included — only their details. Save it somewhere safe;
-          it contains your personal health information.
+          Your export is a ZIP file — it contains a summary of your
+          information plus copies of your documents and check-in photos.
+          Save it somewhere safe; it holds your personal health information.
         </p>
       </section>
 
       <a
         href="/api/me/export"
-        download="focus-vision-my-data.json"
+        download="focus-vision-my-data.zip"
         className="rounded-2xl bg-fv-accent-strong px-4 py-4 text-center text-base font-bold text-white hover:opacity-95"
       >
         Download my data
