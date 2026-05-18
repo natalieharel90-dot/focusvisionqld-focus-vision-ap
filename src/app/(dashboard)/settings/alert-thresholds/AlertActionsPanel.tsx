@@ -295,7 +295,7 @@ function ZoneCard({
                   />
                 </label>
                 <span className="ml-2 text-[11px] text-fv-text-secondary">
-                  ~5¢ per SMS via Twilio
+                  Standard SMS rates apply
                 </span>
               </div>
             ) : null}
