@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default function SignInPage({
   searchParams,
 }: {
-  searchParams: { error?: string; reset?: string };
+  searchParams: { error?: string; reset?: string; next?: string };
 }) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
@@ -24,6 +24,7 @@ export default function SignInPage({
           action={signInWithPasswordAction}
           className="flex flex-col gap-4 rounded-xl bg-fv-bg-card p-6 shadow-sm"
         >
+          <input type="hidden" name="next" value={searchParams.next ?? ""} />
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-fv-text-primary">Email</span>
             <input

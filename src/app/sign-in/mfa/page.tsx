@@ -9,8 +9,11 @@ export const dynamic = "force-dynamic";
 export default async function SignInMfaPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; next?: string };
 }) {
+  const next = searchParams.next ?? "";
+  const nextQs = next ? `&next=${encodeURIComponent(next)}` : "";
+
   const supabase = createSupabaseServerClient();
 
   const {
@@ -21,12 +24,16 @@ export default async function SignInMfaPage({
   const { data: factors, error: factorsError } =
     await supabase.auth.mfa.listFactors();
   if (factorsError) {
-    redirect(`/sign-in?error=${encodeURIComponent(factorsError.message)}`);
+    redirect(
+      `/sign-in?error=${encodeURIComponent(factorsError.message)}${nextQs}`
+    );
   }
 
   const totp = factors?.totp?.find((f) => f.status === "verified");
   if (!totp) {
-    redirect("/sign-in?error=No+verified+MFA+factor+for+this+account.");
+    redirect(
+      `/sign-in?error=No+verified+MFA+factor+for+this+account.${nextQs}`
+    );
   }
 
   return (
@@ -47,6 +54,7 @@ export default async function SignInMfaPage({
           className="flex flex-col gap-4 rounded-xl bg-fv-bg-card p-6 shadow-sm"
         >
           <input type="hidden" name="factorId" value={totp.id} />
+          <input type="hidden" name="next" value={next} />
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-fv-text-primary">Code</span>
             <input

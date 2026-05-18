@@ -20,6 +20,7 @@ type IconKey =
   | "bulkpush"
   | "settings"
   | "audit"
+  | "staffapp"
   | "help";
 
 type NavItem = {
@@ -56,6 +57,8 @@ const ICON_PATHS: Record<IconKey, string> = {
   reports:
     '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 18v-4"/><path d="M12 18v-7"/><path d="M16 18v-2"/>',
   help: '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+  staffapp:
+    '<rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>',
 };
 
 // Order follows the prototype's dash sidebar. Schedule / Alerts / Reports
@@ -170,8 +173,15 @@ export function Sidebar({
           })}
         </ul>
 
-        {/* Help — separated so it reads as support, not a feature. */}
-        <div className="mt-3 border-t border-white/10 pt-3">
+        {/* Staff app + Help — separated from the main feature nav. */}
+        <div className="mt-3 flex flex-col gap-1 border-t border-white/10 pt-3">
+          <Link
+            href="/staff-app"
+            className="flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-white/55 hover:bg-white/[.06] hover:text-white"
+          >
+            <NavIcon icon="staffapp" />
+            <span className="flex-1">Staff app</span>
+          </Link>
           <Link
             href="/help"
             aria-current={isActive(pathname, "/help") ? "page" : undefined}

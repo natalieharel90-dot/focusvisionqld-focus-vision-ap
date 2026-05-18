@@ -103,9 +103,14 @@ export async function middleware(request: NextRequest) {
 
   if (!user) {
     const url = request.nextUrl.clone();
-    url.pathname = isPatientProtectedPath(pathname)
-      ? "/patient-sign-in"
-      : "/sign-in";
+    url.search = "";
+    if (isPatientProtectedPath(pathname)) {
+      url.pathname = "/patient-sign-in";
+    } else {
+      url.pathname = "/sign-in";
+      // Remember where they were headed so sign-in returns them there.
+      url.searchParams.set("next", pathname);
+    }
     return NextResponse.redirect(url);
   }
 
