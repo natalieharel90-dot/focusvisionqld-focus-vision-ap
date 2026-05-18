@@ -5,7 +5,11 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: { password?: string };
+}) {
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
@@ -50,6 +54,12 @@ export default async function AccountPage() {
         </p>
       </header>
 
+      {searchParams.password === "updated" ? (
+        <p className="rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-800">
+          Your password has been updated.
+        </p>
+      ) : null}
+
       <div className="overflow-hidden rounded-2xl bg-fv-bg-card shadow-sm">
         {rows.map(([label, value], i) => (
           <div
@@ -67,6 +77,37 @@ export default async function AccountPage() {
           </div>
         ))}
       </div>
+
+      <Link
+        href="/preferences/account/password"
+        className="flex items-center gap-3 rounded-2xl bg-fv-bg-card p-4 shadow-sm"
+      >
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-fv-bg-soft text-fv-accent-strong">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-5 w-5"
+          >
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-fv-text-primary">
+            Set your own password
+          </div>
+          <div className="text-xs text-fv-text-secondary">
+            Replace the temporary password from your welcome message
+          </div>
+        </div>
+        <span aria-hidden className="text-fv-text-secondary">
+          ›
+        </span>
+      </Link>
 
       <div className="flex items-start gap-3 rounded-2xl bg-fv-bg-soft/70 p-4 text-sm text-fv-text-secondary">
         <svg
