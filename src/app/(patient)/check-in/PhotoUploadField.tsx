@@ -66,7 +66,7 @@ export function PhotoUploadField({ patientId }: Props) {
         <input
           type="file"
           accept="image/*"
-          capture="environment"
+          capture="user"
           onChange={handleChange}
           disabled={uploading || path !== null}
           className="sr-only"
