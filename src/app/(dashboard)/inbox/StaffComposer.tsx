@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AttachmentField } from "@/components/chat/AttachmentField";
 import { sendStaffMessageAction } from "./actions";
@@ -19,9 +19,33 @@ type Props = {
 
 // Quick-reply chips pre-fill the compose box (staff can still edit before
 // sending — tapping a chip never auto-sends). Client component because the
-// textarea is controlled by chip selection.
+// textarea is controlled by chip selection, auto-grows with its content,
+// and is cleared once a reply has been sent.
 export function StaffComposer({ threadId, templates }: Props) {
   const [body, setBody] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  function resize() {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }
+
+  // Grow the box to fit its content — typing or a tapped template.
+  useEffect(resize, [body]);
+
+  // Empty the box once a reply has been sent.
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form) return;
+    function handleSubmit() {
+      requestAnimationFrame(() => setBody(""));
+    }
+    form.addEventListener("submit", handleSubmit);
+    return () => form.removeEventListener("submit", handleSubmit);
+  }, []);
 
   return (
     <div className="border-t border-fv-bg-soft">
@@ -42,18 +66,20 @@ export function StaffComposer({ threadId, templates }: Props) {
       ) : null}
 
       <form
+        ref={formRef}
         action={sendStaffMessageAction}
         className="flex items-end gap-2 px-4 py-3"
       >
         <input type="hidden" name="thread_id" value={threadId} />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <textarea
+            ref={textareaRef}
             name="body"
-            rows={2}
+            rows={1}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Type a reply…"
-            className="w-full resize-none rounded-xl border border-fv-bg-soft bg-fv-bg-app px-3 py-2 text-sm"
+            className="max-h-32 w-full resize-none overflow-y-auto rounded-xl border border-fv-bg-soft bg-fv-bg-app px-3 py-2 text-sm"
           />
           <AttachmentField bucket="message-attachments" folder={threadId} />
         </div>

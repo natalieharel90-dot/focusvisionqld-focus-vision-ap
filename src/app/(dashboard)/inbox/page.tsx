@@ -11,6 +11,7 @@ import {
 import type { Database } from "@/types/database.types";
 import { ThreadRealtime } from "@/components/chat/ThreadRealtime";
 import { MessageAttachments } from "@/components/chat/MessageAttachments";
+import { ScrollToLatest } from "@/components/chat/ScrollToLatest";
 import { StaffComposer } from "./StaffComposer";
 import { InboxFilter } from "./InboxFilter";
 import { ComingSoonButton } from "./ComingSoonButton";
@@ -652,6 +653,7 @@ function OpenThread({
             );
           })
         )}
+        <ScrollToLatest count={msgs.length} />
       </div>
 
       {/* Quick-reply chips + compose */}

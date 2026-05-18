@@ -9,6 +9,8 @@ import {
   type MessageAttachment,
 } from "@/lib/messages";
 import { initials } from "@/lib/bulk-push";
+import { AutoGrowTextarea } from "@/components/chat/AutoGrowTextarea";
+import { ScrollToLatest } from "@/components/chat/ScrollToLatest";
 import { sendStaffAppMessageAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -225,18 +227,19 @@ export default async function StaffAppThreadPage({
           })
         )}
       </ul>
+      <ScrollToLatest count={msgs.length} />
 
       <form
         action={sendStaffAppMessageAction}
         className="sticky bottom-20 flex items-center gap-2 border-t border-fv-bg-soft bg-fv-bg-card px-3 py-2.5"
       >
         <input type="hidden" name="thread_id" value={thread.id} />
-        <textarea
+        <AutoGrowTextarea
           name="body"
           rows={1}
           required
           placeholder="Type a reply…"
-          className="min-w-0 flex-1 resize-none rounded-full border border-fv-border bg-fv-bg-app px-4 py-2 text-sm text-fv-text-primary placeholder:text-fv-text-secondary"
+          className="min-w-0 flex-1 resize-none rounded-2xl border border-fv-border bg-fv-bg-app px-4 py-2 text-sm text-fv-text-primary placeholder:text-fv-text-secondary max-h-32 overflow-y-auto"
         />
         <button
           type="submit"

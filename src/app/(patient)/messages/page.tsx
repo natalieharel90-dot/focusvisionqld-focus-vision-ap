@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { MessageList } from "@/components/chat/MessageList";
 import { ThreadRealtime } from "@/components/chat/ThreadRealtime";
 import { AttachmentField } from "@/components/chat/AttachmentField";
+import { AutoGrowTextarea } from "@/components/chat/AutoGrowTextarea";
+import { ScrollToLatest } from "@/components/chat/ScrollToLatest";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import {
   attachmentPathsFrom,
@@ -137,6 +139,7 @@ export default async function PatientMessagesPage({
           signedAttachmentsByMessage={signedAttachmentsByMessage}
           viewerType="patient"
         />
+        <ScrollToLatest count={msgs.length} />
       </div>
 
       {/* Composer */}
@@ -149,12 +152,12 @@ export default async function PatientMessagesPage({
           folder={thread.id}
           compact
         />
-        <textarea
+        <AutoGrowTextarea
           name="body"
           rows={1}
           required
           placeholder="Type a message…"
-          className="min-w-0 flex-1 resize-none rounded-full border border-fv-border bg-fv-bg-app px-4 py-2.5 text-sm text-fv-text-primary placeholder:text-fv-text-secondary"
+          className="min-w-0 flex-1 resize-none rounded-2xl border border-fv-border bg-fv-bg-app px-4 py-2.5 text-sm text-fv-text-primary placeholder:text-fv-text-secondary max-h-32 overflow-y-auto"
         />
         <button
           type="submit"
