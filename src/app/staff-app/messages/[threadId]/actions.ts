@@ -6,6 +6,12 @@ import { redirect } from "next/navigation";
 import { recordStaffAudit } from "@/lib/audit";
 import { requireStaff } from "@/lib/require-staff";
 
+function back(threadId: string, message: string): never {
+  redirect(
+    `/staff-app/messages/${threadId}?error=${encodeURIComponent(message)}`
+  );
+}
+
 // Sends a staff reply from within the staff mobile app and stays in it
 // (the dashboard inbox action redirects back to /inbox).
 export async function sendStaffAppMessageAction(formData: FormData) {
@@ -16,12 +22,15 @@ export async function sendStaffAppMessageAction(formData: FormData) {
 
   const { supabase, userId } = await requireStaff();
 
-  const { data: thread } = await supabase
+  const { data: thread, error: threadError } = await supabase
     .from("message_threads")
     .select("patient_id")
     .eq("id", threadId)
     .maybeSingle();
-  if (!thread) redirect("/staff-app/messages");
+  if (threadError) {
+    back(threadId, `Couldn't open the conversation: ${threadError.message}`);
+  }
+  if (!thread) back(threadId, "This conversation could no longer be found.");
 
   const { data: inserted, error } = await supabase
     .from("messages")
@@ -36,7 +45,7 @@ export async function sendStaffAppMessageAction(formData: FormData) {
     .single();
   if (error || !inserted) {
     console.error("[staff-app] send failed", error);
-    redirect(`/staff-app/messages/${threadId}?error=1`);
+    back(threadId, error?.message ?? "The message could not be saved.");
   }
 
   await supabase

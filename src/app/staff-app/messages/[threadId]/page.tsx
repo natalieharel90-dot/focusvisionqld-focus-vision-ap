@@ -259,7 +259,7 @@ export default async function StaffAppThreadPage({
 
       {searchParams.error ? (
         <p className="px-4 pb-2 text-center text-xs text-amber-700">
-          Your reply couldn&apos;t be sent — please try again.
+          Couldn&apos;t send: {searchParams.error}
         </p>
       ) : null}
     </div>
