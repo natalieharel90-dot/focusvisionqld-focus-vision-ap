@@ -22,6 +22,7 @@ import { FlagPatientModal } from "./FlagPatientModal";
 import { NextAppointmentModal } from "./NextAppointmentModal";
 import { PushContentModal } from "./PushContentModal";
 import { DOCUMENT_CATEGORY_ORDER } from "@/lib/documents";
+import { CloseDetailsOnSubmit } from "@/components/CloseDetailsOnSubmit";
 import { FEATURES, resolveFeature } from "@/lib/feature-flags";
 import {
   appointmentTypeLabel,
@@ -774,6 +775,7 @@ export default async function PatientDetailPage({
                 className="mt-3 grid grid-cols-2 gap-3 text-sm"
               >
                 <HiddenPatientId id={patient.id} />
+                <CloseDetailsOnSubmit />
                 <label className="flex flex-col gap-1">
                   <span className={fieldLabel}>Type</span>
                   <input
@@ -872,6 +874,7 @@ export default async function PatientDetailPage({
                   className="absolute right-0 z-10 mt-2 grid w-[320px] grid-cols-2 gap-3 rounded-xl border border-fv-bg-soft bg-fv-bg-card p-4 text-sm shadow-lg"
                 >
                   <HiddenPatientId id={patient.id} />
+                  <CloseDetailsOnSubmit />
                   <label className="col-span-2 flex flex-col gap-1">
                     <span className={fieldLabel}>Name</span>
                     <input
@@ -1155,6 +1158,7 @@ export default async function PatientDetailPage({
                   className="absolute right-0 z-10 mt-2 grid w-[320px] grid-cols-2 gap-3 rounded-xl border border-fv-bg-soft bg-fv-bg-card p-4 text-sm shadow-lg"
                 >
                   <HiddenPatientId id={patient.id} />
+                  <CloseDetailsOnSubmit />
                   <label className="flex flex-col gap-1">
                     <span className={fieldLabel}>Type</span>
                     <input
@@ -1636,6 +1640,7 @@ export default async function PatientDetailPage({
                   className="absolute right-0 z-10 mt-2 flex w-[300px] flex-col gap-3 rounded-xl border border-fv-bg-soft bg-fv-bg-card p-4 text-sm shadow-lg"
                 >
                   <HiddenPatientId id={patient.id} />
+                  <CloseDetailsOnSubmit />
                   <label className="flex flex-col gap-1">
                     <span className={fieldLabel}>Category</span>
                     <select name="category" required className={inputCls}>

@@ -240,7 +240,7 @@ export default async function StaffAppThreadPage({
           rows={1}
           required
           placeholder="Type a reply…"
-          className="min-w-0 flex-1 resize-none rounded-2xl border border-fv-border bg-fv-bg-app px-4 py-2 text-sm text-fv-text-primary placeholder:text-fv-text-secondary max-h-32 overflow-y-auto"
+          className="min-w-0 flex-1 resize-none rounded-2xl border border-fv-border bg-fv-bg-app px-4 py-2 text-base text-fv-text-primary placeholder:text-fv-text-secondary max-h-32 overflow-y-auto"
         />
         <SubmitButton
           aria-label="Send reply"

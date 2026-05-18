@@ -147,7 +147,7 @@ export function PatientMessageComposer({ threadId }: Props) {
           name="body"
           rows={1}
           placeholder={uploading ? "Attaching file…" : "Type a message…"}
-          className="min-w-0 flex-1 resize-none overflow-y-auto rounded-2xl border border-fv-border bg-fv-bg-app px-4 py-2.5 text-sm text-fv-text-primary placeholder:text-fv-text-secondary max-h-32"
+          className="min-w-0 flex-1 resize-none overflow-y-auto rounded-2xl border border-fv-border bg-fv-bg-app px-4 py-2.5 text-base text-fv-text-primary placeholder:text-fv-text-secondary max-h-32"
         />
 
         <SubmitButton
