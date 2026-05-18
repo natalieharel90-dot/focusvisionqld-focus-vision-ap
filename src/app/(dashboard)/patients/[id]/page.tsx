@@ -1340,15 +1340,13 @@ export default async function PatientDetailPage({
                         role="switch"
                         aria-checked={effective}
                         title={effective ? "On — tap to turn off" : "Off — tap to turn on"}
-                        className={`relative block h-6 w-11 shrink-0 rounded-full transition-colors ${
-                          effective ? "bg-fv-accent-strong" : "bg-fv-bg-soft"
+                        className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+                          effective
+                            ? "justify-end bg-fv-accent-strong"
+                            : "justify-start bg-fv-bg-soft"
                         }`}
                       >
-                        <span
-                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                            effective ? "translate-x-[22px]" : "translate-x-0.5"
-                          }`}
-                        />
+                        <span className="h-5 w-5 rounded-full bg-white shadow" />
                       </button>
                     </form>
                   </li>
