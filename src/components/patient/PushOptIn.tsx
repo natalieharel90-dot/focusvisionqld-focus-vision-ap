@@ -41,23 +41,6 @@ export function PushOptIn() {
   >("idle");
   const [testError, setTestError] = useState<string | null>(null);
 
-  async function sendTest() {
-    setTestStatus("sending");
-    setTestError(null);
-    try {
-      const result = await sendTestPushAction();
-      if (result.ok) {
-        setTestStatus("sent");
-      } else {
-        setTestError(result.error ?? "Couldn't send the test.");
-        setTestStatus("failed");
-      }
-    } catch {
-      setTestError("Couldn't send the test.");
-      setTestStatus("failed");
-    }
-  }
-
   useEffect(() => {
     if (
       !("serviceWorker" in navigator) ||
@@ -71,8 +54,12 @@ export function PushOptIn() {
       setState("blocked");
       return;
     }
-    navigator.serviceWorker.ready
-      .then((reg) => reg.pushManager.getSubscription())
+    // getRegistration() resolves right away — unlike serviceWorker.ready,
+    // which never resolves when no worker is active and would otherwise
+    // leave this card stuck "loading".
+    navigator.serviceWorker
+      .getRegistration()
+      .then((reg) => (reg ? reg.pushManager.getSubscription() : null))
       .then((sub) => setState(sub ? "on" : "off"))
       .catch(() => setState("off"));
   }, []);
@@ -89,11 +76,19 @@ export function PushOptIn() {
       const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!key) throw new Error("Notifications aren't set up yet.");
 
+      // Make sure the service worker is registered and active before
+      // subscribing.
+      await navigator.serviceWorker.register("/sw.js");
       const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToArrayBuffer(key),
-      });
+
+      const existing = await reg.pushManager.getSubscription();
+      const sub =
+        existing ??
+        (await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToArrayBuffer(key),
+        }));
+
       const json = sub.toJSON();
       const result = await savePushSubscriptionAction({
         endpoint: sub.endpoint,
@@ -114,8 +109,8 @@ export function PushOptIn() {
     setError(null);
     setState("working");
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
       if (sub) {
         await removePushSubscriptionAction(sub.endpoint);
         await sub.unsubscribe();
@@ -129,7 +124,22 @@ export function PushOptIn() {
     }
   }
 
-  if (state === "loading") return null;
+  async function sendTest() {
+    setTestStatus("sending");
+    setTestError(null);
+    try {
+      const result = await sendTestPushAction();
+      if (result.ok) {
+        setTestStatus("sent");
+      } else {
+        setTestError(result.error ?? "Couldn't send the test.");
+        setTestStatus("failed");
+      }
+    } catch {
+      setTestError("Couldn't send the test.");
+      setTestStatus("failed");
+    }
+  }
 
   return (
     <div className={`flex flex-col gap-2 ${card}`}>
@@ -137,9 +147,12 @@ export function PushOptIn() {
         Notifications on this device
       </div>
 
-      {state === "unsupported" ? (
+      {state === "loading" ? (
+        <p className="text-sm text-fv-text-secondary">Checking…</p>
+      ) : state === "unsupported" ? (
         <p className="text-sm text-fv-text-secondary">
-          This device or browser doesn&apos;t support notifications.
+          This device or browser doesn&apos;t support notifications. On an
+          iPhone, add the app to your home screen and open it from there.
         </p>
       ) : state === "blocked" ? (
         <p className="text-sm text-fv-text-secondary">
