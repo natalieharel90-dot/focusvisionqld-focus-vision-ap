@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { sendPush } from "@/lib/push";
 
 export type PushActionResult = { ok: boolean; error?: string };
 
@@ -49,5 +50,44 @@ export async function removePushSubscriptionAction(
     .delete()
     .eq("endpoint", endpoint)
     .eq("patient_id", user.id);
+  return { ok: true };
+}
+
+// Sends a test notification to the signed-in patient's own devices and
+// reports exactly what happened — used by the "Send a test" button so a
+// patient (or staff testing) can confirm notifications actually arrive.
+export async function sendTestPushAction(): Promise<PushActionResult> {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const result = await sendPush(user.id, {
+    title: "Focus Vision",
+    body: "Test notification — your notifications are working.",
+    url: "/home",
+    tag: "test",
+  });
+
+  if (!result.configured) {
+    return {
+      ok: false,
+      error: "Notifications aren't set up on the server yet.",
+    };
+  }
+  if (result.subscriptions === 0) {
+    return {
+      ok: false,
+      error:
+        "This device isn't registered. Turn notifications off and on again.",
+    };
+  }
+  if (result.sent === 0) {
+    return {
+      ok: false,
+      error: `Couldn't deliver — ${result.failures[0] ?? "unknown error"}`,
+    };
+  }
   return { ok: true };
 }

@@ -38,34 +38,51 @@ export type PushPayload = {
   tag?: string;
 };
 
+// Outcome of a send — callers that just fire a notification can ignore
+// this; the test action uses it to report exactly what happened.
+export type PushResult = {
+  configured: boolean;
+  subscriptions: number;
+  sent: number;
+  failures: string[];
+};
+
 // Sends a push notification to every device the patient has registered.
-// Best-effort: VAPID/service-role misconfiguration is logged and skipped,
-// dead subscriptions are pruned, and nothing is thrown to the caller — a
-// failed push must never break the action that triggered it.
+// Never throws — a failed push must not break the action that triggered
+// it. Dead subscriptions (404/410) are pruned.
 export async function sendPush(
   patientId: string,
   payload: PushPayload
-): Promise<void> {
+): Promise<PushResult> {
   if (!configure()) {
     console.warn("[push] VAPID not configured — skipping push");
-    return;
+    return { configured: false, subscriptions: 0, sent: 0, failures: [] };
   }
   const admin = adminClient();
   if (!admin) {
-    console.warn("[push] service-role client unavailable — skipping push");
-    return;
+    return {
+      configured: false,
+      subscriptions: 0,
+      sent: 0,
+      failures: ["Service-role client unavailable."],
+    };
   }
 
   const { data: subs } = await admin
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth")
     .eq("patient_id", patientId);
-  if (!subs || subs.length === 0) return;
+  const list = subs ?? [];
+  if (list.length === 0) {
+    return { configured: true, subscriptions: 0, sent: 0, failures: [] };
+  }
 
   const body = JSON.stringify(payload);
+  let sent = 0;
+  const failures: string[] = [];
 
   await Promise.all(
-    subs.map(async (s) => {
+    list.map(async (s) => {
       try {
         await webpush.sendNotification(
           {
@@ -74,15 +91,24 @@ export async function sendPush(
           },
           body
         );
+        sent += 1;
       } catch (err) {
         const status = (err as { statusCode?: number }).statusCode;
+        const detail =
+          (err as { body?: string }).body ||
+          (err as Error).message ||
+          "send failed";
         // 404/410 mean the browser dropped the subscription — prune it.
         if (status === 404 || status === 410) {
           await admin.from("push_subscriptions").delete().eq("id", s.id);
+          failures.push(`subscription expired (${status})`);
         } else {
+          failures.push(`${status ?? ""} ${detail}`.trim());
           console.error("[push] send failed", status, err);
         }
       }
     })
   );
+
+  return { configured: true, subscriptions: list.length, sent, failures };
 }

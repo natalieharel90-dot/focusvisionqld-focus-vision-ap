@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import {
   removePushSubscriptionAction,
   savePushSubscriptionAction,
+  sendTestPushAction,
 } from "@/app/(patient)/preferences/push-actions";
 
 // The VAPID public key is a base64url string; the Push API wants the raw
@@ -35,6 +36,27 @@ const card = "rounded-2xl bg-fv-bg-card p-4 shadow-sm";
 export function PushOptIn() {
   const [state, setState] = useState<State>("loading");
   const [error, setError] = useState<string | null>(null);
+  const [testStatus, setTestStatus] = useState<
+    "idle" | "sending" | "sent" | "failed"
+  >("idle");
+  const [testError, setTestError] = useState<string | null>(null);
+
+  async function sendTest() {
+    setTestStatus("sending");
+    setTestError(null);
+    try {
+      const result = await sendTestPushAction();
+      if (result.ok) {
+        setTestStatus("sent");
+      } else {
+        setTestError(result.error ?? "Couldn't send the test.");
+        setTestStatus("failed");
+      }
+    } catch {
+      setTestError("Couldn't send the test.");
+      setTestStatus("failed");
+    }
+  }
 
   useEffect(() => {
     if (
@@ -129,13 +151,33 @@ export function PushOptIn() {
           <p className="text-sm text-fv-text-secondary">
             You&apos;ll get a notification when your care team messages you.
           </p>
-          <button
-            type="button"
-            onClick={disable}
-            className="self-start rounded-xl border border-fv-border px-4 py-2 text-sm font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
-          >
-            Turn off
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={sendTest}
+              disabled={testStatus === "sending"}
+              className="rounded-xl bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+            >
+              {testStatus === "sending"
+                ? "Sending…"
+                : "Send a test notification"}
+            </button>
+            <button
+              type="button"
+              onClick={disable}
+              className="rounded-xl border border-fv-border px-4 py-2 text-sm font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
+            >
+              Turn off
+            </button>
+          </div>
+          {testStatus === "sent" ? (
+            <p className="text-xs text-green-700">
+              Test sent — a notification should arrive on this device.
+            </p>
+          ) : null}
+          {testStatus === "failed" ? (
+            <p className="text-xs text-red-600">{testError}</p>
+          ) : null}
         </>
       ) : (
         <>
