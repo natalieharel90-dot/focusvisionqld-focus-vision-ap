@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { FocusVisionLogo } from "@/components/FocusVisionLogo";
 import { LogoUnlockTrigger } from "@/components/LogoUnlockTrigger";
 import { unlockBonusPackAction } from "@/app/(patient)/bonus-actions";
@@ -12,7 +14,7 @@ const labelClass = "text-sm font-semibold text-fv-text-primary";
 export default function PatientSignInPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; reset?: string };
 }) {
   return (
     <main className="flex min-h-screen flex-col px-6 py-12">
@@ -58,6 +60,19 @@ export default function PatientSignInPage({
               className={inputClass}
             />
           </label>
+
+          <Link
+            href="/reset-password?from=patient"
+            className="-mt-1 self-end text-sm font-semibold text-fv-accent-strong"
+          >
+            Forgot your password?
+          </Link>
+
+          {searchParams.reset === "1" ? (
+            <p className="rounded-xl bg-green-50 px-3 py-2 text-sm text-green-800">
+              Your password has been updated. Sign in with your new password.
+            </p>
+          ) : null}
 
           {searchParams.error ? (
             <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default function SignInPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; reset?: string };
 }) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
@@ -45,6 +45,19 @@ export default function SignInPage({
               className="rounded-md border border-fv-bg-soft bg-white px-3 py-2 text-base"
             />
           </label>
+
+          <Link
+            href="/reset-password"
+            className="-mt-1 self-end text-xs font-semibold text-fv-accent-strong"
+          >
+            Forgot your password?
+          </Link>
+
+          {searchParams.reset === "1" ? (
+            <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-800">
+              Your password has been updated. Sign in with your new password.
+            </p>
+          ) : null}
 
           {searchParams.error ? (
             <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">

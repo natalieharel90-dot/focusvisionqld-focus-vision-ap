@@ -13,6 +13,10 @@ const PUBLIC_PATHS = new Set([
   "/auth-callback",
   "/test-supabase",
   "/patient-sign-in",
+  "/reset-password",
+  // Public so a staff recovery session (which is only aal1) reaches the
+  // form instead of being bounced to the MFA step-up.
+  "/reset-password/update",
 ]);
 
 // Every route that belongs to the patient app. Anything protected that is
