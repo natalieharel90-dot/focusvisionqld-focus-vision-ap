@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { FocusVisionLogo } from "@/components/FocusVisionLogo";
+import { PasswordInput } from "@/components/PasswordInput";
 import { LogoUnlockTrigger } from "@/components/LogoUnlockTrigger";
 import { unlockBonusPackAction } from "@/app/(patient)/bonus-actions";
 import { patientSignInAction } from "./actions";
@@ -51,8 +52,7 @@ export default function PatientSignInPage({
 
           <label className="flex flex-col gap-1.5">
             <span className={labelClass}>Password</span>
-            <input
-              type="password"
+            <PasswordInput
               name="password"
               required
               autoComplete="current-password"

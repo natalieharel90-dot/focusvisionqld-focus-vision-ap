@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { FocusVisionLogo } from "@/components/FocusVisionLogo";
+import { PasswordInput } from "@/components/PasswordInput";
 import { signInWithPasswordAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -37,8 +38,7 @@ export default function SignInPage({
           </label>
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-fv-text-primary">Password</span>
-            <input
-              type="password"
+            <PasswordInput
               name="password"
               required
               autoComplete="current-password"
