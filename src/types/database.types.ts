@@ -808,6 +808,7 @@ export type Database = {
           id: string
           medication_id: string
           patient_note: string | null
+          reminder_sent_at: string | null
           scheduled_at: string
           snooze_count: number
           taken_at: string | null
@@ -818,6 +819,7 @@ export type Database = {
           id?: string
           medication_id: string
           patient_note?: string | null
+          reminder_sent_at?: string | null
           scheduled_at: string
           snooze_count?: number
           taken_at?: string | null
@@ -828,6 +830,7 @@ export type Database = {
           id?: string
           medication_id?: string
           patient_note?: string | null
+          reminder_sent_at?: string | null
           scheduled_at?: string
           snooze_count?: number
           taken_at?: string | null
@@ -1553,6 +1556,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "push_subscriptions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reminder_log: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          patient_id: string
+          sent_on: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          patient_id: string
+          sent_on: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          patient_id?: string
+          sent_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_log_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"

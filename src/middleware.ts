@@ -50,6 +50,9 @@ function isPublicPath(pathname: string): boolean {
   // excludes these, but defensive in case the matcher widens later.
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/api/health")) return true;
+  // The reminder cron endpoint authenticates itself with CRON_SECRET and
+  // is called by an external scheduler that has no session.
+  if (pathname.startsWith("/api/cron")) return true;
   return false;
 }
 
