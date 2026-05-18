@@ -9,6 +9,9 @@ type Props = {
   // Text shown next to the spinner while the action runs. Omit for
   // icon-only buttons — they just show the spinner.
   pendingLabel?: string;
+  // Disables the button for reasons beyond the form being in flight
+  // (e.g. an attachment still uploading).
+  disabled?: boolean;
   "aria-label"?: string;
   title?: string;
 };
@@ -20,6 +23,7 @@ export function SubmitButton({
   children,
   className,
   pendingLabel,
+  disabled,
   "aria-label": ariaLabel,
   title,
 }: Props) {
@@ -28,7 +32,7 @@ export function SubmitButton({
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       aria-busy={pending}
       aria-label={ariaLabel}
       title={title}

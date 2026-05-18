@@ -2,17 +2,14 @@ import { redirect } from "next/navigation";
 
 import { MessageList } from "@/components/chat/MessageList";
 import { ThreadRealtime } from "@/components/chat/ThreadRealtime";
-import { AttachmentField } from "@/components/chat/AttachmentField";
-import { AutoGrowTextarea } from "@/components/chat/AutoGrowTextarea";
 import { ScrollToLatest } from "@/components/chat/ScrollToLatest";
-import { SubmitButton } from "@/components/SubmitButton";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import {
   attachmentPathsFrom,
   signMessageAttachments,
   type MessageAttachment,
 } from "@/lib/messages";
-import { sendPatientMessageAction } from "./actions";
+import { PatientMessageComposer } from "./PatientMessageComposer";
 
 export const dynamic = "force-dynamic";
 
@@ -144,39 +141,7 @@ export default async function PatientMessagesPage({
       </div>
 
       {/* Composer */}
-      <form
-        action={sendPatientMessageAction}
-        className="sticky bottom-20 flex items-center gap-2 border-t border-fv-border bg-fv-bg-card px-3 py-3"
-      >
-        <AttachmentField
-          bucket="message-attachments"
-          folder={thread.id}
-          compact
-        />
-        <AutoGrowTextarea
-          name="body"
-          rows={1}
-          required
-          placeholder="Type a message…"
-          className="min-w-0 flex-1 resize-none rounded-2xl border border-fv-border bg-fv-bg-app px-4 py-2.5 text-sm text-fv-text-primary placeholder:text-fv-text-secondary max-h-32 overflow-y-auto"
-        />
-        <SubmitButton
-          aria-label="Send message"
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-fv-accent-strong text-white hover:opacity-95"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-5 w-5"
-          >
-            <path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7z" />
-          </svg>
-        </SubmitButton>
-      </form>
+      <PatientMessageComposer threadId={thread.id} />
     </main>
   );
 }

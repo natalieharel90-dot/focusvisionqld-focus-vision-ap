@@ -31,7 +31,9 @@ async function ensureThreadId(
 export async function sendPatientMessageAction(formData: FormData) {
   const body = String(formData.get("body") ?? "").trim();
   const attachmentPath = String(formData.get("attachment_path") ?? "").trim();
-  if (!body && !attachmentPath) back("Type a message before sending.");
+  if (!body && !attachmentPath) {
+    back("Type a message or attach a file before sending.");
+  }
 
   const supabase = createSupabaseServerClient();
   const {
