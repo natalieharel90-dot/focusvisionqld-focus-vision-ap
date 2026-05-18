@@ -36,6 +36,7 @@ export type EditorProps = {
   procedureLabel: string | null;
   surgeonLabel: string | null;
   saved: boolean;
+  canEdit: boolean;
 };
 
 const ROUTES: ReadonlyArray<RouteAction> = ["off", "yellow", "orange", "red"];
@@ -122,9 +123,11 @@ const SYMPTOM_DESC: Record<string, string> = {
 function RoutePills({
   value,
   onChange,
+  disabled,
 }: {
   value: RouteAction;
   onChange: (r: RouteAction) => void;
+  disabled: boolean;
 }) {
   return (
     <div className="inline-flex shrink-0 overflow-hidden rounded-lg border border-fv-border">
@@ -135,10 +138,11 @@ function RoutePills({
           <button
             key={r}
             type="button"
+            disabled={disabled}
             onClick={() => onChange(r)}
             className={`px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-              i > 0 ? "border-l border-fv-border" : ""
-            }`}
+              disabled ? "cursor-default" : ""
+            } ${i > 0 ? "border-l border-fv-border" : ""}`}
             style={
               active
                 ? { background: info.fill, color: info.text }
@@ -304,6 +308,14 @@ export function RulesEditor(props: EditorProps) {
         </p>
       ) : null}
 
+      {!props.canEdit ? (
+        <p className="mt-3 rounded-md bg-fv-bg-soft px-3 py-2 text-sm text-fv-text-secondary">
+          You have view-only access to the routing rules. Reception accounts
+          can review every ruleset but changes are made by clinical staff and
+          managers.
+        </p>
+      ) : null}
+
       {/* Routing rules panel */}
       <form
         action={saveRoutingRulesAction}
@@ -353,6 +365,7 @@ export function RulesEditor(props: EditorProps) {
             group={group}
             routes={routes}
             setRoute={setRoute}
+            canEdit={props.canEdit}
           />
         ))}
 
@@ -375,21 +388,23 @@ export function RulesEditor(props: EditorProps) {
           </p>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setRoutes(new Map(initialRoutes))}
-            className="rounded-md border border-fv-border px-4 py-2 text-sm font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
-          >
-            Discard changes
-          </button>
-          <button
-            type="submit"
-            className="rounded-md bg-fv-accent-strong px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
-          >
-            Save ruleset
-          </button>
-        </div>
+        {props.canEdit ? (
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setRoutes(new Map(initialRoutes))}
+              className="rounded-md border border-fv-border px-4 py-2 text-sm font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
+            >
+              Discard changes
+            </button>
+            <button
+              type="submit"
+              className="rounded-md bg-fv-accent-strong px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
+            >
+              Save ruleset
+            </button>
+          </div>
+        ) : null}
       </form>
     </>
   );
@@ -399,10 +414,12 @@ function Group({
   group,
   routes,
   setRoute,
+  canEdit,
 }: {
   group: EditorGroup;
   routes: Map<string, RouteAction>;
   setRoute: (key: string, value: RouteAction) => void;
+  canEdit: boolean;
 }) {
   if (group.kind === "symptoms") {
     return (
@@ -449,7 +466,12 @@ function Group({
                     </div>
                   ) : null}
                 </div>
-                <RouteCell row={row} routes={routes} setRoute={setRoute} />
+                <RouteCell
+                  row={row}
+                  routes={routes}
+                  setRoute={setRoute}
+                  canEdit={canEdit}
+                />
               </div>
             );
           })}
@@ -506,7 +528,12 @@ function Group({
               <div className="min-w-0 flex-1 text-[11px] text-fv-text-secondary">
                 {desc}
               </div>
-              <RouteCell row={row} routes={routes} setRoute={setRoute} />
+              <RouteCell
+                row={row}
+                routes={routes}
+                setRoute={setRoute}
+                canEdit={canEdit}
+              />
             </div>
           );
         })}
@@ -520,10 +547,12 @@ function RouteCell({
   row,
   routes,
   setRoute,
+  canEdit,
 }: {
   row: EditorRow;
   routes: Map<string, RouteAction>;
   setRoute: (key: string, value: RouteAction) => void;
+  canEdit: boolean;
 }) {
   const key = `${row.itemKey}|${row.itemValue}`;
   const value = routes.get(key) ?? row.currentRoute;
@@ -538,7 +567,11 @@ function RouteCell({
           override
         </span>
       ) : null}
-      <RoutePills value={value} onChange={(r) => setRoute(key, r)} />
+      <RoutePills
+        value={value}
+        onChange={(r) => setRoute(key, r)}
+        disabled={!canEdit}
+      />
       <input
         type="hidden"
         name={`route:${row.itemKey}:${row.itemValue}`}

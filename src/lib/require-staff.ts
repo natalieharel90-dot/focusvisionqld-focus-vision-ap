@@ -36,6 +36,13 @@ export async function requireStaff(): Promise<StaffContext> {
   return { supabase, userId: user.id, staff };
 }
 
+// Reception staff have full visibility across the dashboard but do not
+// configure the clinical routing model — that stays with clinical staff
+// and managers. Gates both the routing-rule save action and the editor UI.
+export function canEditRoutingRules(role: string): boolean {
+  return role !== "reception";
+}
+
 // As requireStaff, but also requires the staff member's access tier to be
 // at or above `maxTier` (tier 1 = most privileged). Tier-restricted
 // actions — analytics config, bulk push, reports — use this.

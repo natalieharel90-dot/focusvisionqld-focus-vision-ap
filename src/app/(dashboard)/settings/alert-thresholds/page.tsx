@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { canEditRoutingRules, requireStaff } from "@/lib/require-staff";
 import type { Database } from "@/types/database.types";
 import { RulesEditor, type EditorGroup, type EditorRow } from "./RulesEditor";
 import { AlertActionsPanel, type AlertActionRow } from "./AlertActionsPanel";
@@ -102,7 +102,8 @@ export default async function AlertThresholdsPage({
     error?: string;
   };
 }) {
-  const supabase = createSupabaseServerClient();
+  const { supabase, staff } = await requireStaff();
+  const canEdit = canEditRoutingRules(staff.role);
 
   const procedureType = searchParams.procedure?.trim() || null;
   const surgeonId = searchParams.surgeon?.trim() || null;
@@ -244,6 +245,7 @@ export default async function AlertThresholdsPage({
         procedureLabel={procedureLabel}
         surgeonLabel={surgeonLabel}
         saved={searchParams.saved === "1"}
+        canEdit={canEdit}
       />
 
       <AlertActionsPanel rows={alertActions} />
