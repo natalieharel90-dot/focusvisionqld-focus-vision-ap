@@ -15,6 +15,7 @@ import { ScrollToLatest } from "@/components/chat/ScrollToLatest";
 import { StaffComposer } from "./StaffComposer";
 import { InboxFilter } from "./InboxFilter";
 import { ComingSoonButton } from "./ComingSoonButton";
+import { NewMessageButton } from "./NewMessageButton";
 import { resolveThreadAction, toggleNotificationPrefAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -170,6 +171,16 @@ export default async function StaffInboxPage({
     .order("last_message_at", { ascending: false, nullsFirst: false });
   const threads = (threadRows ?? []) as ThreadRow[];
   const threadIds = threads.map((t) => t.id);
+
+  // Every patient, for the "New message" picker.
+  const { data: patientRows } = await supabase
+    .from("patients")
+    .select("id, name")
+    .order("name");
+  const allPatients = (patientRows ?? []).map((p) => ({
+    id: p.id,
+    name: p.name ?? "Unnamed patient",
+  }));
 
   const emptyData = {
     lastMsg: [] as { thread_id: string; body: string; sender_type: string }[],
@@ -327,11 +338,7 @@ export default async function StaffInboxPage({
             label="Templates"
             hint="The clinic message-templates editor lands in its own session. The quick-reply chips below already use the existing templates."
           />
-          <ComingSoonButton
-            label="New message"
-            variant="primary"
-            hint="Starting new threads from the staff side is coming soon. For now, a thread starts when the patient sends their first message."
-          />
+          <NewMessageButton patients={allPatients} />
         </div>
       </div>
 

@@ -139,3 +139,42 @@ export async function resolveThreadAction(formData: FormData) {
   revalidatePath("/inbox");
   redirect(`/inbox?thread=${threadId}`);
 }
+
+// Opens the conversation with a chosen patient — finding their existing
+// thread or creating one — so staff can start a conversation rather than
+// waiting for the patient to message first.
+export async function startThreadAction(formData: FormData) {
+  const patientId = String(formData.get("patient_id") ?? "").trim();
+  if (!patientId) {
+    redirect(`/inbox?error=${encodeURIComponent("Pick a patient first.")}`);
+  }
+
+  const { supabase } = await requireStaff();
+
+  const { data: existing } = await supabase
+    .from("message_threads")
+    .select("id")
+    .eq("patient_id", patientId)
+    .limit(1)
+    .maybeSingle();
+
+  let threadId = existing?.id;
+  if (!threadId) {
+    const { data: created, error } = await supabase
+      .from("message_threads")
+      .insert({ patient_id: patientId, status: "open" })
+      .select("id")
+      .single();
+    if (error || !created) {
+      redirect(
+        `/inbox?error=${encodeURIComponent(
+          "Couldn't open a conversation — please try again."
+        )}`
+      );
+    }
+    threadId = created.id;
+  }
+
+  revalidatePath("/inbox");
+  redirect(`/inbox?thread=${threadId}`);
+}
