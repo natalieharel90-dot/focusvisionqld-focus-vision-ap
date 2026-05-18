@@ -20,13 +20,17 @@ type StaffRole =
   | "optometrist"
   | "nurse"
   | "reception"
-  | "clinic manager";
+  | "clinic manager"
+  | "administration"
+  | "it";
 const STAFF_ROLES: ReadonlyArray<StaffRole> = [
   "surgeon",
   "optometrist",
   "nurse",
   "reception",
   "clinic manager",
+  "administration",
+  "it",
 ];
 
 function backToSignUp(message: string): never {

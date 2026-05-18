@@ -81,6 +81,8 @@ export default function SignUpPage({
               <option value="nurse">Nurse</option>
               <option value="reception">Reception</option>
               <option value="clinic manager">Clinic Manager</option>
+              <option value="administration">Administration</option>
+              <option value="it">IT</option>
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm">
