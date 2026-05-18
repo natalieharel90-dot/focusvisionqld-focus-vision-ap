@@ -279,40 +279,29 @@ export default async function PatientDocumentsPage() {
             Recovery photos
           </h2>
           <div className="flex flex-col gap-2.5">
-            {photos.map((p) => {
-              const inner = (
-                <>
-                  <span className={`${tileCls} bg-sky-100 text-sky-700`}>
-                    <Icon name="camera" />
+            {photos.map((p) => (
+              <Link
+                key={p.id}
+                href={`/documents/photo/${p.id}`}
+                className={cardCls}
+              >
+                <span className={`${tileCls} bg-sky-100 text-sky-700`}>
+                  <Icon name="camera" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-fv-text-primary">
+                    {p.recovery_day != null
+                      ? `Day ${p.recovery_day} — eye photo`
+                      : "Eye photo"}
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-semibold text-fv-text-primary">
-                      {p.recovery_day != null
-                        ? `Day ${p.recovery_day} — eye photo`
-                        : "Eye photo"}
-                    </span>
-                    <span className="block truncate text-sm text-fv-text-secondary">
-                      {photoTime(p.captured_at)}
-                      {p.check_in_id ? " · attached to check-in" : ""}
-                    </span>
+                  <span className="block truncate text-sm text-fv-text-secondary">
+                    {photoTime(p.captured_at)}
+                    {p.check_in_id ? " · attached to check-in" : ""}
                   </span>
-                  {p.check_in_id ? <Chevron /> : null}
-                </>
-              );
-              return p.check_in_id ? (
-                <Link
-                  key={p.id}
-                  href={`/check-in/done?id=${p.check_in_id}`}
-                  className={cardCls}
-                >
-                  {inner}
-                </Link>
-              ) : (
-                <div key={p.id} className={cardCls}>
-                  {inner}
-                </div>
-              );
-            })}
+                </span>
+                <Chevron />
+              </Link>
+            ))}
           </div>
         </section>
       ) : null}

@@ -78,6 +78,17 @@ export default async function PatientDocumentPage({
         filename={doc.filename}
       />
 
+      {signed?.signedUrl ? (
+        <a
+          href={signed.signedUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-2xl bg-fv-accent-strong px-4 py-3.5 text-center text-base font-semibold text-white hover:opacity-95"
+        >
+          Open document in a new tab
+        </a>
+      ) : null}
+
       <p className="text-center text-xs text-fv-text-muted">
         This document is watermarked with your name and today&apos;s date.
       </p>
