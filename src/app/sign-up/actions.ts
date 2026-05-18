@@ -15,12 +15,18 @@ const PENDING_STAFF_COOKIE = "fv_pending_staff";
 
 // Self-service sign-up offers the standard clinical roles. role is plain
 // text on staff_users now; the wider role list lives in staff_roles.
-type StaffRole = "surgeon" | "optometrist" | "nurse" | "reception";
+type StaffRole =
+  | "surgeon"
+  | "optometrist"
+  | "nurse"
+  | "reception"
+  | "clinic manager";
 const STAFF_ROLES: ReadonlyArray<StaffRole> = [
   "surgeon",
   "optometrist",
   "nurse",
   "reception",
+  "clinic manager",
 ];
 
 function backToSignUp(message: string): never {

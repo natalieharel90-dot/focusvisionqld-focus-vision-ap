@@ -80,6 +80,7 @@ export default function SignUpPage({
               <option value="optometrist">Optometrist</option>
               <option value="nurse">Nurse</option>
               <option value="reception">Reception</option>
+              <option value="clinic manager">Clinic Manager</option>
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm">
