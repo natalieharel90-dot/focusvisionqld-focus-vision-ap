@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { SubmitButton } from "@/components/SubmitButton";
 import { setPatientPasswordAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -79,12 +80,12 @@ export default async function PatientPasswordPage({
           </p>
         ) : null}
 
-        <button
-          type="submit"
+        <SubmitButton
+          pendingLabel="Saving…"
           className="mt-1 rounded-2xl bg-fv-accent-strong px-4 py-4 text-lg font-bold text-white hover:opacity-95"
         >
           Save password
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

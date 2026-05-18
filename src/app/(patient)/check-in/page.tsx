@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { loadPatientFeatures } from "@/lib/patient-features-server";
+import { SubmitButton } from "@/components/SubmitButton";
 import { PhotoUploadField } from "./PhotoUploadField";
 import { SymptomsCard } from "./SymptomsCard";
 import { submitCheckInAction } from "./actions";
@@ -169,12 +170,12 @@ export default async function CheckInPage({
           <PhotoUploadField patientId={user.id} />
         ) : null}
 
-        <button
-          type="submit"
+        <SubmitButton
+          pendingLabel="Submitting…"
           className="rounded-xl bg-fv-accent-strong px-4 py-3.5 text-base font-semibold text-white hover:opacity-95"
         >
           Submit check-in
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

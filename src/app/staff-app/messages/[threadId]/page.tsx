@@ -11,6 +11,7 @@ import {
 import { initials } from "@/lib/bulk-push";
 import { AutoGrowTextarea } from "@/components/chat/AutoGrowTextarea";
 import { ScrollToLatest } from "@/components/chat/ScrollToLatest";
+import { SubmitButton } from "@/components/SubmitButton";
 import { sendStaffAppMessageAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -241,8 +242,7 @@ export default async function StaffAppThreadPage({
           placeholder="Type a reply…"
           className="min-w-0 flex-1 resize-none rounded-2xl border border-fv-border bg-fv-bg-app px-4 py-2 text-sm text-fv-text-primary placeholder:text-fv-text-secondary max-h-32 overflow-y-auto"
         />
-        <button
-          type="submit"
+        <SubmitButton
           aria-label="Send reply"
           className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-fv-accent-strong text-white"
         >
@@ -257,7 +257,7 @@ export default async function StaffAppThreadPage({
           >
             <path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7z" />
           </svg>
-        </button>
+        </SubmitButton>
       </form>
 
       {searchParams.error ? (

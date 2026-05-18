@@ -5,6 +5,7 @@ import { ThreadRealtime } from "@/components/chat/ThreadRealtime";
 import { AttachmentField } from "@/components/chat/AttachmentField";
 import { AutoGrowTextarea } from "@/components/chat/AutoGrowTextarea";
 import { ScrollToLatest } from "@/components/chat/ScrollToLatest";
+import { SubmitButton } from "@/components/SubmitButton";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import {
   attachmentPathsFrom,
@@ -159,8 +160,7 @@ export default async function PatientMessagesPage({
           placeholder="Type a message…"
           className="min-w-0 flex-1 resize-none rounded-2xl border border-fv-border bg-fv-bg-app px-4 py-2.5 text-sm text-fv-text-primary placeholder:text-fv-text-secondary max-h-32 overflow-y-auto"
         />
-        <button
-          type="submit"
+        <SubmitButton
           aria-label="Send message"
           className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-fv-accent-strong text-white hover:opacity-95"
         >
@@ -175,7 +175,7 @@ export default async function PatientMessagesPage({
           >
             <path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7z" />
           </svg>
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { SubmitButton } from "@/components/SubmitButton";
 import { requestAccountDeletionAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -104,12 +105,12 @@ export default async function DeleteAccountPage({
             className="w-full rounded-2xl border border-fv-border bg-fv-bg-card px-4 py-3 text-sm text-fv-text-primary placeholder:text-fv-text-secondary"
           />
         </label>
-        <button
-          type="submit"
+        <SubmitButton
+          pendingLabel="Sending…"
           className="rounded-2xl bg-red-600 px-4 py-4 text-base font-bold text-white hover:opacity-95"
         >
           Request account deletion
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );
