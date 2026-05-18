@@ -44,9 +44,13 @@ body {
   font-size: 18px;
 }
 
-/* High contrast: stronger borders + pure text. */
+/* High contrast: darken the muted text colours to the primary text
+   colour and strengthen borders. !important so these win over the
+   per-theme palette buildThemeCss sets on the same element. */
 [data-contrast="high"] {
-  --fv-border: var(--fv-text-primary);
+  --fv-text-secondary: var(--fv-text-primary) !important;
+  --fv-text-muted: var(--fv-text-primary) !important;
+  --fv-border: var(--fv-text-primary) !important;
 }
 [data-contrast="high"] * {
   border-color: var(--fv-text-primary);
