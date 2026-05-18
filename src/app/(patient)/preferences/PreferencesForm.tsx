@@ -200,12 +200,52 @@ export function PreferencesForm({ initial, bonusUnlocked, account }: Props) {
           checked={prefs.notify_checkin_nudge}
           onChange={(v) => update({ notify_checkin_nudge: v })}
         />
-        <ToggleCard
-          title="Quiet hours"
-          sub="No reminders 10 PM – 7 AM"
-          checked={prefs.quiet_hours}
-          onChange={(v) => update({ quiet_hours: v })}
-        />
+        <div className={`flex flex-col gap-3 ${card}`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="font-semibold text-fv-text-primary">
+                Quiet hours
+              </div>
+              <div className="mt-0.5 text-sm text-fv-text-secondary">
+                Pause reminders overnight — set your own window below.
+              </div>
+            </div>
+            <Switch
+              checked={prefs.quiet_hours}
+              onChange={(v) => update({ quiet_hours: v })}
+            />
+          </div>
+          {prefs.quiet_hours ? (
+            <div className="flex items-end gap-3">
+              <label className="flex flex-1 flex-col gap-1">
+                <span className="text-xs font-semibold text-fv-text-secondary">
+                  From
+                </span>
+                <input
+                  type="time"
+                  value={prefs.quiet_hours_start}
+                  onChange={(e) =>
+                    update({ quiet_hours_start: e.target.value })
+                  }
+                  className="rounded-xl border border-fv-border bg-fv-bg-app px-3 py-2 text-sm text-fv-text-primary"
+                />
+              </label>
+              <label className="flex flex-1 flex-col gap-1">
+                <span className="text-xs font-semibold text-fv-text-secondary">
+                  To
+                </span>
+                <input
+                  type="time"
+                  value={prefs.quiet_hours_end}
+                  onChange={(e) =>
+                    update({ quiet_hours_end: e.target.value })
+                  }
+                  className="rounded-xl border border-fv-border bg-fv-bg-app px-3 py-2 text-sm text-fv-text-primary"
+                />
+              </label>
+            </div>
+          ) : null}
+        </div>
         <ToggleCard
           title="Travelling? Lock to original timezone"
           sub="Off (default): reminders follow your phone's clock. On: reminders stay on Brisbane time even if you travel."

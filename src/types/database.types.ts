@@ -1872,6 +1872,8 @@ export type Database = {
           onboarding_completed_at: string | null
           patient_id: string
           quiet_hours: boolean
+          quiet_hours_end: string
+          quiet_hours_start: string
           reduce_motion: boolean
           snooze_minutes: number
           sparkle: boolean
@@ -1895,6 +1897,8 @@ export type Database = {
           onboarding_completed_at?: string | null
           patient_id: string
           quiet_hours?: boolean
+          quiet_hours_end?: string
+          quiet_hours_start?: string
           reduce_motion?: boolean
           snooze_minutes?: number
           sparkle?: boolean
@@ -1918,6 +1922,8 @@ export type Database = {
           onboarding_completed_at?: string | null
           patient_id?: string
           quiet_hours?: boolean
+          quiet_hours_end?: string
+          quiet_hours_start?: string
           reduce_motion?: boolean
           snooze_minutes?: number
           sparkle?: boolean

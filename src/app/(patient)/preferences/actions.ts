@@ -19,6 +19,8 @@ export type PreferencesPayload = {
   snooze_minutes: number;
   notify_checkin_nudge: boolean;
   quiet_hours: boolean;
+  quiet_hours_start: string;
+  quiet_hours_end: string;
   lock_timezone: boolean;
   lock_screen_widget: boolean;
   voice_control: boolean;
@@ -59,6 +61,10 @@ export async function savePreferencesAction(
   if (!SNOOZE_MINUTES.includes(payload.snooze_minutes)) {
     return { ok: false, error: "Invalid snooze duration." };
   }
+  const isTime = (v: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+  if (!isTime(payload.quiet_hours_start) || !isTime(payload.quiet_hours_end)) {
+    return { ok: false, error: "Enter a valid quiet-hours time." };
+  }
 
   const { data: before } = await supabase
     .from("user_preferences")
@@ -88,6 +94,8 @@ export async function savePreferencesAction(
       snooze_minutes: payload.snooze_minutes,
       notify_checkin_nudge: payload.notify_checkin_nudge,
       quiet_hours: payload.quiet_hours,
+      quiet_hours_start: payload.quiet_hours_start,
+      quiet_hours_end: payload.quiet_hours_end,
       lock_timezone: payload.lock_timezone,
       lock_screen_widget: payload.lock_screen_widget,
       voice_control: payload.voice_control,
