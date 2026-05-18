@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { FocusVisionLogo } from "@/components/FocusVisionLogo";
 import { PatientBottomNav } from "@/components/patient/PatientBottomNav";
+import { ServiceWorkerRegister } from "@/components/patient/ServiceWorkerRegister";
 import { LogoUnlockTrigger } from "@/components/LogoUnlockTrigger";
 import { SparkleOverlay } from "@/components/SparkleOverlay";
 import { BonusUnlockBridge } from "@/components/patient/BonusUnlockBridge";
@@ -15,6 +17,14 @@ import {
 import { patientSignOutAction } from "@/app/patient-sign-in/actions";
 
 export const dynamic = "force-dynamic";
+
+// Makes the patient app an installable PWA — required for notifications,
+// and on iOS web push only works once the app is added to the home screen.
+export const metadata: Metadata = {
+  manifest: "/manifest.json",
+  appleWebApp: { capable: true, title: "Focus Vision" },
+  icons: { apple: "/icon.svg" },
+};
 
 // Patient app shell. The theme is read from user_preferences and applied
 // as data-theme / data-dark on the root container; the generated theme
@@ -93,6 +103,7 @@ export default async function PatientLayout({
         <div className="mx-auto max-w-md">{children}</div>
 
         <PatientBottomNav />
+        <ServiceWorkerRegister />
         {showSparkle ? <SparkleOverlay /> : null}
         <BonusUnlockBridge
           alreadyUnlocked={prefs?.bonus_pack_unlocked ?? false}

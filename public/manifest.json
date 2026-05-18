@@ -1,0 +1,18 @@
+{
+  "name": "Focus Vision Recovery Companion",
+  "short_name": "Focus Vision",
+  "description": "Your recovery companion after eye surgery.",
+  "start_url": "/home",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f3ea",
+  "theme_color": "#2b5249",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
 import { requireStaff } from "@/lib/require-staff";
+import { sendPush } from "@/lib/push";
 import type { Database } from "@/types/database.types";
 
 const VALID_NOTIFICATION_PREFS = [
@@ -60,6 +61,15 @@ export async function sendStaffMessageAction(formData: FormData) {
     entity_type: "message",
     entity_id: inserted!.id,
     new_value: { body_length: body.length, has_attachment: !!attachmentPath },
+  });
+
+  // Notify the patient's devices. Deliberately generic — no message
+  // content on the lock screen.
+  await sendPush(thread!.patient_id, {
+    title: "Focus Vision",
+    body: "You have a new message from your care team.",
+    url: "/messages",
+    tag: "message",
   });
 
   revalidatePath("/inbox");

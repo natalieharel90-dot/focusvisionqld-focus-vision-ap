@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { recordStaffAudit } from "@/lib/audit";
 import { requireStaff } from "@/lib/require-staff";
+import { sendPush } from "@/lib/push";
 
 function back(threadId: string, message: string): never {
   redirect(
@@ -58,6 +59,15 @@ export async function sendStaffAppMessageAction(formData: FormData) {
     entity_type: "message",
     entity_id: inserted.id,
     new_value: { body_length: body.length },
+  });
+
+  // Notify the patient's devices. Deliberately generic — no message
+  // content on the lock screen.
+  await sendPush(thread.patient_id, {
+    title: "Focus Vision",
+    body: "You have a new message from your care team.",
+    url: "/messages",
+    tag: "message",
   });
 
   revalidatePath(`/staff-app/messages/${threadId}`);

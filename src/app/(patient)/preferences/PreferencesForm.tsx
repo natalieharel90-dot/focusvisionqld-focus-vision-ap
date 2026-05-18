@@ -11,6 +11,7 @@ import {
   pickRandomBonusTheme,
   type ThemeId,
 } from "@/lib/theme";
+import { PushOptIn } from "@/components/patient/PushOptIn";
 import { savePreferencesAction, type PreferencesPayload } from "./actions";
 
 type Account = {
@@ -163,6 +164,7 @@ export function PreferencesForm({ initial, bonusUnlocked, account }: Props) {
 
       {/* ── Reminders ── */}
       <Section title="Reminders">
+        <PushOptIn />
         <ToggleCard
           title="Medication reminders"
           sub="Notifications + reminder sound"
