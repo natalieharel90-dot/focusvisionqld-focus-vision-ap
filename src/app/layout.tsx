@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import "./globals.css";
+import { ScrollToErrorOnLoad } from "@/components/ScrollToErrorOnLoad";
 
 export const metadata: Metadata = {
   title: "Focus Vision Staff Dashboard",
@@ -14,7 +16,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-theme="calm">
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        <Suspense>
+          <ScrollToErrorOnLoad />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }
