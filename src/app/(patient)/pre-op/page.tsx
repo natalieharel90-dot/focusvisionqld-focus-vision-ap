@@ -4,7 +4,12 @@ import type { ReactNode } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { loadPatientFeatures } from "@/lib/patient-features-server";
 import { summariseHours, type OpeningHours } from "@/lib/contact";
-import { PREOP_CHECKLIST, isPreOp, selectPreopContent } from "@/lib/preop";
+import {
+  DEFAULT_SURGERY_DAY_TEXT,
+  getPreopChecklist,
+  isPreOp,
+  selectPreopContent,
+} from "@/lib/preop";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +66,9 @@ export default async function PreOpPage() {
 
   const { data: procedures } = await supabase
     .from("procedures")
-    .select("id, procedure_type, surgeon_id, surgery_date, facility_id")
+    .select(
+      "id, procedure_type, surgeon_id, surgery_date, facility_id, source_template_id"
+    )
     .eq("patient_id", user.id)
     .order("surgery_date", { ascending: true });
 
@@ -74,22 +81,49 @@ export default async function PreOpPage() {
 
   const upcoming = preOpProcedures[0]!;
 
-  const [{ data: surgeonRow }, { data: contentRows }, { data: clinic }] =
-    await Promise.all([
-      supabase
-        .from("staff_users")
-        .select("name")
-        .eq("id", upcoming.surgeon_id)
-        .maybeSingle(),
-      supabase
-        .from("content_items")
-        .select("id, type, title, body, media_url, procedures, audience"),
-      supabase
-        .from("clinic_profile")
-        .select("phone, opening_hours")
-        .limit(1)
-        .maybeSingle(),
-    ]);
+  const [
+    { data: surgeonRow },
+    { data: contentRows },
+    { data: clinic },
+    { data: templateRow },
+  ] = await Promise.all([
+    supabase
+      .from("staff_users")
+      .select("name")
+      .eq("id", upcoming.surgeon_id)
+      .maybeSingle(),
+    supabase
+      .from("content_items")
+      .select("id, type, title, body, media_url, procedures, audience"),
+    supabase
+      .from("clinic_profile")
+      .select("phone, opening_hours")
+      .limit(1)
+      .maybeSingle(),
+    upcoming.source_template_id
+      ? supabase
+          .from("procedure_templates")
+          .select("surgery_day_text")
+          .eq("id", upcoming.source_template_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  // Try the patient's own template first, then any template for this
+  // procedure type, then the clinic-wide default text.
+  let surgeryDayText: string =
+    templateRow?.surgery_day_text ?? DEFAULT_SURGERY_DAY_TEXT;
+  if (!templateRow?.surgery_day_text) {
+    const { data: fallback } = await supabase
+      .from("procedure_templates")
+      .select("surgery_day_text")
+      .eq("procedure_type", upcoming.procedure_type)
+      .not("surgery_day_text", "is", null)
+      .limit(1)
+      .maybeSingle();
+    if (fallback?.surgery_day_text) surgeryDayText = fallback.surgery_day_text;
+  }
+  const checklist = getPreopChecklist(upcoming.procedure_type);
 
   let facilityName: string | null = null;
   if (upcoming.facility_id) {
@@ -143,11 +177,18 @@ export default async function PreOpPage() {
         </div>
       </section>
 
+      {/* What to expect on surgery day */}
+      <Section title="What to expect on surgery day">
+        <div className="whitespace-pre-line rounded-2xl bg-fv-bg-card p-5 text-sm leading-relaxed text-fv-text-primary shadow-sm">
+          {surgeryDayText}
+        </div>
+      </Section>
+
       {/* Day-before checklist */}
       <Section title="Day-before checklist">
         <div className="rounded-2xl bg-fv-bg-card p-5 shadow-sm">
           <ul className="flex flex-col gap-3">
-            {PREOP_CHECKLIST.map((item) => (
+            {checklist.map((item) => (
               <li
                 key={item}
                 className="flex gap-3 text-sm leading-relaxed text-fv-text-primary"
