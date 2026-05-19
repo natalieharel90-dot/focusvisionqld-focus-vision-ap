@@ -1378,6 +1378,7 @@ export type Database = {
           id: string
           linked_recovery_guidance_id: string | null
           linked_routing_ruleset_id: string | null
+          medication_notes: string | null
           procedure_type: string
           surgeon_id: string
           surgery_day_text: string | null
@@ -1396,6 +1397,7 @@ export type Database = {
           id?: string
           linked_recovery_guidance_id?: string | null
           linked_routing_ruleset_id?: string | null
+          medication_notes?: string | null
           procedure_type: string
           surgeon_id: string
           surgery_day_text?: string | null
@@ -1414,6 +1416,7 @@ export type Database = {
           id?: string
           linked_recovery_guidance_id?: string | null
           linked_routing_ruleset_id?: string | null
+          medication_notes?: string | null
           procedure_type?: string
           surgeon_id?: string
           surgery_day_text?: string | null

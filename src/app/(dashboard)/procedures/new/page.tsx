@@ -150,6 +150,7 @@ export default async function NewTemplatePage({
       procedureType={procedureType}
       initialMedications={[]}
       initialAppointments={[]}
+      initialMedicationNotes={null}
       linkedRoutingRulesetId={null}
       rulesetOptions={rulesetsResult.data ?? []}
       saved={false}

@@ -18,6 +18,7 @@ export type TemplateEditorProps = {
   procedureType: string;
   initialMedications: TemplateMedication[];
   initialAppointments: TemplateAppointment[];
+  initialMedicationNotes: string | null;
   linkedRoutingRulesetId: string | null;
   rulesetOptions: ReadonlyArray<RulesetOption>;
   saved: boolean;
@@ -259,6 +260,19 @@ export function TemplateEditor(props: TemplateEditorProps) {
               ))}
             </ul>
           )}
+
+          <label className="mt-4 flex flex-col gap-1">
+            <span className={fieldLabelCls}>
+              General medication notes (shown to the patient)
+            </span>
+            <textarea
+              name="medication_notes"
+              rows={2}
+              defaultValue={props.initialMedicationNotes ?? ""}
+              placeholder="e.g. Leave 5 minutes between different drops. Shake the bottle before use."
+              className={`${inputCls} resize-y`}
+            />
+          </label>
         </section>
 
         {/* Default appointments */}

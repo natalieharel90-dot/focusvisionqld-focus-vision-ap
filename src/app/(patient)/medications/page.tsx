@@ -79,6 +79,19 @@ export default async function MedicationsPage({
   const medById = new Map(meds.map((m) => [m.id, m]));
   const medIds = meds.map((m) => m.id);
 
+  // General medication guidance from the patient's procedure template.
+  const templateId =
+    meds.find((m) => m.source_template_id)?.source_template_id ?? null;
+  let medicationNotes: string | null = null;
+  if (templateId) {
+    const { data: template } = await supabase
+      .from("procedure_templates")
+      .select("medication_notes")
+      .eq("id", templateId)
+      .maybeSingle();
+    medicationNotes = template?.medication_notes ?? null;
+  }
+
   // Day boundaries in the clinic's timezone (Brisbane, UTC+10, no DST) so
   // "today's doses" doesn't drift by ~10 hours on a UTC server.
   const brisbaneDay = new Date().toLocaleDateString("en-CA", {
@@ -133,6 +146,26 @@ export default async function MedicationsPage({
       </header>
 
       <MedicationReminders doses={reminderPayload} />
+
+      {medicationNotes ? (
+        <section className="flex items-start gap-3 rounded-2xl bg-fv-bg-accent-soft p-4">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="mt-0.5 h-5 w-5 shrink-0 text-fv-accent-strong"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4M12 8h.01" />
+          </svg>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-fv-text-primary">
+            {medicationNotes}
+          </p>
+        </section>
+      ) : null}
 
       {searchParams.error ? (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">

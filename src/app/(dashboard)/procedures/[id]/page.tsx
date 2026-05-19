@@ -46,6 +46,7 @@ export default async function EditTemplatePage({
       initialAppointments={parseTemplateAppointments(
         template.default_appointments
       )}
+      initialMedicationNotes={template.medication_notes}
       linkedRoutingRulesetId={template.linked_routing_ruleset_id}
       rulesetOptions={rulesetsResult.data ?? []}
       saved={searchParams.saved === "1"}

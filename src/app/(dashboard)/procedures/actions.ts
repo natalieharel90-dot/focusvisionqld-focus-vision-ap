@@ -26,6 +26,8 @@ export async function saveTemplateAction(formData: FormData) {
   const appointmentsJson = String(formData.get("default_appointments") ?? "[]");
   const linkedRulesetId =
     String(formData.get("linked_routing_ruleset_id") ?? "").trim() || null;
+  const medicationNotes =
+    String(formData.get("medication_notes") ?? "").trim() || null;
 
   if (!surgeonId) backToEditor(templateId, "Surgeon is required.");
   if (!procedureType) backToEditor(templateId, "Procedure type is required.");
@@ -57,6 +59,7 @@ export async function saveTemplateAction(formData: FormData) {
         default_medications: cleanMeds,
         default_appointments: cleanAppts,
         linked_routing_ruleset_id: linkedRulesetId,
+        medication_notes: medicationNotes,
         updated_by: userId,
       })
       .eq("id", templateId);
@@ -87,6 +90,7 @@ export async function saveTemplateAction(formData: FormData) {
       default_medications: cleanMeds,
       default_appointments: cleanAppts,
       linked_routing_ruleset_id: linkedRulesetId,
+      medication_notes: medicationNotes,
       created_by: userId,
       updated_by: userId,
     })
