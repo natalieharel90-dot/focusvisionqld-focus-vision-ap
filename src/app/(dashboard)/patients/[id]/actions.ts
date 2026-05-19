@@ -71,6 +71,23 @@ export async function updatePatientDetailsAction(formData: FormData) {
   const date_of_birth =
     String(formData.get("date_of_birth") ?? "").trim() || null;
   const allergies = parseCsvList(String(formData.get("allergies") ?? ""));
+  const medicare_number =
+    String(formData.get("medicare_number") ?? "").trim() || null;
+
+  const fund = String(formData.get("health_fund") ?? "").trim();
+  const fundMember = String(formData.get("health_fund_member") ?? "").trim();
+  const health_fund =
+    fund || fundMember ? { fund, member_number: fundMember } : null;
+
+  const ecName = String(formData.get("emergency_name") ?? "").trim();
+  const ecPhone = String(formData.get("emergency_phone") ?? "").trim();
+  const ecRelationship = String(
+    formData.get("emergency_relationship") ?? ""
+  ).trim();
+  const emergency_contact =
+    ecName || ecPhone || ecRelationship
+      ? { name: ecName, phone: ecPhone, relationship: ecRelationship }
+      : null;
 
   if (!first_name) backWithError(patientId, "First name is required.");
   if (!email) backWithError(patientId, "Email is required.");
@@ -100,6 +117,9 @@ export async function updatePatientDetailsAction(formData: FormData) {
       phone_verified,
       date_of_birth,
       allergies,
+      medicare_number,
+      health_fund,
+      emergency_contact,
     })
     .eq("id", patientId)
     .select()

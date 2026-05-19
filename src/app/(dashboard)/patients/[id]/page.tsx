@@ -677,6 +677,72 @@ export default async function PatientDetailPage({
                     className={inputCls}
                   />
                 </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Medicare number</span>
+                  <input
+                    type="text"
+                    name="medicare_number"
+                    defaultValue={patient.medicare_number ?? ""}
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Private health fund</span>
+                  <input
+                    type="text"
+                    name="health_fund"
+                    defaultValue={jsonField(patient.health_fund, "fund") ?? ""}
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Health fund member no.</span>
+                  <input
+                    type="text"
+                    name="health_fund_member"
+                    defaultValue={
+                      jsonField(patient.health_fund, "member_number") ?? ""
+                    }
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Emergency contact name</span>
+                  <input
+                    type="text"
+                    name="emergency_name"
+                    defaultValue={
+                      jsonField(patient.emergency_contact, "name") ?? ""
+                    }
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>Emergency contact phone</span>
+                  <input
+                    type="tel"
+                    name="emergency_phone"
+                    defaultValue={
+                      jsonField(patient.emergency_contact, "phone") ?? ""
+                    }
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={fieldLabel}>
+                    Emergency contact relationship
+                  </span>
+                  <input
+                    type="text"
+                    name="emergency_relationship"
+                    defaultValue={
+                      jsonField(patient.emergency_contact, "relationship") ??
+                      ""
+                    }
+                    placeholder="e.g. Partner, Parent"
+                    className={inputCls}
+                  />
+                </label>
                 <p className="col-span-2 text-xs text-fv-text-secondary">
                   Changing the phone number marks it unverified until the
                   patient re-confirms it by SMS.
