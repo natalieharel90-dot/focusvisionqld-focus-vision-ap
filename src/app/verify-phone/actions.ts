@@ -2,12 +2,47 @@
 
 import { createHash, randomInt } from "node:crypto";
 import { redirect } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { sendSms } from "@/lib/sms";
+import { deriveStatus, parseChecklist } from "@/lib/setup-tasks";
+import type { Database } from "@/types/database.types";
 
 const CODE_TTL_MIN = 10;
 const RESEND_THROTTLE_MS = 30_000;
+
+// Marks the onboarding checklist's MFA step done once a patient verifies
+// their phone. Uses the service role because patients can't write
+// patient_setup_tasks themselves. Best-effort — never blocks the patient.
+async function syncMfaSetupTask(patientId: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const admin = createClient<Database>(url, key, {
+    auth: { persistSession: false },
+  });
+  const { data: task } = await admin
+    .from("patient_setup_tasks")
+    .select("checklist")
+    .eq("patient_id", patientId)
+    .maybeSingle();
+  if (!task) return;
+  const checklist = parseChecklist(task.checklist);
+  if (checklist.mfa_verified.done) return;
+  const updated = {
+    ...checklist,
+    mfa_verified: {
+      done: true,
+      done_at: new Date().toISOString(),
+      done_by: null,
+    },
+  };
+  await admin
+    .from("patient_setup_tasks")
+    .update({ checklist: updated, status: deriveStatus(updated) })
+    .eq("patient_id", patientId);
+}
 
 function hashCode(code: string): string {
   return createHash("sha256").update(code).digest("hex");
@@ -117,8 +152,10 @@ export async function verifyPhoneCodeAction(formData: FormData) {
   if (error) back("Something went wrong — please try again.");
 
   switch (result) {
-    case "ok":
+    case "ok": {
+      await syncMfaSetupTask(user.id);
       redirect("/home");
+    }
     case "wrong":
       back("That code isn't right. Please try again.");
     case "locked":
