@@ -38,7 +38,13 @@ function applyAppearance(p: PreferencesPayload) {
   );
   if (p.dark_mode) root.setAttribute("data-dark", "");
   else root.removeAttribute("data-dark");
-  root.setAttribute("data-text-size", p.text_size);
+  // Text size scales the html root font-size — see the patient layout.
+  document.documentElement.style.fontSize =
+    p.text_size === "small"
+      ? "16px"
+      : p.text_size === "large"
+        ? "23px"
+        : "19px";
   if (p.high_contrast) root.setAttribute("data-contrast", "high");
   else root.removeAttribute("data-contrast");
   if (p.reduce_motion) root.setAttribute("data-motion", "reduced");

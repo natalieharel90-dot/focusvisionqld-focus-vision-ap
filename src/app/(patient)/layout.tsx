@@ -63,15 +63,28 @@ export default async function PatientLayout({
     prefs?.reduce_motion ?? false
   );
 
+  // Text size scales the whole app via the root (html) font-size, since
+  // Tailwind's text classes use rem. Larger than the dashboard — patients
+  // are mostly older and post eye-surgery.
+  const rootFontPx =
+    prefs?.text_size === "small"
+      ? 16
+      : prefs?.text_size === "large"
+        ? 23
+        : 19;
+
   return (
     <>
-      {/* Theme CSS — all five [data-theme] palettes + dark overrides. */}
-      <style dangerouslySetInnerHTML={{ __html: buildThemeCss() }} />
+      {/* Theme CSS + the text-size root font-size. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `${buildThemeCss()}\nhtml{font-size:${rootFontPx}px;}`,
+        }}
+      />
       <div
         id="fv-patient-root"
         data-theme={theme}
         data-dark={dark ? "" : undefined}
-        data-text-size={prefs?.text_size ?? "normal"}
         data-contrast={prefs?.high_contrast ? "high" : undefined}
         data-motion={prefs?.reduce_motion ? "reduced" : undefined}
         className="min-h-screen bg-fv-bg-app pb-20"
