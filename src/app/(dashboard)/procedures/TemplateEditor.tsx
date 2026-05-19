@@ -249,49 +249,69 @@ export function TemplateEditor(props: TemplateEditorProps) {
                   key={i}
                   className="grid grid-cols-2 gap-2 rounded-md bg-fv-bg-soft p-3"
                 >
-                  <input
-                    className={inputCls}
-                    placeholder="Type (1-week)"
-                    value={a.appointment_type}
-                    onChange={(e) =>
-                      updateAppt(i, { appointment_type: e.target.value })
-                    }
-                  />
-                  <input
-                    className={inputCls}
-                    type="number"
-                    placeholder="Days after surgery"
-                    value={a.days_after_surgery}
-                    onChange={(e) =>
-                      updateAppt(i, {
-                        days_after_surgery: Number(e.target.value) || 0,
-                      })
-                    }
-                  />
-                  <select
-                    className={inputCls}
-                    value={a.location ?? ""}
-                    onChange={(e) =>
-                      updateAppt(i, {
-                        location:
-                          (e.target.value as TemplateAppointment["location"]) ||
-                          null,
-                      })
-                    }
-                  >
-                    <option value="">— location —</option>
-                    <option value="in_clinic">In clinic</option>
-                    <option value="phone">Phone</option>
-                    <option value="video">Video</option>
-                  </select>
-                  <input
-                    className={inputCls}
-                    placeholder="Notes (optional)"
-                    value={a.notes ?? ""}
-                    onChange={(e) =>
-                      updateAppt(i, { notes: e.target.value || null })
-                    }
-                  />
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-medium text-fv-text-secondary">
+                      Type
+                    </span>
+                    <input
+                      className={inputCls}
+                      placeholder="e.g. 1-week review"
+                      value={a.appointment_type}
+                      onChange={(e) =>
+                        updateAppt(i, { appointment_type: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-medium text-fv-text-secondary">
+                      Days after surgery
+                    </span>
+                    <input
+                      className={inputCls}
+                      type="number"
+                      value={a.days_after_surgery}
+                      onChange={(e) =>
+                        updateAppt(i, {
+                          days_after_surgery: Number(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-medium text-fv-text-secondary">
+                      Location
+                    </span>
+                    <select
+                      className={inputCls}
+                      value={a.location ?? ""}
+                      onChange={(e) =>
+                        updateAppt(i, {
+                          location:
+                            (e.target
+                              .value as TemplateAppointment["location"]) ||
+                            null,
+                        })
+                      }
+                    >
+                      <option value="">— location —</option>
+                      <option value="in_clinic">In clinic</option>
+                      <option value="phone">Phone</option>
+                      <option value="video">Video</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-medium text-fv-text-secondary">
+                      Notes
+                    </span>
+                    <input
+                      className={inputCls}
+                      placeholder="Optional"
+                      value={a.notes ?? ""}
+                      onChange={(e) =>
+                        updateAppt(i, { notes: e.target.value || null })
+                      }
+                    />
+                  </label>
                   <button
                     type="button"
                     onClick={() =>
