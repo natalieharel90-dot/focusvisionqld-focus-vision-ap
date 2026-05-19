@@ -19,7 +19,6 @@ function first(v: string | string[] | undefined): string | undefined {
 const TYPE_BORDER: Record<string, string> = {
   lasik: "border-l-emerald-500",
   prk: "border-l-amber-500",
-  smile: "border-l-blue-500",
   icl: "border-l-purple-500",
   cataract: "border-l-rose-500",
 };

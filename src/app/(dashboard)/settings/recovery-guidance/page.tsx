@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 type PatientZone = Database["public"]["Enums"]["patient_zone"];
 const ZONES: ReadonlyArray<PatientZone> = ["green", "yellow", "orange"];
-const PROCEDURE_TYPES = ["lasik", "prk", "smile", "icl", "cataract"];
+const PROCEDURE_TYPES = ["lasik", "prk", "icl", "cataract"];
 
 const EMPTY: ZoneContentFields = {
   headline: null,

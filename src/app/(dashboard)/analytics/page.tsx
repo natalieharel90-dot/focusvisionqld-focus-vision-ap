@@ -38,7 +38,7 @@ export const dynamic = "force-dynamic";
 
 // The standard procedures — a base list so they always appear even with
 // no data. Any custom procedure the clinic adds is merged in at runtime.
-const CANONICAL_PROCEDURES = ["lasik", "prk", "smile", "icl", "cataract"];
+const CANONICAL_PROCEDURES = ["lasik", "prk", "icl", "cataract"];
 
 const CARD_LABELS: Record<string, string> = {
   total_patients: "Total patients onboarded",

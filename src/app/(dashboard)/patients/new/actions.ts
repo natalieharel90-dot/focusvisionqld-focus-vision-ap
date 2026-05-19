@@ -14,7 +14,7 @@ const EYE_SIDES: ReadonlyArray<EyeSide> = ["left", "right", "both"];
 
 // Dev default — the patient resets via email on first sign-in. A real
 // onboarding flow would email a magic link instead.
-const NEW_PATIENT_PASSWORD = "welcome-to-focus-vision";
+const NEW_PATIENT_PASSWORD = "FocusVisionRecovery";
 
 function back(message: string): never {
   redirect(`/patients/new?error=${encodeURIComponent(message)}`);

@@ -35,7 +35,7 @@ export function ContentTab({
           </select>
           <select name="procedure" defaultValue={filter.procedure} className={selectClass}>
             <option value="all">All procedures</option>
-            {["lasik", "prk", "smile", "cataract", "icl"].map((p) => (
+            {["lasik", "prk", "cataract", "icl"].map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>

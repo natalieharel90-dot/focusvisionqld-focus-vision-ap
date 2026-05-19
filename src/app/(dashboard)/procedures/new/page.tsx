@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // Common procedures, offered as autocomplete suggestions. procedure_type is
 // an open-ended free-text set — the clinic can add any procedure here.
-const COMMON_PROCEDURES = ["lasik", "prk", "smile", "icl", "cataract"];
+const COMMON_PROCEDURES = ["lasik", "prk", "icl", "cataract"];
 
 export default async function NewTemplatePage({
   searchParams,

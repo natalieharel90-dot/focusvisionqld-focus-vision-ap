@@ -5,7 +5,7 @@ import { useRef } from "react";
 import { CONTENT_TOPICS } from "@/lib/clinic-settings";
 import { saveContentItemAction } from "./actions";
 
-const PROCEDURE_TYPES = ["lasik", "prk", "smile", "cataract", "icl"];
+const PROCEDURE_TYPES = ["lasik", "prk", "cataract", "icl"];
 
 export type ContentItem = {
   id: string;

@@ -781,7 +781,7 @@ export default async function PatientDetailPage({
                   <input
                     type="text"
                     name="procedure_type"
-                    placeholder="lasik / prk / smile / cataract / icl"
+                    placeholder="lasik / prk / cataract / icl"
                     required
                     className={inputCls}
                   />

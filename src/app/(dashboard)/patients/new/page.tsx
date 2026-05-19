@@ -166,7 +166,7 @@ export default async function NewPatientPage({
 
           <p className="rounded-md bg-fv-bg-soft px-3 py-2 text-xs text-fv-text-secondary">
             The patient is created with a temporary password
-            (<code>welcome-to-focus-vision</code>) — they reset it on first
+            (<code>FocusVisionRecovery</code>) — they reset it on first
             sign-in. SMS-based onboarding lands in a later session.
           </p>
 

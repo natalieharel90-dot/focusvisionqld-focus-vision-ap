@@ -7,7 +7,7 @@ import { generateReportAction, setReportScheduleAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-const PROCEDURE_TYPES = ["lasik", "prk", "smile", "cataract", "icl"];
+const PROCEDURE_TYPES = ["lasik", "prk", "cataract", "icl"];
 const input =
   "rounded-md border border-fv-border bg-fv-bg-app px-3 py-2 text-sm";
 const label = "text-xs font-medium text-fv-text-secondary";

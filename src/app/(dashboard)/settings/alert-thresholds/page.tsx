@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 type RouteAction = Database["public"]["Enums"]["route_action"];
 type Tier = "default" | "procedure" | "surgeon" | "procedure_surgeon";
 
-const PROCEDURE_TYPES = ["lasik", "prk", "smile", "icl", "cataract"] as const;
+const PROCEDURE_TYPES = ["lasik", "prk", "icl", "cataract"] as const;
 
 type RulesetRow = {
   procedure_type: string | null;
