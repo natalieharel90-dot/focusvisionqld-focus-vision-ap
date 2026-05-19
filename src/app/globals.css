@@ -61,6 +61,13 @@ body {
   border-color: var(--fv-text-primary);
 }
 
+/* Staff Settings: when the "Hide deactivated staff" toggle is on, hide
+   any card flagged as inactive. The toggle is a client island that
+   adds the wrapper class — see HideInactiveStaffToggle.tsx. */
+.fv-hide-inactive-staff [data-staff-active="false"] {
+  display: none;
+}
+
 /* Reduce motion: disable transitions + animations inside the subtree. */
 [data-motion="reduced"] *,
 [data-motion="reduced"] *::before,

@@ -1,6 +1,7 @@
 import { initials } from "@/lib/bulk-push";
 import { AddRoleModal } from "./AddRoleModal";
 import { DoctorModal, type Doctor } from "./DoctorModal";
+import { HideInactiveStaffToggle } from "./HideInactiveStaffToggle";
 import {
   deleteStaffAction,
   saveDoctorAction,
@@ -63,10 +64,14 @@ export function DoctorsTab({
           No staff yet.
         </p>
       ) : (
+        <HideInactiveStaffToggle
+          inactiveCount={doctors.filter((d) => !d.active).length}
+        >
         <div className="mt-4 flex flex-col gap-3">
           {doctors.map((doctor) => (
             <div
               key={doctor.id}
+              data-staff-active={String(doctor.active)}
               className={`rounded-xl bg-fv-bg-soft/40 p-4 ${
                 doctor.active ? "" : "opacity-60"
               }`}
@@ -312,6 +317,7 @@ export function DoctorsTab({
             </div>
           ))}
         </div>
+        </HideInactiveStaffToggle>
       )}
     </section>
   );
