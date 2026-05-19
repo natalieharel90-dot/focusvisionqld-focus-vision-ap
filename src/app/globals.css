@@ -45,6 +45,19 @@ body {
   font-size: 23px;
 }
 
+/* Patient app: run the small print a notch larger than Tailwind's
+   defaults so secondary text under headings stays comfortably readable.
+   text-xs behaves like text-sm, text-sm like text-base. Headings are
+   left as they are. */
+#fv-patient-root .text-xs {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+#fv-patient-root .text-sm {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
 /* High contrast: darken the muted text colours to the primary text
    colour and strengthen borders. !important so these win over the
    per-theme palette buildThemeCss sets on the same element. */
