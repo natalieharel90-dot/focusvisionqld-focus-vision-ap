@@ -32,6 +32,7 @@ const EMPTY_MED: TemplateMedication = {
   scheduled_times: [],
   taper_notes: null,
   duration_days: null,
+  start_offset_days: 0,
 };
 
 const EMPTY_APPT: TemplateAppointment = {
@@ -65,6 +66,7 @@ export function TemplateEditor(props: TemplateEditorProps) {
 
   const inputCls =
     "rounded-md border border-fv-bg-soft bg-fv-bg-card px-2 py-1 text-sm";
+  const fieldLabelCls = "text-[11px] font-medium text-fv-text-secondary";
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
@@ -149,66 +151,101 @@ export function TemplateEditor(props: TemplateEditorProps) {
                   key={i}
                   className="grid grid-cols-2 gap-2 rounded-md bg-fv-bg-soft p-3"
                 >
-                  <input
-                    className={inputCls}
-                    placeholder="Name"
-                    value={m.name}
-                    onChange={(e) => updateMed(i, { name: e.target.value })}
-                  />
-                  <input
-                    className={inputCls}
-                    placeholder="Dose (1 drop)"
-                    value={m.dose}
-                    onChange={(e) => updateMed(i, { dose: e.target.value })}
-                  />
-                  <input
-                    className={inputCls}
-                    placeholder="Route"
-                    value={m.route}
-                    onChange={(e) => updateMed(i, { route: e.target.value })}
-                  />
-                  <input
-                    className={inputCls}
-                    placeholder="Frequency (4x daily)"
-                    value={m.frequency}
-                    onChange={(e) =>
-                      updateMed(i, { frequency: e.target.value })
-                    }
-                  />
-                  <input
-                    className={inputCls}
-                    placeholder="Times (08:00, 12:00)"
-                    value={m.scheduled_times.join(", ")}
-                    onChange={(e) =>
-                      updateMed(i, {
-                        scheduled_times: e.target.value
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean),
-                      })
-                    }
-                  />
-                  <input
-                    className={inputCls}
-                    type="number"
-                    placeholder="Duration (days)"
-                    value={m.duration_days ?? ""}
-                    onChange={(e) =>
-                      updateMed(i, {
-                        duration_days: e.target.value
-                          ? Number(e.target.value)
-                          : null,
-                      })
-                    }
-                  />
-                  <input
-                    className={`${inputCls} col-span-2`}
-                    placeholder="Taper notes (optional)"
-                    value={m.taper_notes ?? ""}
-                    onChange={(e) =>
-                      updateMed(i, { taper_notes: e.target.value || null })
-                    }
-                  />
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabelCls}>Name</span>
+                    <input
+                      className={inputCls}
+                      placeholder="e.g. Pred Forte"
+                      value={m.name}
+                      onChange={(e) => updateMed(i, { name: e.target.value })}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabelCls}>Dose</span>
+                    <input
+                      className={inputCls}
+                      placeholder="e.g. 1 drop"
+                      value={m.dose}
+                      onChange={(e) => updateMed(i, { dose: e.target.value })}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabelCls}>Route</span>
+                    <input
+                      className={inputCls}
+                      placeholder="e.g. topical eye"
+                      value={m.route}
+                      onChange={(e) =>
+                        updateMed(i, { route: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabelCls}>Frequency</span>
+                    <input
+                      className={inputCls}
+                      placeholder="e.g. 4x daily"
+                      value={m.frequency}
+                      onChange={(e) =>
+                        updateMed(i, { frequency: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabelCls}>Times each day</span>
+                    <input
+                      className={inputCls}
+                      placeholder="08:00, 12:00, 16:00, 20:00"
+                      value={m.scheduled_times.join(", ")}
+                      onChange={(e) =>
+                        updateMed(i, {
+                          scheduled_times: e.target.value
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabelCls}>Starts (days after surgery)</span>
+                    <input
+                      className={inputCls}
+                      type="number"
+                      value={m.start_offset_days ?? 0}
+                      onChange={(e) =>
+                        updateMed(i, {
+                          start_offset_days: Number(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={fieldLabelCls}>Duration (days)</span>
+                    <input
+                      className={inputCls}
+                      type="number"
+                      value={m.duration_days ?? ""}
+                      onChange={(e) =>
+                        updateMed(i, {
+                          duration_days: e.target.value
+                            ? Number(e.target.value)
+                            : null,
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="col-span-2 flex flex-col gap-1">
+                    <span className={fieldLabelCls}>Taper notes (optional)</span>
+                    <input
+                      className={inputCls}
+                      placeholder="e.g. 6x daily for 7 days, then 4x daily for 14 days"
+                      value={m.taper_notes ?? ""}
+                      onChange={(e) =>
+                        updateMed(i, { taper_notes: e.target.value || null })
+                      }
+                    />
+                  </label>
                   <button
                     type="button"
                     onClick={() =>
@@ -250,7 +287,7 @@ export function TemplateEditor(props: TemplateEditorProps) {
                   className="grid grid-cols-2 gap-2 rounded-md bg-fv-bg-soft p-3"
                 >
                   <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-medium text-fv-text-secondary">
+                    <span className={fieldLabelCls}>
                       Type
                     </span>
                     <input
@@ -263,7 +300,7 @@ export function TemplateEditor(props: TemplateEditorProps) {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-medium text-fv-text-secondary">
+                    <span className={fieldLabelCls}>
                       Days after surgery
                     </span>
                     <input
@@ -278,7 +315,7 @@ export function TemplateEditor(props: TemplateEditorProps) {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-medium text-fv-text-secondary">
+                    <span className={fieldLabelCls}>
                       Location
                     </span>
                     <select
@@ -300,7 +337,7 @@ export function TemplateEditor(props: TemplateEditorProps) {
                     </select>
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-medium text-fv-text-secondary">
+                    <span className={fieldLabelCls}>
                       Notes
                     </span>
                     <input

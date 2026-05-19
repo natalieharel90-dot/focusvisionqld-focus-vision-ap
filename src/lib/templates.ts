@@ -17,6 +17,10 @@ export type TemplateMedication = {
   scheduled_times: string[];
   taper_notes?: string | null;
   duration_days?: number | null;
+  // Days after surgery this medication starts. 0 (or unset) = surgery
+  // day. Lets a tapering drug be set up as staggered stages — e.g. a
+  // 6×/day stage from day 0 and a 4×/day stage from day 7.
+  start_offset_days?: number | null;
 };
 
 export type TemplateAppointment = {
@@ -65,21 +69,28 @@ export function buildTemplateInserts(
   surgeryDate: string
 ): { medications: MedicationInsert[]; appointments: AppointmentInsert[] } {
   const medications: MedicationInsert[] = template.default_medications.map(
-    (m) => ({
-      patient_id: patientId,
-      name: m.name,
-      dose: m.dose,
-      route: m.route,
-      frequency: m.frequency,
-      scheduled_times: m.scheduled_times,
-      start_date: surgeryDate,
-      end_date:
-        m.duration_days && m.duration_days > 0
-          ? addDays(surgeryDate, m.duration_days)
-          : null,
-      taper_notes: m.taper_notes ?? null,
-      source_template_id: template.id,
-    })
+    (m) => {
+      // A medication may start later than surgery day (a taper stage).
+      const startOffset =
+        m.start_offset_days && m.start_offset_days > 0
+          ? m.start_offset_days
+          : 0;
+      return {
+        patient_id: patientId,
+        name: m.name,
+        dose: m.dose,
+        route: m.route,
+        frequency: m.frequency,
+        scheduled_times: m.scheduled_times,
+        start_date: addDays(surgeryDate, startOffset),
+        end_date:
+          m.duration_days && m.duration_days > 0
+            ? addDays(surgeryDate, startOffset + m.duration_days)
+            : null,
+        taper_notes: m.taper_notes ?? null,
+        source_template_id: template.id,
+      };
+    }
   );
 
   const appointments: AppointmentInsert[] =
@@ -117,6 +128,8 @@ export function parseTemplateMedications(raw: unknown): TemplateMedication[] {
       taper_notes: typeof o.taper_notes === "string" ? o.taper_notes : null,
       duration_days:
         typeof o.duration_days === "number" ? o.duration_days : null,
+      start_offset_days:
+        typeof o.start_offset_days === "number" ? o.start_offset_days : null,
     });
   }
   return out;
