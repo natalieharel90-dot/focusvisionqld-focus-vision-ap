@@ -33,15 +33,16 @@ body {
 
 /* ── Patient accessibility preferences ──────────────────────────────── */
 
-/* Text size scales the patient subtree's root font size. */
+/* Text size scales the patient subtree's root font size. Bumped up on
+   clinical feedback — most patients are older and post eye-surgery. */
 [data-text-size="small"] {
-  font-size: 14px;
-}
-[data-text-size="normal"] {
   font-size: 16px;
 }
+[data-text-size="normal"] {
+  font-size: 19px;
+}
 [data-text-size="large"] {
-  font-size: 18px;
+  font-size: 23px;
 }
 
 /* High contrast: darken the muted text colours to the primary text
