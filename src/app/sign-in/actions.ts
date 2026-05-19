@@ -21,10 +21,29 @@ export async function signInWithPasswordAction(formData: FormData) {
   }
 
   const supabase = createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    console.error("[sign-in] failed", error.message);
+  const { data: signIn, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (error || !signIn.user) {
+    console.error("[sign-in] failed", error?.message);
     backToSignIn("Sign-in failed — check your email and password.", next);
+  }
+
+  // The credentials were valid, but only staff accounts belong here — a
+  // patient account signing in on the staff page gets a clear message
+  // rather than the confusing "no MFA factor" one below.
+  const { data: staff } = await supabase
+    .from("staff_users")
+    .select("id")
+    .eq("id", signIn.user.id)
+    .maybeSingle();
+  if (!staff) {
+    await supabase.auth.signOut();
+    backToSignIn(
+      "This isn't a staff account. Patients sign in through the patient app.",
+      next
+    );
   }
 
   // Determine whether the user has MFA enrolled and needs to step up.
