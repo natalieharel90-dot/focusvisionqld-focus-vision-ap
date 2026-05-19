@@ -125,6 +125,24 @@ export function ContactCard({ option }: { option: ContactOption }) {
     );
   }
 
-  // custom — informational only, no action.
-  return <div className={rowClass}>{inner}</div>;
+  // custom — informational only, no action. Styled flat (no white card,
+  // no shadow, muted icon) so it doesn't read as a tappable option like
+  // the ones above it.
+  return (
+    <div className="flex items-center gap-3 rounded-2xl bg-fv-bg-soft/60 px-4 py-3">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-fv-text-secondary">
+        <CardIcon name={option.icon} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold text-fv-text-primary">
+          {option.label}
+        </span>
+        {option.subtitle ? (
+          <span className="block text-sm text-fv-text-secondary">
+            {option.subtitle}
+          </span>
+        ) : null}
+      </span>
+    </div>
+  );
 }
