@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -51,6 +52,59 @@ export default async function CheckInPage({
 
   const procedure = procedureRes.data;
   const recoveryDay = daysSince(procedure?.surgery_date ?? null);
+
+  // One check-in per recovery day. If today's is already done, show a
+  // friendly "come back tomorrow" screen rather than a form that would
+  // only be rejected on submit.
+  const { data: todaysCheckIn } = await supabase
+    .from("check_ins")
+    .select("id")
+    .eq("patient_id", user.id)
+    .eq("recovery_day", recoveryDay ?? 0)
+    .maybeSingle();
+
+  if (todaysCheckIn) {
+    return (
+      <main className="flex flex-col gap-4 px-5 py-6">
+        <header>
+          <h1 className="text-2xl font-bold text-fv-text-primary">
+            Today&apos;s check-in
+          </h1>
+        </header>
+        <section className="rounded-2xl bg-fv-bg-card p-6 text-center shadow-sm">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-fv-bg-accent-soft text-fv-accent-strong">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-7 w-7"
+            >
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </span>
+          <h2 className="mt-3 text-lg font-semibold text-fv-text-primary">
+            You&apos;ve checked in today
+          </h2>
+          <p className="mt-1 text-sm text-fv-text-secondary">
+            {recoveryDay != null
+              ? `That's your Day ${recoveryDay} check-in done. `
+              : "Today's check-in is done. "}
+            Your next check-in will be available tomorrow.
+          </p>
+          <Link
+            href="/home"
+            className="mt-4 inline-block rounded-xl bg-fv-accent-strong px-5 py-2.5 text-sm font-semibold text-white hover:opacity-95"
+          >
+            Back to home
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
   const meta = [
     recoveryDay != null ? `Day ${recoveryDay}` : null,
     procedure?.procedure_type?.toUpperCase() ?? null,

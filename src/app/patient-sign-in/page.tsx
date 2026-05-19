@@ -56,7 +56,7 @@ export default function PatientSignInPage({
               name="password"
               required
               autoComplete="current-password"
-              placeholder="From your welcome message"
+              placeholder="Your password"
               className={inputClass}
             />
           </label>
@@ -102,8 +102,9 @@ export default function PatientSignInPage({
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
           <p className="leading-relaxed">
-            Your information is encrypted and stored in Australia. Use the
-            email and password from your clinic welcome message.
+            Your information is encrypted and stored in Australia. New here?
+            Sign in with the details from your clinic welcome message, then
+            set your own password in Settings.
           </p>
         </div>
       </div>
