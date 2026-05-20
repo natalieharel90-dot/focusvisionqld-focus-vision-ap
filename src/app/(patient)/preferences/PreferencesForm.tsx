@@ -254,6 +254,22 @@ export function PreferencesForm({ initial, bonusUnlocked, account }: Props) {
             </div>
           ) : null}
         </div>
+        <a
+          href="/onboarding/reminder-times"
+          className={`${card} flex items-center justify-between gap-3 hover:bg-fv-bg-soft`}
+        >
+          <div className="min-w-0">
+            <div className="font-semibold text-fv-text-primary">
+              Reminder times
+            </div>
+            <div className="mt-0.5 text-sm text-fv-text-secondary">
+              Change when your medication, check-in, and nudge reminders fire.
+            </div>
+          </div>
+          <span aria-hidden className="shrink-0 text-lg text-fv-text-secondary">
+            ›
+          </span>
+        </a>
         <ToggleCard
           title="Travelling? Lock to original timezone"
           sub="Off (default): reminders follow your phone's clock. On: reminders stay on Brisbane time even if you travel."

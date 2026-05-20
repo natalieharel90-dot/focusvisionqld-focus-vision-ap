@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -154,7 +155,7 @@ export default async function PatientHomePage({
       .maybeSingle(),
     supabase
       .from("user_preferences")
-      .select("onboarding_completed_at")
+      .select("onboarding_completed_at, reminder_times_set_at")
       .eq("patient_id", user.id)
       .maybeSingle(),
     supabase
@@ -258,6 +259,19 @@ export default async function PatientHomePage({
       setupResult.data?.status,
       prefsResult.data?.onboarding_completed_at
     );
+
+  // First-time setup: once the onboarding tour is done, send the patient
+  // to the reminder-times page (one-time, gated by reminder_times_set_at).
+  // Pre-op patients skip this — they don't have meds to schedule yet.
+  if (
+    !showTour &&
+    !replay &&
+    !preOp &&
+    prefsResult.data?.onboarding_completed_at &&
+    !prefsResult.data.reminder_times_set_at
+  ) {
+    redirect("/onboarding/reminder-times");
+  }
 
   type Tile = {
     key: string;

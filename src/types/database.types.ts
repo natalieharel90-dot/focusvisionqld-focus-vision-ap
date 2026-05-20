@@ -1935,12 +1935,17 @@ export type Database = {
       user_preferences: {
         Row: {
           bonus_pack_unlocked: boolean
+          checkin_nudge_time: string
+          checkin_reminder_time: string
           created_at: string
           dark_mode: boolean
           high_contrast: boolean
           language: string
+          last_checkin_nudge_at: string | null
+          last_checkin_reminder_at: string | null
           lock_screen_widget: boolean
           lock_timezone: boolean
+          medication_reminder_times: string[]
           notify_checkin: boolean
           notify_checkin_nudge: boolean
           notify_medication: boolean
@@ -1951,6 +1956,7 @@ export type Database = {
           quiet_hours_end: string
           quiet_hours_start: string
           reduce_motion: boolean
+          reminder_times_set_at: string | null
           snooze_minutes: number
           sparkle: boolean
           text_size: string
@@ -1960,12 +1966,17 @@ export type Database = {
         }
         Insert: {
           bonus_pack_unlocked?: boolean
+          checkin_nudge_time?: string
+          checkin_reminder_time?: string
           created_at?: string
           dark_mode?: boolean
           high_contrast?: boolean
           language?: string
+          last_checkin_nudge_at?: string | null
+          last_checkin_reminder_at?: string | null
           lock_screen_widget?: boolean
           lock_timezone?: boolean
+          medication_reminder_times?: string[]
           notify_checkin?: boolean
           notify_checkin_nudge?: boolean
           notify_medication?: boolean
@@ -1976,6 +1987,7 @@ export type Database = {
           quiet_hours_end?: string
           quiet_hours_start?: string
           reduce_motion?: boolean
+          reminder_times_set_at?: string | null
           snooze_minutes?: number
           sparkle?: boolean
           text_size?: string
@@ -1985,12 +1997,17 @@ export type Database = {
         }
         Update: {
           bonus_pack_unlocked?: boolean
+          checkin_nudge_time?: string
+          checkin_reminder_time?: string
           created_at?: string
           dark_mode?: boolean
           high_contrast?: boolean
           language?: string
+          last_checkin_nudge_at?: string | null
+          last_checkin_reminder_at?: string | null
           lock_screen_widget?: boolean
           lock_timezone?: boolean
+          medication_reminder_times?: string[]
           notify_checkin?: boolean
           notify_checkin_nudge?: boolean
           notify_medication?: boolean
@@ -2001,6 +2018,7 @@ export type Database = {
           quiet_hours_end?: string
           quiet_hours_start?: string
           reduce_motion?: boolean
+          reminder_times_set_at?: string | null
           snooze_minutes?: number
           sparkle?: boolean
           text_size?: string
