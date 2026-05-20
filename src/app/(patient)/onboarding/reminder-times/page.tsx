@@ -9,8 +9,9 @@ export const dynamic = "force-dynamic";
 export default async function OnboardingReminderTimesPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; from?: string };
 }) {
+  const fromSettings = searchParams.from === "settings";
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
@@ -50,11 +51,14 @@ export default async function OnboardingReminderTimesPage({
     <main className="mx-auto flex max-w-md flex-col gap-5 px-5 py-6">
       <header>
         <h1 className="text-2xl font-bold text-fv-text-primary">
-          When should we remind you?
+          {fromSettings
+            ? "Edit your reminder times"
+            : "When should we remind you?"}
         </h1>
         <p className="mt-1.5 text-sm text-fv-text-secondary">
-          Everyone&apos;s schedule is different. Pick the times that work
-          for you — you can change them anytime in Settings.
+          {fromSettings
+            ? "Adjust when each of your reminders fire. We'll update your medication schedule accordingly."
+            : "Everyone's schedule is different. Pick the times that work for you — you can change them anytime in Settings."}
         </p>
       </header>
 
@@ -75,7 +79,7 @@ export default async function OnboardingReminderTimesPage({
         initialNudgeTime={prefsRes.data?.checkin_nudge_time ?? "15:00"}
         nudgeEnabled={prefsRes.data?.notify_checkin_nudge ?? false}
         action={saveReminderTimesAction}
-        isOnboarding
+        isOnboarding={!fromSettings}
       />
     </main>
   );

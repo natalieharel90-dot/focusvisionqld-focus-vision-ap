@@ -12,7 +12,8 @@ export type ReminderTimesEditorProps = {
   nudgeEnabled: boolean;
   action: (formData: FormData) => void;
   // When true, the form is the post-onboarding setup; copy is welcoming
-  // and the cancel link goes home. False = inside Settings.
+  // and the action redirects to /home. False = inside Settings; action
+  // redirects to /preferences.
   isOnboarding?: boolean;
 };
 
@@ -58,6 +59,11 @@ export function ReminderTimesEditor(props: ReminderTimesEditorProps) {
       />
       <input type="hidden" name="checkin_time" value={checkin} />
       <input type="hidden" name="nudge_time" value={nudge} />
+      <input
+        type="hidden"
+        name="next"
+        value={props.isOnboarding ? "/home" : "/preferences"}
+      />
 
       {props.maxMedicationSlots > 0 ? (
         <section className={cardCls}>

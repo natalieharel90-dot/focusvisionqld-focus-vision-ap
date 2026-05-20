@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { recordStaffAudit } from "@/lib/audit";
 import { requireStaff } from "@/lib/require-staff";
 import { FEATURE_BY_KEY } from "@/lib/feature-flags";
+import { applyPatientPreferredTimes } from "@/lib/templates";
 import type { Database } from "@/types/database.types";
 
 type ManualFlagLevel = Database["public"]["Enums"]["manual_flag_level"];
@@ -204,9 +205,12 @@ export async function addMedicationAction(formData: FormData) {
   if (!start_date) backWithError(patientId, "Start date is required.");
 
   const { supabase } = await requireStaff();
-  const { data, error } = await supabase
-    .from("medications")
-    .insert({
+
+  // If the patient has set their preferred reminder times, honour them
+  // instead of the staff-entered times — each med uses the first N
+  // entries (N = scheduled_times length).
+  const [withPrefs] = await applyPatientPreferredTimes(supabase, patientId, [
+    {
       patient_id: patientId,
       name,
       dose,
@@ -216,7 +220,12 @@ export async function addMedicationAction(formData: FormData) {
       start_date,
       end_date,
       taper_notes,
-    })
+    },
+  ]);
+
+  const { data, error } = await supabase
+    .from("medications")
+    .insert(withPrefs!)
     .select()
     .single();
 

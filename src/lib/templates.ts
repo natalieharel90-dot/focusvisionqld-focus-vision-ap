@@ -159,6 +159,40 @@ export function parseTemplateAppointments(
   return out;
 }
 
+// Rewrites a medication's scheduled_times to match the patient's
+// preferred reminder slots. Each med keeps its current dosing
+// frequency (the length of its scheduled_times array); we just swap
+// in the first N entries from the patient's preferred list, sorted
+// chronologically. If the patient hasn't configured their times yet,
+// returns the input unchanged so the staff/template times stand.
+export async function applyPatientPreferredTimes(
+  supabase: SupabaseClient<Database>,
+  patientId: string,
+  meds: MedicationInsert[]
+): Promise<MedicationInsert[]> {
+  if (meds.length === 0) return meds;
+  const { data: prefs } = await supabase
+    .from("user_preferences")
+    .select("medication_reminder_times, reminder_times_set_at")
+    .eq("patient_id", patientId)
+    .maybeSingle();
+  if (!prefs?.reminder_times_set_at) return meds;
+  const preferred = (prefs.medication_reminder_times ?? []).slice().sort();
+  if (preferred.length === 0) return meds;
+  return meds.map((m) => {
+    const original = m.scheduled_times ?? [];
+    const n = original.length;
+    if (n === 0) return m;
+    const newTimes = preferred.slice(0, n);
+    // If the patient gave fewer slots than this med needs, fall back to
+    // the supplied schedule for the extras so we don't lose doses.
+    while (newTimes.length < n) {
+      newTimes.push(original[newTimes.length]!);
+    }
+    return { ...m, scheduled_times: newTimes };
+  });
+}
+
 // Orchestrator: loads the template, refuses if archived, and inserts the
 // materialised rows. Returns counts for audit logging.
 export async function applyTemplateToPatient(
@@ -195,10 +229,16 @@ export async function applyTemplateToPatient(
     args.surgeryDate
   );
 
-  if (medications.length > 0) {
+  const medicationsWithPrefs = await applyPatientPreferredTimes(
+    supabase,
+    args.patientId,
+    medications
+  );
+
+  if (medicationsWithPrefs.length > 0) {
     const { error: medError } = await supabase
       .from("medications")
-      .insert(medications);
+      .insert(medicationsWithPrefs);
     if (medError) throw medError;
   }
   if (appointments.length > 0) {

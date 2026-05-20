@@ -255,19 +255,23 @@ export function PreferencesForm({ initial, bonusUnlocked, account }: Props) {
           ) : null}
         </div>
         <a
-          href="/onboarding/reminder-times"
+          href="/onboarding/reminder-times?from=settings"
           className={`${card} flex items-center justify-between gap-3 hover:bg-fv-bg-soft`}
         >
           <div className="min-w-0">
             <div className="font-semibold text-fv-text-primary">
-              Reminder times
+              Edit reminder times
             </div>
             <div className="mt-0.5 text-sm text-fv-text-secondary">
               Change when your medication, check-in, and nudge reminders fire.
+              Useful if your schedule changes.
             </div>
           </div>
-          <span aria-hidden className="shrink-0 text-lg text-fv-text-secondary">
-            ›
+          <span
+            aria-hidden
+            className="shrink-0 rounded-full bg-fv-bg-soft px-3 py-1 text-xs font-semibold text-fv-accent-strong"
+          >
+            Edit
           </span>
         </a>
         <ToggleCard

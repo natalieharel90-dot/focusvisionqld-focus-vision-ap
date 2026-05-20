@@ -69,5 +69,6 @@ export async function saveReminderTimesAction(formData: FormData) {
     }
   }
 
-  redirect("/home");
+  const next = String(formData.get("next") ?? "/home");
+  redirect(next === "/preferences" ? "/preferences" : "/home");
 }
