@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { submitCheckIn } from "@/lib/check-ins";
+import { recoveryDay } from "@/lib/recovery-day";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import type { VisionAssessment } from "@/lib/zones";
 
@@ -10,16 +11,6 @@ const VALID_VISIONS: ReadonlyArray<VisionAssessment> = ["worse", "same", "better
 
 function back(message: string): never {
   redirect(`/check-in?error=${encodeURIComponent(message)}`);
-}
-
-function daysSince(dateStr: string): number {
-  return Math.max(
-    0,
-    Math.floor(
-      (Date.now() - new Date(`${dateStr}T00:00:00Z`).getTime()) /
-        (1000 * 60 * 60 * 24)
-    )
-  );
 }
 
 export async function submitCheckInAction(formData: FormData) {
@@ -64,9 +55,7 @@ export async function submitCheckInAction(formData: FormData) {
     .limit(1)
     .maybeSingle();
 
-  const recovery_day = procedure?.surgery_date
-    ? daysSince(procedure.surgery_date)
-    : 0;
+  const recovery_day = recoveryDay(procedure?.surgery_date) ?? 0;
 
   let result;
   try {

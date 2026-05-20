@@ -6,25 +6,16 @@ import { isPreOp, surgeryCountdownLabel } from "@/lib/preop";
 import { ONBOARDING_STEPS, shouldShowOnboarding } from "@/lib/onboarding";
 import { OnboardingTour } from "@/components/patient/OnboardingTour";
 import { loadPatientFeatures } from "@/lib/patient-features-server";
+import {
+  patientDayBoundsUtc,
+  patientToday,
+  recoveryDay,
+} from "@/lib/recovery-day";
 import { selectNextAppointment } from "@/lib/appointments";
 import { NextAppointmentCard } from "@/components/patient/NextAppointmentCard";
 import { initials } from "@/lib/bulk-push";
 
 export const dynamic = "force-dynamic";
-
-function brisbaneToday(): string {
-  return new Date().toLocaleDateString("en-CA", {
-    timeZone: "Australia/Brisbane",
-  });
-}
-
-function daysSince(dateStr: string | null): number | null {
-  if (!dateStr) return null;
-  return Math.floor(
-    (Date.now() - new Date(`${dateStr}T00:00:00Z`).getTime()) /
-      (1000 * 60 * 60 * 24)
-  );
-}
 
 function greeting(): string {
   const hr = Number(
@@ -118,11 +109,10 @@ export default async function PatientHomePage({
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Day boundaries in the clinic's timezone (Brisbane, UTC+10, no DST) so
-  // "today" doesn't drift by ~10 hours on a UTC server.
-  const brisbaneDay = brisbaneToday();
-  const startOfDay = new Date(`${brisbaneDay}T00:00:00+10:00`);
-  const endOfDay = new Date(`${brisbaneDay}T23:59:59.999+10:00`);
+  // The patient's "day" runs 01:00 → 01:00 Brisbane so an early-morning
+  // visit doesn't get a stale "you already checked in" while the prior
+  // day's recovery_day still applies.
+  const { start: startOfDay, end: endOfDay } = patientDayBoundsUtc();
 
   const [
     patientResult,
@@ -184,9 +174,9 @@ export default async function PatientHomePage({
 
   const features = await loadPatientFeatures(supabase, user.id);
   const procedure = procedureResult.data;
-  const today = brisbaneToday();
+  const today = patientToday();
   const preOp = isPreOp(procedure?.surgery_date ?? null, today);
-  const recoveryDay = daysSince(procedure?.surgery_date ?? null);
+  const recoveryDayValue = recoveryDay(procedure?.surgery_date ?? null);
   const firstName =
     patientResult.data?.first_name ||
     patientResult.data?.name?.split(" ")[0] ||
@@ -340,10 +330,10 @@ export default async function PatientHomePage({
         <h1 className="text-3xl font-bold text-fv-text-primary">
           {firstName}
         </h1>
-        {procedure && !preOp && recoveryDay != null ? (
+        {procedure && !preOp && recoveryDayValue != null ? (
           <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-fv-bg-accent-soft px-3 py-1 text-sm font-semibold text-fv-accent-strong">
             <span className="h-2 w-2 rounded-full bg-fv-accent" />
-            Day {recoveryDay} of recovery ·{" "}
+            Day {recoveryDayValue} of recovery ·{" "}
             {procedure.procedure_type.toUpperCase()}
           </span>
         ) : preOp && procedure ? (

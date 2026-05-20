@@ -3,23 +3,13 @@ import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { loadPatientFeatures } from "@/lib/patient-features-server";
+import { recoveryDay } from "@/lib/recovery-day";
 import { SubmitButton } from "@/components/SubmitButton";
 import { PhotoUploadField } from "./PhotoUploadField";
 import { SymptomsCard } from "./SymptomsCard";
 import { submitCheckInAction } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-function daysSince(dateStr: string | null): number | null {
-  if (!dateStr) return null;
-  return Math.max(
-    0,
-    Math.floor(
-      (Date.now() - new Date(`${dateStr}T00:00:00Z`).getTime()) /
-        (1000 * 60 * 60 * 24)
-    )
-  );
-}
 
 export default async function CheckInPage({
   searchParams,
@@ -51,7 +41,7 @@ export default async function CheckInPage({
   ]);
 
   const procedure = procedureRes.data;
-  const recoveryDay = daysSince(procedure?.surgery_date ?? null);
+  const recoveryDayValue = recoveryDay(procedure?.surgery_date ?? null);
 
   // One check-in per recovery day. If today's is already done, show a
   // friendly "come back tomorrow" screen rather than a form that would
@@ -60,7 +50,7 @@ export default async function CheckInPage({
     .from("check_ins")
     .select("id")
     .eq("patient_id", user.id)
-    .eq("recovery_day", recoveryDay ?? 0)
+    .eq("recovery_day", recoveryDayValue ?? 0)
     .maybeSingle();
 
   if (todaysCheckIn) {
@@ -89,8 +79,8 @@ export default async function CheckInPage({
             You&apos;ve checked in today
           </h2>
           <p className="mt-1 text-sm text-fv-text-secondary">
-            {recoveryDay != null
-              ? `That's your Day ${recoveryDay} check-in done. `
+            {recoveryDayValue != null
+              ? `That's your Day ${recoveryDayValue} check-in done. `
               : "Today's check-in is done. "}
             Your next check-in will be available tomorrow.
           </p>
@@ -106,7 +96,7 @@ export default async function CheckInPage({
   }
 
   const meta = [
-    recoveryDay != null ? `Day ${recoveryDay}` : null,
+    recoveryDayValue != null ? `Day ${recoveryDayValue}` : null,
     procedure?.procedure_type?.toUpperCase() ?? null,
     "takes ~2 minutes",
   ]
