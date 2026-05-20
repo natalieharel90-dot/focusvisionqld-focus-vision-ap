@@ -434,6 +434,19 @@ export default async function PatientDetailPage({
   const featureDefaultByKey = new Map(
     (featureDefaultsResult.data ?? []).map((d) => [d.feature_key, d.enabled])
   );
+
+  // Hide the bonus-theme-pack feature row from staff who haven't
+  // unlocked it themselves — keeps the Easter egg hidden until then.
+  const { data: viewerStaff } = user
+    ? await supabase
+        .from("staff_users")
+        .select("bonus_pack_unlocked")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null };
+  const visibleFeatures = viewerStaff?.bonus_pack_unlocked
+    ? FEATURES
+    : FEATURES.filter((f) => f.key !== "bonus_theme_pack");
   const activeProcedure = procedures.find((p) => p.status === "active");
   const nextAppointment = selectNextAppointment(appointments, new Date());
   const upcomingAppointments = appointments.filter(
@@ -1363,7 +1376,7 @@ export default async function PatientDetailPage({
               default — enable only when appropriate for this person.
             </p>
             <ul className="mt-3 flex flex-col gap-2">
-              {FEATURES.map((feature) => {
+              {visibleFeatures.map((feature) => {
                 const flag = featureFlagByKey.get(feature.key);
                 const clinicDefault = featureDefaultByKey.get(feature.key);
                 const effective = resolveFeature(

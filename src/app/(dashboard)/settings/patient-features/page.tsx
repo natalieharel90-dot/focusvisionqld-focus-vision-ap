@@ -95,17 +95,39 @@ export default async function PatientFeaturesSettingsPage({
   searchParams: { error?: string };
 }) {
   const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const [{ data: defaults }, { data: flagRows }, { data: doctorRows }] =
-    await Promise.all([
-      supabase.from("feature_defaults").select("*"),
-      supabase
-        .from("patient_feature_flags")
-        .select("feature_key, enabled, changed_by_staff_id"),
-      supabase
-        .from("staff_users")
-        .select("role, welcome_video_url, active"),
-    ]);
+  const [
+    { data: defaults },
+    { data: flagRows },
+    { data: doctorRows },
+    { data: viewer },
+  ] = await Promise.all([
+    supabase.from("feature_defaults").select("*"),
+    supabase
+      .from("patient_feature_flags")
+      .select("feature_key, enabled, changed_by_staff_id"),
+    supabase
+      .from("staff_users")
+      .select("role, welcome_video_url, active"),
+    user
+      ? supabase
+          .from("staff_users")
+          .select("bonus_pack_unlocked")
+          .eq("id", user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  // The bonus-theme-pack feature is a hidden Easter egg — hide it from
+  // staff who haven't unlocked it themselves so the feature stays a
+  // surprise. Once a staff member unlocks it, they see the admin row
+  // and can enable it for individual patients.
+  const visibleFeatures = viewer?.bonus_pack_unlocked
+    ? FEATURES
+    : FEATURES.filter((f) => f.key !== "bonus_theme_pack");
 
   const defaultByKey = new Map((defaults ?? []).map((d) => [d.feature_key, d]));
 
@@ -150,7 +172,7 @@ export default async function PatientFeaturesSettingsPage({
         </p>
 
         <div className="mt-4 flex flex-col gap-3">
-          {FEATURES.map((feature) => {
+          {visibleFeatures.map((feature) => {
             const def = defaultByKey.get(feature.key);
             const enabled = def?.enabled ?? feature.schemaDefault;
             const config = (def?.config ?? {}) as { nudge_time?: string };
