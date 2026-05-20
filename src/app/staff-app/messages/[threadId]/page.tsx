@@ -97,11 +97,8 @@ export default async function StaffAppThreadPage({
   const latest = checkInRes.data;
   const msgs = messagesRes.data ?? [];
 
-  // Best-effort: clear the staff-unread count now the thread is open.
-  await supabase
-    .from("message_threads")
-    .update({ unread_for_staff: 0 })
-    .eq("id", thread.id);
+  // Middleware calls mark_thread_read for /staff-app/messages/<id>, so
+  // the patient messages are already marked read by the time we render.
 
   // Surgeon name for the context line.
   let surgeonName: string | null = null;

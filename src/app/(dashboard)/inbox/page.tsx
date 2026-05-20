@@ -158,10 +158,9 @@ export default async function StaffInboxPage({
   const selectedId = first(searchParams.thread) ?? null;
   const errorMsg = first(searchParams.error) ?? null;
 
-  // Mark the opened thread's inbound messages read before counting unread.
-  if (selectedId) {
-    await supabase.rpc("mark_thread_read", { p_thread_id: selectedId });
-  }
+  // Middleware marks the opened thread's inbound messages read BEFORE
+  // this page (and the layout's sidebar badge query) runs, so by the
+  // time we count unread below it's already up to date.
 
   const { data: threadRows } = await supabase
     .from("message_threads")

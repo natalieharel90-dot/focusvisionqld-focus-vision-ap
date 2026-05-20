@@ -88,6 +88,27 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // When a staff user opens a thread (inbox or staff mobile app), mark
+  // its inbound patient messages read BEFORE the layout's sidebar badge
+  // query runs in parallel with the page render. The RPC is idempotent
+  // and only marks the caller's visible messages.
+  if (user) {
+    let threadIdToMark: string | null = null;
+    if (pathname === "/inbox") {
+      threadIdToMark = request.nextUrl.searchParams.get("thread");
+    } else if (
+      pathname.startsWith("/staff-app/messages/") &&
+      pathname !== "/staff-app/messages"
+    ) {
+      threadIdToMark = pathname.split("/")[3] ?? null;
+    }
+    if (threadIdToMark) {
+      await supabase.rpc("mark_thread_read", {
+        p_thread_id: threadIdToMark,
+      });
+    }
+  }
+
   if (isPublicPath(pathname)) {
     // If already signed-in staff, send them to the dashboard rather than
     // letting them re-enter auth flows.
