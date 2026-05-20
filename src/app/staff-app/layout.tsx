@@ -2,6 +2,10 @@ import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { initials } from "@/lib/bulk-push";
+import {
+  buildThemeCss,
+  resolveThemePreference,
+} from "@/lib/theme";
 import { BottomNav } from "./StaffAppNav";
 
 export const dynamic = "force-dynamic";
@@ -21,10 +25,16 @@ export default async function StaffAppLayout({
 
   const { data: staff } = await supabase
     .from("staff_users")
-    .select("name, display_name, role")
+    .select("name, display_name, role, theme, dark_mode, text_size")
     .eq("id", user.id)
     .maybeSingle();
   if (!staff) redirect("/sign-in");
+
+  // Match the dashboard's theme setup so the staff-app follows the same
+  // appearance preferences (Settings → Appearance on the web dashboard).
+  const { theme, dark } = resolveThemePreference(staff);
+  const rootFontPx =
+    staff.text_size === "small" ? 15 : staff.text_size === "large" ? 18 : 16;
 
   const [threadsRes, flagsRes] = await Promise.all([
     supabase.from("message_threads").select("unread_for_staff"),
@@ -38,9 +48,21 @@ export default async function StaffAppLayout({
   const name = staff.display_name || staff.name;
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-fv-bg-app">
-      {/* Dark header */}
-      <header className="bg-[#2b5249] px-4 pb-4 pt-5 text-white">
+    <>
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `${buildThemeCss()}\nhtml{font-size:${rootFontPx}px;}`,
+        }}
+      />
+      <div
+        id="fv-staff-app-root"
+        data-theme={theme}
+        data-dark={dark ? "" : undefined}
+        className="mx-auto flex min-h-screen max-w-md flex-col bg-fv-bg-app"
+      >
+        {/* Dark header — same chrome the dashboard sidebar uses, so it
+            follows the staff member's chosen theme. */}
+        <header className="fv-dash-sidebar px-4 pb-4 pt-5 text-white">
         <div className="flex items-center gap-3">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/15 text-sm font-semibold">
             {initials(name)}
@@ -83,9 +105,10 @@ export default async function StaffAppLayout({
         </div>
       </header>
 
-      <main className="flex-1 pb-24">{children}</main>
+        <main className="flex-1 pb-24">{children}</main>
 
-      <BottomNav badges={{ messages: unread, triage: flagged }} />
-    </div>
+        <BottomNav badges={{ messages: unread, triage: flagged }} />
+      </div>
+    </>
   );
 }
