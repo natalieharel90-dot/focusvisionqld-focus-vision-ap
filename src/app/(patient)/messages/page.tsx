@@ -129,7 +129,9 @@ export default async function PatientMessagesPage({
         </p>
       ) : null}
 
-      {/* Messages */}
+      {/* Messages — the ScrollToLatest anchor reserves enough height
+          below the last message that the sticky composer doesn't cover
+          it when the browser scrolls the anchor into view. */}
       <div className="flex-1 px-5 py-4">
         <MessageList
           messages={msgs}
@@ -137,7 +139,7 @@ export default async function PatientMessagesPage({
           signedAttachmentsByMessage={signedAttachmentsByMessage}
           viewerType="patient"
         />
-        <ScrollToLatest count={msgs.length} />
+        <ScrollToLatest count={msgs.length} bottomOffset={176} />
       </div>
 
       {/* Composer */}
