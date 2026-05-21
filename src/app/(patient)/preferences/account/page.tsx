@@ -18,24 +18,16 @@ export default async function AccountPage({
 
   const { data: patient } = await supabase
     .from("patients")
-    .select("first_name, last_name, email, phone, date_of_birth")
+    .select("first_name, last_name, email")
     .eq("id", user.id)
     .maybeSingle();
 
   const name =
     [patient?.first_name, patient?.last_name].filter(Boolean).join(" ") || "—";
-  const dob = patient?.date_of_birth
-    ? new Date(`${patient.date_of_birth}T00:00:00`).toLocaleDateString(
-        "en-AU",
-        { day: "numeric", month: "long", year: "numeric" }
-      )
-    : "—";
 
   const rows: ReadonlyArray<[string, string]> = [
     ["Name", name],
     ["Email", patient?.email ?? "—"],
-    ["Phone", patient?.phone ?? "—"],
-    ["Date of birth", dob],
   ];
 
   return (

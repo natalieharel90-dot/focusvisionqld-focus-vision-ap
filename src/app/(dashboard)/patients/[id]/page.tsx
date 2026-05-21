@@ -575,50 +575,13 @@ export default async function PatientDetailPage({
                 <dd className="text-fv-text-primary">{patient.name}</dd>
               </div>
               <div>
-                <dt className={fieldLabel}>Date of birth</dt>
-                <dd className="text-fv-text-primary">
-                  {fmtDate(patient.date_of_birth)}
-                </dd>
+                <dt className={fieldLabel}>Email</dt>
+                <dd className="text-fv-text-primary">{patient.email}</dd>
               </div>
               <div>
-                <dt className={fieldLabel}>Medicare</dt>
+                <dt className={fieldLabel}>Phone</dt>
                 <dd className="text-fv-text-primary">
-                  {patient.medicare_number ?? "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className={fieldLabel}>Private health</dt>
-                <dd className="text-fv-text-primary">
-                  {jsonField(patient.health_fund, "fund") ??
-                    jsonField(patient.health_fund, "name") ??
-                    jsonField(patient.health_fund, "provider") ??
-                    "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className={fieldLabel}>Emergency contact</dt>
-                <dd className="text-fv-text-primary">
-                  {jsonField(patient.emergency_contact, "name") ? (
-                    <>
-                      {jsonField(patient.emergency_contact, "name")}
-                      {jsonField(patient.emergency_contact, "relationship")
-                        ? ` (${jsonField(
-                            patient.emergency_contact,
-                            "relationship"
-                          )})`
-                        : ""}
-                    </>
-                  ) : (
-                    "—"
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt className={fieldLabel}>Allergies</dt>
-                <dd className="text-fv-text-primary">
-                  {patient.allergies.length > 0
-                    ? patient.allergies.join(", ")
-                    : "—"}
+                  {patient.phone ?? "—"}
                 </dd>
               </div>
             </dl>
@@ -671,95 +634,6 @@ export default async function PatientDetailPage({
                     className={inputCls}
                   />
                 </label>
-                <label className="flex flex-col gap-1">
-                  <span className={fieldLabel}>Date of birth</span>
-                  <input
-                    type="date"
-                    name="date_of_birth"
-                    defaultValue={patient.date_of_birth ?? ""}
-                    className={inputCls}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className={fieldLabel}>Allergies (comma-separated)</span>
-                  <input
-                    type="text"
-                    name="allergies"
-                    defaultValue={patient.allergies.join(", ")}
-                    placeholder="Penicillin, Latex"
-                    className={inputCls}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className={fieldLabel}>Medicare number</span>
-                  <input
-                    type="text"
-                    name="medicare_number"
-                    defaultValue={patient.medicare_number ?? ""}
-                    className={inputCls}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className={fieldLabel}>Private health fund</span>
-                  <input
-                    type="text"
-                    name="health_fund"
-                    defaultValue={jsonField(patient.health_fund, "fund") ?? ""}
-                    className={inputCls}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className={fieldLabel}>Health fund member no.</span>
-                  <input
-                    type="text"
-                    name="health_fund_member"
-                    defaultValue={
-                      jsonField(patient.health_fund, "member_number") ?? ""
-                    }
-                    className={inputCls}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className={fieldLabel}>Emergency contact name</span>
-                  <input
-                    type="text"
-                    name="emergency_name"
-                    defaultValue={
-                      jsonField(patient.emergency_contact, "name") ?? ""
-                    }
-                    className={inputCls}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className={fieldLabel}>Emergency contact phone</span>
-                  <input
-                    type="tel"
-                    name="emergency_phone"
-                    defaultValue={
-                      jsonField(patient.emergency_contact, "phone") ?? ""
-                    }
-                    className={inputCls}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className={fieldLabel}>
-                    Emergency contact relationship
-                  </span>
-                  <input
-                    type="text"
-                    name="emergency_relationship"
-                    defaultValue={
-                      jsonField(patient.emergency_contact, "relationship") ??
-                      ""
-                    }
-                    placeholder="e.g. Partner, Parent"
-                    className={inputCls}
-                  />
-                </label>
-                <p className="col-span-2 text-xs text-fv-text-secondary">
-                  Changing the phone number marks it unverified until the
-                  patient re-confirms it by SMS.
-                </p>
                 <button
                   type="submit"
                   className="col-span-2 mt-1 self-start rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"

@@ -69,26 +69,6 @@ export async function updatePatientDetailsAction(formData: FormData) {
   const last_name = String(formData.get("last_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim() || null;
-  const date_of_birth =
-    String(formData.get("date_of_birth") ?? "").trim() || null;
-  const allergies = parseCsvList(String(formData.get("allergies") ?? ""));
-  const medicare_number =
-    String(formData.get("medicare_number") ?? "").trim() || null;
-
-  const fund = String(formData.get("health_fund") ?? "").trim();
-  const fundMember = String(formData.get("health_fund_member") ?? "").trim();
-  const health_fund =
-    fund || fundMember ? { fund, member_number: fundMember } : null;
-
-  const ecName = String(formData.get("emergency_name") ?? "").trim();
-  const ecPhone = String(formData.get("emergency_phone") ?? "").trim();
-  const ecRelationship = String(
-    formData.get("emergency_relationship") ?? ""
-  ).trim();
-  const emergency_contact =
-    ecName || ecPhone || ecRelationship
-      ? { name: ecName, phone: ecPhone, relationship: ecRelationship }
-      : null;
 
   if (!first_name) backWithError(patientId, "First name is required.");
   if (!email) backWithError(patientId, "Email is required.");
@@ -103,11 +83,14 @@ export async function updatePatientDetailsAction(formData: FormData) {
     .single();
   if (!before) backWithError(patientId, "Patient not found.");
 
-  // A changed phone number is no longer verified — SMS MFA must re-confirm
-  // it before the patient app trusts it again.
+  // A changed phone number is no longer verified — the patient must
+  // re-confirm via the verification flow before we trust it again.
   const phoneChanged = (before.phone ?? null) !== phone;
   const phone_verified = phoneChanged ? false : before.phone_verified;
 
+  // Only the four fields the form now exposes are written. DOB,
+  // allergies, Medicare, health fund, emergency contact are intentionally
+  // not collected — they stay whatever they were (typically null).
   const { data: after, error } = await supabase
     .from("patients")
     .update({
@@ -116,11 +99,6 @@ export async function updatePatientDetailsAction(formData: FormData) {
       email,
       phone,
       phone_verified,
-      date_of_birth,
-      allergies,
-      medicare_number,
-      health_fund,
-      emergency_contact,
     })
     .eq("id", patientId)
     .select()
