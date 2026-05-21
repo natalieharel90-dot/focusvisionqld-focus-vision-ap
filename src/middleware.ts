@@ -34,7 +34,6 @@ const PATIENT_PROTECTED_PREFIXES = [
   "/videos",
   "/appointments",
   "/welcome",
-  "/verify-phone",
 ];
 
 function isPatientProtectedPath(pathname: string): boolean {

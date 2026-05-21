@@ -104,20 +104,6 @@ export default async function NewPatientPage({
           </label>
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-fv-text-primary">
-                Phone (optional)
-              </span>
-              <input type="tel" name="phone" className={inputCls} />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-fv-text-primary">
-                Date of birth
-              </span>
-              <input type="date" name="date_of_birth" className={inputCls} />
-            </label>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <label className="flex flex-col gap-1 text-sm">
               <span className="font-medium text-fv-text-primary">Eye(s)</span>
               <select name="eye" required defaultValue="both" className={inputCls}>
                 <option value="left">Left</option>
@@ -167,7 +153,7 @@ export default async function NewPatientPage({
           <p className="rounded-md bg-fv-bg-soft px-3 py-2 text-xs text-fv-text-secondary">
             The patient is created with a temporary password
             (<code>FocusVisionRecovery</code>) — they reset it on first
-            sign-in. SMS-based onboarding lands in a later session.
+            sign-in.
           </p>
 
           <button

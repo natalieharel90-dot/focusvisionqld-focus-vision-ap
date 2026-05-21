@@ -29,7 +29,7 @@ export async function patientSignInAction(formData: FormData) {
   // including staff users (who must sign in via /sign-in).
   const { data: patient } = await supabase
     .from("patients")
-    .select("id, phone_verified")
+    .select("id")
     .eq("id", data.user.id)
     .maybeSingle();
 
@@ -38,8 +38,7 @@ export async function patientSignInAction(formData: FormData) {
     backWithError("This account is not registered as a patient.");
   }
 
-  // Patients with an unverified mobile go through SMS verification first.
-  redirect(patient.phone_verified ? "/home" : "/verify-phone");
+  redirect("/home");
 }
 
 export async function patientSignOutAction() {

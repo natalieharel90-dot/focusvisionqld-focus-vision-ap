@@ -62,8 +62,6 @@ export async function createPatientAction(formData: FormData) {
   const firstName = String(formData.get("first_name") ?? "").trim();
   const lastName = String(formData.get("last_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const phone = String(formData.get("phone") ?? "").trim() || null;
-  const dob = String(formData.get("date_of_birth") ?? "").trim() || null;
   const eye = String(formData.get("eye") ?? "") as EyeSide;
   const surgeryDate = String(formData.get("surgery_date") ?? "").trim();
   const templateId = String(formData.get("template_id") ?? "").trim();
@@ -102,10 +100,8 @@ export async function createPatientAction(formData: FormData) {
   const { error: patientError } = await supabase.from("patients").insert({
     id: patientId,
     email,
-    phone,
     first_name: firstName,
     last_name: lastName,
-    date_of_birth: dob,
   });
   if (patientError) await cleanupAndFail(patientId, patientError.message);
 

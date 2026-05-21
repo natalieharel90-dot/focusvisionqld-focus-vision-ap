@@ -68,7 +68,6 @@ export async function updatePatientDetailsAction(formData: FormData) {
   const first_name = String(formData.get("first_name") ?? "").trim();
   const last_name = String(formData.get("last_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim() || null;
 
   if (!first_name) backWithError(patientId, "First name is required.");
   if (!email) backWithError(patientId, "Email is required.");
@@ -83,12 +82,7 @@ export async function updatePatientDetailsAction(formData: FormData) {
     .single();
   if (!before) backWithError(patientId, "Patient not found.");
 
-  // A changed phone number is no longer verified — the patient must
-  // re-confirm via the verification flow before we trust it again.
-  const phoneChanged = (before.phone ?? null) !== phone;
-  const phone_verified = phoneChanged ? false : before.phone_verified;
-
-  // Only the four fields the form now exposes are written. DOB,
+  // Only the three fields the form now exposes are written. Phone, DOB,
   // allergies, Medicare, health fund, emergency contact are intentionally
   // not collected — they stay whatever they were (typically null).
   const { data: after, error } = await supabase
@@ -97,8 +91,6 @@ export async function updatePatientDetailsAction(formData: FormData) {
       first_name,
       last_name,
       email,
-      phone,
-      phone_verified,
     })
     .eq("id", patientId)
     .select()

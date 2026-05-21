@@ -578,12 +578,6 @@ export default async function PatientDetailPage({
                 <dt className={fieldLabel}>Email</dt>
                 <dd className="text-fv-text-primary">{patient.email}</dd>
               </div>
-              <div>
-                <dt className={fieldLabel}>Phone</dt>
-                <dd className="text-fv-text-primary">
-                  {patient.phone ?? "—"}
-                </dd>
-              </div>
             </dl>
 
             <details id="edit-details" className="mt-4">
@@ -621,16 +615,6 @@ export default async function PatientDetailPage({
                     name="email"
                     required
                     defaultValue={patient.email}
-                    className={inputCls}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className={fieldLabel}>Phone</span>
-                  <input
-                    type="tel"
-                    name="phone"
-                    defaultValue={patient.phone ?? ""}
-                    placeholder="+61400000000"
                     className={inputCls}
                   />
                 </label>
