@@ -302,13 +302,6 @@ export default async function PatientHomePage({
       href: "/videos",
     },
     {
-      key: "documents",
-      icon: "doc",
-      title: "My documents",
-      sub: "Surgery report, scripts, receipts",
-      href: "/documents",
-    },
-    {
       key: "contact",
       icon: "phone",
       title: "Contact clinic",

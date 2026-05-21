@@ -43,8 +43,6 @@ export async function submitCheckInAction(formData: FormData) {
   const other_description =
     String(formData.get("other_description") ?? "").trim() || null;
 
-  const photoPath = String(formData.get("photo_path") ?? "").trim();
-
   // Recovery day from the patient's most-recent active procedure.
   const { data: procedure } = await supabase
     .from("procedures")
@@ -72,20 +70,6 @@ export async function submitCheckInAction(formData: FormData) {
     }
     console.error("[check-in] submit failed", err);
     back("Something went wrong saving your check-in. Please try again.");
-  }
-
-  if (photoPath) {
-    const { error: photoError } = await supabase.from("eye_photos").insert({
-      patient_id: user.id,
-      check_in_id: result.check_in_id,
-      storage_path: photoPath,
-      recovery_day,
-    });
-    if (photoError) {
-      // Photo couldn't be linked but the check-in succeeded. Surface the
-      // issue on the result screen rather than blocking the whole flow.
-      console.error("[check-in] photo link failed", photoError);
-    }
   }
 
   redirect(`/check-in/done?id=${result.check_in_id}`);

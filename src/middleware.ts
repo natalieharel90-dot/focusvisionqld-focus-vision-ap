@@ -28,7 +28,6 @@ const PATIENT_PROTECTED_PREFIXES = [
   "/medications",
   "/messages",
   "/preferences",
-  "/documents",
   "/contact",
   "/feedback",
   "/pre-op",

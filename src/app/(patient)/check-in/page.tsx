@@ -2,10 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { loadPatientFeatures } from "@/lib/patient-features-server";
 import { recoveryDay } from "@/lib/recovery-day";
 import { SubmitButton } from "@/components/SubmitButton";
-import { PhotoUploadField } from "./PhotoUploadField";
 import { SymptomsCard } from "./SymptomsCard";
 import { submitCheckInAction } from "./actions";
 
@@ -22,8 +20,7 @@ export default async function CheckInPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/patient-sign-in");
 
-  const [features, procedureRes, symptomsRes, clinicRes] = await Promise.all([
-    loadPatientFeatures(supabase, user.id),
+  const [procedureRes, symptomsRes, clinicRes] = await Promise.all([
     supabase
       .from("procedures")
       .select("procedure_type, surgery_date")
@@ -208,11 +205,6 @@ export default async function CheckInPage({
           symptoms={symptomsRes.data ?? []}
           clinicPhone={clinicRes.data?.phone ?? null}
         />
-
-        {/* Optional photo — gated by the eye_photo_prompt feature flag. */}
-        {features.eye_photo_prompt ? (
-          <PhotoUploadField patientId={user.id} />
-        ) : null}
 
         <SubmitButton
           pendingLabel="Submitting…"
