@@ -2038,41 +2038,29 @@ export type Database = {
       }
       zone_alert_actions: {
         Row: {
-          additional_email: string | null
           alert_level: Database["public"]["Enums"]["staff_alert_level"]
-          autocall_oncall: boolean
+          call_surgeon: boolean
           created_at: string
           email_clinic: boolean
           inapp_to_all: boolean
-          oncall_number: string | null
-          push_to_oncall: boolean
-          sms_oncall: boolean
           updated_at: string
           updated_by: string | null
         }
         Insert: {
-          additional_email?: string | null
           alert_level: Database["public"]["Enums"]["staff_alert_level"]
-          autocall_oncall?: boolean
+          call_surgeon?: boolean
           created_at?: string
           email_clinic?: boolean
           inapp_to_all?: boolean
-          oncall_number?: string | null
-          push_to_oncall?: boolean
-          sms_oncall?: boolean
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
-          additional_email?: string | null
           alert_level?: Database["public"]["Enums"]["staff_alert_level"]
-          autocall_oncall?: boolean
+          call_surgeon?: boolean
           created_at?: string
           email_clinic?: boolean
           inapp_to_all?: boolean
-          oncall_number?: string | null
-          push_to_oncall?: boolean
-          sms_oncall?: boolean
           updated_at?: string
           updated_by?: string | null
         }

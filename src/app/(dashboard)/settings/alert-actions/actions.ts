@@ -29,13 +29,7 @@ export async function saveAlertActionsAction(formData: FormData) {
   const update = {
     email_clinic: formData.get("email_clinic") === "on",
     inapp_to_all: formData.get("inapp_to_all") === "on",
-    push_to_oncall: formData.get("push_to_oncall") === "on",
-    sms_oncall: formData.get("sms_oncall") === "on",
-    autocall_oncall: formData.get("autocall_oncall") === "on",
-    additional_email:
-      String(formData.get("additional_email") ?? "").trim() || null,
-    oncall_number:
-      String(formData.get("oncall_number") ?? "").trim() || null,
+    call_surgeon: formData.get("call_surgeon") === "on",
     updated_by: userId,
   };
 

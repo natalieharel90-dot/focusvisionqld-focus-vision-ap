@@ -5,49 +5,48 @@ import { useState } from "react";
 import { saveAlertActionsAction } from "../alert-actions/actions";
 
 type Level = "red" | "orange" | "yellow";
-type BoolField =
-  | "email_clinic"
-  | "inapp_to_all"
-  | "push_to_oncall"
-  | "sms_oncall"
-  | "autocall_oncall";
+type BoolField = "email_clinic" | "inapp_to_all" | "call_surgeon";
 
 export type AlertActionRow = {
   alert_level: Level;
   email_clinic: boolean;
   inapp_to_all: boolean;
-  push_to_oncall: boolean;
-  sms_oncall: boolean;
-  autocall_oncall: boolean;
-  additional_email: string | null;
-  oncall_number: string | null;
+  call_surgeon: boolean;
 };
 
 type LevelState = {
   email_clinic: boolean;
   inapp_to_all: boolean;
-  push_to_oncall: boolean;
-  sms_oncall: boolean;
-  autocall_oncall: boolean;
-  additionalOn: boolean;
-  additional_email: string;
-  oncall_number: string;
+  call_surgeon: boolean;
 };
 
 function toState(row: AlertActionRow | undefined): LevelState {
   return {
     email_clinic: row?.email_clinic ?? false,
     inapp_to_all: row?.inapp_to_all ?? false,
-    push_to_oncall: row?.push_to_oncall ?? false,
-    sms_oncall: row?.sms_oncall ?? false,
-    autocall_oncall: row?.autocall_oncall ?? false,
-    additionalOn: !!row?.additional_email,
-    additional_email: row?.additional_email ?? "",
-    oncall_number: row?.oncall_number ?? "",
+    call_surgeon: row?.call_surgeon ?? false,
   };
 }
 
 type RowDef = { field: BoolField; title: string; sub: string };
+
+const ACTION_ROWS: ReadonlyArray<RowDef> = [
+  {
+    field: "email_clinic",
+    title: "Email the clinic",
+    sub: "Sent to hello@focusvision.com.au with patient name, recovery day, and the symptom summary.",
+  },
+  {
+    field: "inapp_to_all",
+    title: "In-app alert to all staff",
+    sub: "Appears in the dashboard inbox and on the staff mobile app for anyone on duty.",
+  },
+  {
+    field: "call_surgeon",
+    title: "Call the patient's surgeon",
+    sub: "Auto-dials the surgeon's number from their staff profile — different surgeons get different numbers.",
+  },
+];
 
 const CARD: Record<
   Level,
@@ -58,8 +57,7 @@ const CARD: Record<
     bg: string;
     border: string;
     copyFrom: Level;
-    rows: RowDef[];
-    hasAdditional: boolean;
+    redNote?: string;
   }
 > = {
   red: {
@@ -69,34 +67,8 @@ const CARD: Record<
     bg: "#FCEAEA",
     border: "#C13434",
     copyFrom: "orange",
-    hasAdditional: false,
-    rows: [
-      {
-        field: "email_clinic",
-        title: "Email the clinic (with URGENT subject line)",
-        sub: "Email subject prefixed with [URGENT] so it stands out in the inbox",
-      },
-      {
-        field: "inapp_to_all",
-        title: "In-app alert to all staff (red banner)",
-        sub: "Distinct red colour treatment so it can't be mistaken for an Orange flag",
-      },
-      {
-        field: "push_to_oncall",
-        title: "Push to on-call staff (overrides quiet hours)",
-        sub: "Highest-priority push notification with attention sound",
-      },
-      {
-        field: "sms_oncall",
-        title: "SMS the on-call number",
-        sub: "Brief SMS with patient name, recovery day, and symptom summary",
-      },
-      {
-        field: "autocall_oncall",
-        title: "Auto phone call to on-call number",
-        sub: "Auto-dials and plays 'Focus Vision urgent — Red alert — please open the app immediately'",
-      },
-    ],
+    redNote:
+      "Triggered by any answer routed to Red. The patient experience is identical to Orange — only the staff side knows it's a Red urgent alert.",
   },
   orange: {
     pill: "Orange zone",
@@ -105,34 +77,6 @@ const CARD: Record<
     bg: "#FAFCFC",
     border: "#D67E3B",
     copyFrom: "yellow",
-    hasAdditional: true,
-    rows: [
-      {
-        field: "email_clinic",
-        title: "Email the clinic",
-        sub: "Sent to info@focusvision.com.au (from Clinic & Staff)",
-      },
-      {
-        field: "inapp_to_all",
-        title: "In-app alert to all staff",
-        sub: "Appears in everyone's Messages and on the Staff mobile app",
-      },
-      {
-        field: "push_to_oncall",
-        title: "Push to on-call staff (overrides quiet hours)",
-        sub: "Bypasses individual quiet-hour settings for whoever is on the on-call rota",
-      },
-      {
-        field: "sms_oncall",
-        title: "SMS the on-call number",
-        sub: "Brief SMS to the on-call number when this zone fires",
-      },
-      {
-        field: "autocall_oncall",
-        title: "Auto phone call to on-call number",
-        sub: "Uses the same on-call number above. The call plays an automated message: 'Focus Vision urgent alert — patient flagged Orange — please open the app'. Use sparingly.",
-      },
-    ],
   },
   yellow: {
     pill: "Yellow zone",
@@ -141,34 +85,6 @@ const CARD: Record<
     bg: "#FAFCFC",
     border: "#D8A82A",
     copyFrom: "orange",
-    hasAdditional: true,
-    rows: [
-      {
-        field: "email_clinic",
-        title: "Email the clinic",
-        sub: "Sent to info@focusvision.com.au (from Clinic & Staff)",
-      },
-      {
-        field: "inapp_to_all",
-        title: "In-app alert to all staff",
-        sub: "Off by default — Yellow flags review within 4 hours, not urgent",
-      },
-      {
-        field: "push_to_oncall",
-        title: "Push to on-call staff (overrides quiet hours)",
-        sub: "Off by default — Yellow doesn't typically warrant waking the on-call nurse",
-      },
-      {
-        field: "sms_oncall",
-        title: "SMS the on-call number",
-        sub: "Brief SMS to the on-call number when this zone fires",
-      },
-      {
-        field: "autocall_oncall",
-        title: "Auto phone call to on-call number",
-        sub: "Off by default — reserved for Orange and Red",
-      },
-    ],
   },
 };
 
@@ -196,10 +112,11 @@ export function AlertActionsPanel({ rows }: { rows: AlertActionRow[] }) {
         Alert actions per zone
       </h3>
       <p className="mt-1 text-[13px] text-fv-text-secondary">
-        Configure exactly what happens when a patient lands in each zone —
-        automatically or via manual flag. Mix and match as your clinic prefers.
-        The three levels share the same configurable options; the defaults
-        below reflect common practice but everything is editable.
+        Three actions, switched on or off per zone: email the clinic
+        (hello@focusvision.com.au), raise an in-app alert for all staff,
+        and auto-call the patient&apos;s surgeon. The surgeon&apos;s
+        number comes from their staff profile so each surgeon is rung on
+        their own number.
       </p>
 
       <div className="mt-4 flex flex-col gap-4">
@@ -254,22 +171,19 @@ function ZoneCard({
           onClick={onCopy}
           className="rounded-md border border-fv-border bg-fv-bg-card px-3 py-1 text-xs font-semibold text-fv-text-primary hover:bg-fv-bg-soft"
         >
-          Copy from {card.copyFrom.charAt(0).toUpperCase() + card.copyFrom.slice(1)}
+          Copy from{" "}
+          {card.copyFrom.charAt(0).toUpperCase() + card.copyFrom.slice(1)}
         </button>
       </div>
 
-      {level === "red" ? (
+      {card.redNote ? (
         <p className="mt-2 text-[11px]" style={{ color: "#871A1A" }}>
-          Triggered by any answer with its routing set to Red in the rules
-          above. The patient experience is identical to Orange (calming
-          &quot;Let&apos;s have a chat today&quot; screen) — only the staff
-          side knows it&apos;s a Red urgent alert. Use the strongest alert
-          actions here.
+          {card.redNote}
         </p>
       ) : null}
 
       <div className="mt-3">
-        {card.rows.map((row, i) => (
+        {ACTION_ROWS.map((row, i) => (
           <ToggleRow
             key={row.field}
             title={row.title}
@@ -277,60 +191,9 @@ function ZoneCard({
             checked={value[row.field]}
             name={row.field}
             onChange={(v) => onChange({ [row.field]: v })}
-            divider={i < card.rows.length - 1 || card.hasAdditional}
-          >
-            {row.field === "sms_oncall" && value.sms_oncall ? (
-              <div className="mt-1.5">
-                <label className="text-[11px] font-medium text-fv-text-secondary">
-                  Number:{" "}
-                  <input
-                    type="tel"
-                    name="oncall_number"
-                    value={value.oncall_number}
-                    onChange={(e) =>
-                      onChange({ oncall_number: e.target.value })
-                    }
-                    placeholder="+61…"
-                    className="ml-1 w-40 rounded-md border border-fv-border bg-fv-bg-card px-2 py-1 text-xs text-fv-text-primary"
-                  />
-                </label>
-                <span className="ml-2 text-[11px] text-fv-text-secondary">
-                  Standard SMS rates apply
-                </span>
-              </div>
-            ) : null}
-          </ToggleRow>
+            divider={i < ACTION_ROWS.length - 1}
+          />
         ))}
-
-        {/* oncall_number is always submitted so it survives an SMS toggle-off. */}
-        {!value.sms_oncall ? (
-          <input type="hidden" name="oncall_number" value={value.oncall_number} />
-        ) : null}
-
-        {card.hasAdditional ? (
-          <ToggleRow
-            title="Email an additional recipient"
-            sub="Useful if a specific person (Nurse Manager, Practice Manager) should also be alerted for these flags"
-            checked={value.additionalOn}
-            onChange={(v) => onChange({ additionalOn: v })}
-            divider={false}
-          >
-            {value.additionalOn ? (
-              <input
-                type="email"
-                name="additional_email"
-                value={value.additional_email}
-                onChange={(e) => onChange({ additional_email: e.target.value })}
-                placeholder="name@example.com"
-                className="mt-1.5 w-64 max-w-full rounded-md border border-fv-border bg-fv-bg-card px-2 py-1 text-xs text-fv-text-primary"
-              />
-            ) : (
-              <input type="hidden" name="additional_email" value="" />
-            )}
-          </ToggleRow>
-        ) : (
-          <input type="hidden" name="additional_email" value="" />
-        )}
       </div>
 
       <div className="mt-3 flex justify-end">
@@ -352,7 +215,6 @@ function ToggleRow({
   name,
   onChange,
   divider,
-  children,
 }: {
   title: string;
   sub: string;
@@ -360,7 +222,6 @@ function ToggleRow({
   name?: string;
   onChange: (v: boolean) => void;
   divider: boolean;
-  children?: React.ReactNode;
 }) {
   return (
     <div
@@ -374,7 +235,6 @@ function ToggleRow({
           {title}
         </div>
         <div className="text-[11px] text-fv-text-secondary">{sub}</div>
-        {children}
       </div>
     </div>
   );
