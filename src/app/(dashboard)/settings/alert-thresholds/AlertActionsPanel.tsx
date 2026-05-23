@@ -5,48 +5,30 @@ import { useState } from "react";
 import { saveAlertActionsAction } from "../alert-actions/actions";
 
 type Level = "red" | "orange" | "yellow";
-type BoolField = "email_clinic" | "inapp_to_all" | "call_surgeon";
 
 export type AlertActionRow = {
   alert_level: Level;
   email_clinic: boolean;
   inapp_to_all: boolean;
-  call_surgeon: boolean;
+  override_role_keys: string[];
+  include_surgeon_override: boolean;
 };
 
 type LevelState = {
   email_clinic: boolean;
   inapp_to_all: boolean;
-  call_surgeon: boolean;
+  override_role_keys: string[];
+  include_surgeon_override: boolean;
 };
 
 function toState(row: AlertActionRow | undefined): LevelState {
   return {
     email_clinic: row?.email_clinic ?? false,
     inapp_to_all: row?.inapp_to_all ?? false,
-    call_surgeon: row?.call_surgeon ?? false,
+    override_role_keys: row?.override_role_keys ?? [],
+    include_surgeon_override: row?.include_surgeon_override ?? false,
   };
 }
-
-type RowDef = { field: BoolField; title: string; sub: string };
-
-const ACTION_ROWS: ReadonlyArray<RowDef> = [
-  {
-    field: "email_clinic",
-    title: "Email the clinic",
-    sub: "Sent to hello@focusvision.com.au with patient name, recovery day, and the symptom summary.",
-  },
-  {
-    field: "inapp_to_all",
-    title: "In-app alert to all staff",
-    sub: "Appears in the dashboard inbox and on the staff mobile app for anyone on duty.",
-  },
-  {
-    field: "call_surgeon",
-    title: "Call the patient's surgeon",
-    sub: "Auto-dials the surgeon's number from their staff profile — different surgeons get different numbers.",
-  },
-];
 
 const CARD: Record<
   Level,
@@ -90,7 +72,13 @@ const CARD: Record<
 
 const LEVEL_ORDER: ReadonlyArray<Level> = ["red", "orange", "yellow"];
 
-export function AlertActionsPanel({ rows }: { rows: AlertActionRow[] }) {
+export function AlertActionsPanel({
+  rows,
+  roleOptions,
+}: {
+  rows: AlertActionRow[];
+  roleOptions: string[];
+}) {
   const byLevel = new Map(rows.map((r) => [r.alert_level, r]));
   const [state, setState] = useState<Record<Level, LevelState>>({
     red: toState(byLevel.get("red")),
@@ -112,11 +100,16 @@ export function AlertActionsPanel({ rows }: { rows: AlertActionRow[] }) {
         Alert actions per zone
       </h3>
       <p className="mt-1 text-[13px] text-fv-text-secondary">
-        Three actions, switched on or off per zone: email the clinic
-        (hello@focusvision.com.au), raise an in-app alert for all staff,
-        and auto-call the patient&apos;s surgeon. The surgeon&apos;s
-        number comes from their staff profile so each surgeon is rung on
-        their own number.
+        Three things can fire when a check-in lands in each zone:
+        <br />
+        <strong>Email</strong> goes to hello@focusvision.com.au.{" "}
+        <strong>In-app alert to all staff</strong> raises a notification for
+        every active staff member with notifications on.{" "}
+        <strong>Override message</strong> pushes specifically to the roles you
+        select here — these will bypass staff quiet-hours / off-shift gates
+        once those are built. The patient&apos;s own surgeon can also be
+        added to the override, but only if the surgeon has opted in
+        (Settings → Appearance → After-hours alerts).
       </p>
 
       <div className="mt-4 flex flex-col gap-4">
@@ -125,6 +118,7 @@ export function AlertActionsPanel({ rows }: { rows: AlertActionRow[] }) {
             key={level}
             level={level}
             value={state[level]}
+            roleOptions={roleOptions}
             onChange={(patch) => update(level, patch)}
             onCopy={() => copyFrom(level, CARD[level].copyFrom)}
           />
@@ -137,15 +131,26 @@ export function AlertActionsPanel({ rows }: { rows: AlertActionRow[] }) {
 function ZoneCard({
   level,
   value,
+  roleOptions,
   onChange,
   onCopy,
 }: {
   level: Level;
   value: LevelState;
+  roleOptions: string[];
   onChange: (patch: Partial<LevelState>) => void;
   onCopy: () => void;
 }) {
   const card = CARD[level];
+
+  function toggleRole(roleName: string, on: boolean) {
+    const key = roleName.toLowerCase();
+    const next = on
+      ? Array.from(new Set([...value.override_role_keys, key]))
+      : value.override_role_keys.filter((r) => r !== key);
+    onChange({ override_role_keys: next });
+  }
+
   return (
     <form
       action={saveAlertActionsAction}
@@ -182,18 +187,74 @@ function ZoneCard({
         </p>
       ) : null}
 
-      <div className="mt-3">
-        {ACTION_ROWS.map((row, i) => (
-          <ToggleRow
-            key={row.field}
-            title={row.title}
-            sub={row.sub}
-            checked={value[row.field]}
-            name={row.field}
-            onChange={(v) => onChange({ [row.field]: v })}
-            divider={i < ACTION_ROWS.length - 1}
-          />
-        ))}
+      <div className="mt-3 flex flex-col gap-3">
+        <ToggleRow
+          title="Email the clinic"
+          sub="Sent to hello@focusvision.com.au with patient name, recovery day, and the symptom summary."
+          checked={value.email_clinic}
+          name="email_clinic"
+          onChange={(v) => onChange({ email_clinic: v })}
+        />
+        <ToggleRow
+          title="In-app alert to all staff"
+          sub="Push notification to every active staff member with notifications on."
+          checked={value.inapp_to_all}
+          name="inapp_to_all"
+          onChange={(v) => onChange({ inapp_to_all: v })}
+        />
+
+        {/* Override message — role multiselect */}
+        <div className="rounded-lg bg-white/40 p-3">
+          <div className="text-[13px] font-semibold text-fv-text-primary">
+            Override message to selected roles
+          </div>
+          <div className="text-[11px] text-fv-text-secondary">
+            Push goes to anyone in these roles regardless of staff
+            quiet-hours / off-shift gating (once those are built). Leave
+            empty to send no override.
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {roleOptions.length === 0 ? (
+              <span className="text-[11px] text-fv-text-secondary">
+                No staff roles defined yet. Add them in Settings → Clinic
+                &amp; Doctors.
+              </span>
+            ) : (
+              roleOptions.map((roleName) => {
+                const key = roleName.toLowerCase();
+                const checked = value.override_role_keys.includes(key);
+                return (
+                  <label
+                    key={roleName}
+                    className={`cursor-pointer rounded-full border px-3 py-1 text-xs font-medium ${
+                      checked
+                        ? "border-fv-accent-strong bg-fv-accent-strong text-white"
+                        : "border-fv-border bg-fv-bg-card text-fv-text-primary hover:bg-fv-bg-soft"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      name="override_role_keys"
+                      value={key}
+                      checked={checked}
+                      onChange={(e) => toggleRole(roleName, e.target.checked)}
+                      className="sr-only"
+                    />
+                    {roleName}
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <ToggleRow
+          title="Include the patient's own surgeon in the override"
+          sub="Adds the patient's specific surgeon to the override push (in addition to whatever roles are selected above) — only if that surgeon has opted in via Settings → Appearance → After-hours alerts."
+          checked={value.include_surgeon_override}
+          name="include_surgeon_override"
+          onChange={(v) => onChange({ include_surgeon_override: v })}
+        />
       </div>
 
       <div className="mt-3 flex justify-end">
@@ -214,21 +275,15 @@ function ToggleRow({
   checked,
   name,
   onChange,
-  divider,
 }: {
   title: string;
   sub: string;
   checked: boolean;
   name?: string;
   onChange: (v: boolean) => void;
-  divider: boolean;
 }) {
   return (
-    <div
-      className={`flex gap-3 py-3 ${
-        divider ? "border-b border-fv-bg-soft/70" : ""
-      }`}
-    >
+    <div className="flex gap-3">
       <Toggle name={name} checked={checked} onChange={onChange} />
       <div className="min-w-0">
         <div className="text-[13px] font-semibold text-fv-text-primary">

@@ -26,10 +26,17 @@ export async function saveAlertActionsAction(formData: FormData) {
 
   const { supabase, userId } = await requireStaff();
 
+  const overrideRoles = formData
+    .getAll("override_role_keys")
+    .map((v) => String(v).trim().toLowerCase())
+    .filter((v) => v.length > 0);
+
   const update = {
     email_clinic: formData.get("email_clinic") === "on",
     inapp_to_all: formData.get("inapp_to_all") === "on",
-    call_surgeon: formData.get("call_surgeon") === "on",
+    override_role_keys: overrideRoles,
+    include_surgeon_override:
+      formData.get("include_surgeon_override") === "on",
     updated_by: userId,
   };
 

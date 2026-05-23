@@ -5,6 +5,7 @@ import { StaffPushOptIn } from "@/components/StaffPushOptIn";
 import { StaffThemePicker } from "@/components/dashboard/StaffThemePicker";
 import type { ThemePreference } from "@/lib/theme";
 import { updateStaffTextSizeAction } from "./actions";
+import { AfterHoursToggle } from "./AfterHoursToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -24,11 +25,15 @@ export default async function AppearanceSettingsPage() {
 
   const { data: staff } = await supabase
     .from("staff_users")
-    .select("theme, dark_mode, sparkle, bonus_pack_unlocked, text_size")
+    .select(
+      "theme, dark_mode, sparkle, bonus_pack_unlocked, text_size, role, notify_after_hours"
+    )
     .eq("id", user.id)
     .maybeSingle();
 
   const textSize = staff?.text_size ?? "normal";
+  const isSurgeon = staff?.role === "surgeon";
+  const notifyAfterHours = staff?.notify_after_hours ?? false;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-6">
@@ -50,6 +55,20 @@ export default async function AppearanceSettingsPage() {
         </section>
 
         <StaffPushOptIn />
+
+        {isSurgeon ? (
+          <section className="rounded-2xl border border-fv-bg-soft bg-fv-bg-card p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-fv-text-primary">
+              After-hours alerts for your patients
+            </h2>
+            <p className="mt-1 text-sm text-fv-text-secondary">
+              When on, you can be added to the urgent override push for
+              alerts about your own patients — even when you&apos;d
+              normally be off-shift or in quiet hours. Off by default.
+            </p>
+            <AfterHoursToggle initial={notifyAfterHours} />
+          </section>
+        ) : null}
 
         <section className="rounded-2xl border border-fv-bg-soft bg-fv-bg-card p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-fv-text-primary">

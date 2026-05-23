@@ -1890,6 +1890,7 @@ export type Database = {
           is_invited_only: boolean
           mfa_secret: string | null
           name: string
+          notify_after_hours: boolean
           phone: string | null
           photo_url: string | null
           role: string
@@ -1913,6 +1914,7 @@ export type Database = {
           is_invited_only?: boolean
           mfa_secret?: string | null
           name: string
+          notify_after_hours?: boolean
           phone?: string | null
           photo_url?: string | null
           role: string
@@ -1936,6 +1938,7 @@ export type Database = {
           is_invited_only?: boolean
           mfa_secret?: string | null
           name?: string
+          notify_after_hours?: boolean
           phone?: string | null
           photo_url?: string | null
           role?: string
@@ -2085,28 +2088,31 @@ export type Database = {
       zone_alert_actions: {
         Row: {
           alert_level: Database["public"]["Enums"]["staff_alert_level"]
-          call_surgeon: boolean
           created_at: string
           email_clinic: boolean
           inapp_to_all: boolean
+          include_surgeon_override: boolean
+          override_role_keys: string[]
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           alert_level: Database["public"]["Enums"]["staff_alert_level"]
-          call_surgeon?: boolean
           created_at?: string
           email_clinic?: boolean
           inapp_to_all?: boolean
+          include_surgeon_override?: boolean
+          override_role_keys?: string[]
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           alert_level?: Database["public"]["Enums"]["staff_alert_level"]
-          call_surgeon?: boolean
           created_at?: string
           email_clinic?: boolean
           inapp_to_all?: boolean
+          include_surgeon_override?: boolean
+          override_role_keys?: string[]
           updated_at?: string
           updated_by?: string | null
         }
@@ -2401,6 +2407,7 @@ export type Database = {
           is_invited_only: boolean
           mfa_secret: string | null
           name: string
+          notify_after_hours: boolean
           phone: string | null
           photo_url: string | null
           role: string

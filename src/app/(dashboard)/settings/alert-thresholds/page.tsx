@@ -118,25 +118,31 @@ export default async function AlertThresholdsPage({
           ? "surgeon"
           : "default";
 
-  const [rulesetsResult, surgeonsResult, symptomsResult, actionsResult] =
-    await Promise.all([
-      supabase
-        .from("routing_rulesets")
-        .select(
-          "procedure_type, surgeon_id, routing_rules(item_key, item_value, route)"
-        ),
-      supabase
-        .from("staff_users")
-        .select("id, name")
-        .eq("role", "surgeon")
-        .order("name"),
-      supabase
-        .from("symptom_options")
-        .select("key, label")
-        .eq("active", true)
-        .order("order_index"),
-      supabase.from("zone_alert_actions").select("*"),
-    ]);
+  const [
+    rulesetsResult,
+    surgeonsResult,
+    symptomsResult,
+    actionsResult,
+    rolesResult,
+  ] = await Promise.all([
+    supabase
+      .from("routing_rulesets")
+      .select(
+        "procedure_type, surgeon_id, routing_rules(item_key, item_value, route)"
+      ),
+    supabase
+      .from("staff_users")
+      .select("id, name")
+      .eq("role", "surgeon")
+      .order("name"),
+    supabase
+      .from("symptom_options")
+      .select("key, label")
+      .eq("active", true)
+      .order("order_index"),
+    supabase.from("zone_alert_actions").select("*"),
+    supabase.from("staff_roles").select("name").order("name"),
+  ]);
 
   const rulesets = (rulesetsResult.data ?? []) as RulesetRow[];
   const surgeons = surgeonsResult.data ?? [];
@@ -248,7 +254,10 @@ export default async function AlertThresholdsPage({
         canEdit={canEdit}
       />
 
-      <AlertActionsPanel rows={alertActions} />
+      <AlertActionsPanel
+        rows={alertActions}
+        roleOptions={(rolesResult.data ?? []).map((r) => r.name)}
+      />
     </main>
   );
 }

@@ -50,7 +50,9 @@ export async function dispatchAlert(opts: {
   try {
     const { data: actions } = await admin
       .from("zone_alert_actions")
-      .select("email_clinic, inapp_to_all, call_surgeon")
+      .select(
+        "email_clinic, inapp_to_all, override_role_keys, include_surgeon_override"
+      )
       .eq("alert_level", opts.alertLevel)
       .maybeSingle();
     if (!actions) {
@@ -110,47 +112,79 @@ export async function dispatchAlert(opts: {
       if (!result.ok) errors.push(`email: ${result.error}`);
     }
 
-    // 2. In-app push to all staff with a push subscription
+    // Build up the set of recipients across the three push paths so each
+    // staff member only gets one notification per alert.
+    const inappRecipients = new Set<string>();
+    const overrideRecipients = new Set<string>();
+
+    // 2. In-app push to all active staff.
     if (actions.inapp_to_all) {
       const { data: staff } = await admin
         .from("staff_users")
         .select("id")
         .eq("active", true);
-      const staffIds = new Set((staff ?? []).map((s) => s.id));
-      // The surgeon gets their own specific push below, so don't double up.
-      if (actions.call_surgeon && proc?.surgeon_id) {
-        staffIds.delete(proc.surgeon_id);
-      }
-      const results = await Promise.all(
-        Array.from(staffIds).map((id) =>
-          sendPush(id, {
-            title: `${zone} alert`,
-            body: summary,
-            url: `/patients/${opts.patientId}`,
-            tag: `alert-${opts.checkInId}`,
-          })
-        )
-      );
-      inappPushed = results.reduce((n, r) => n + r.sent, 0);
+      for (const s of staff ?? []) inappRecipients.add(s.id);
     }
 
-    // 3. Surgeon push — high-priority alert that opens the patient's
-    //    staff-app screen, where the surgeon can act (call the patient,
-    //    reply, change meds, etc.).
-    if (actions.call_surgeon && proc?.surgeon_id) {
-      const result = await sendPush(proc.surgeon_id, {
-        title: `📞 ${zone}: ${name} needs you`,
-        body: `Day ${day} ${procLabel} · open the patient screen`,
-        url: `/staff-app/patients/${opts.patientId}`,
-        tag: `alert-${opts.checkInId}-surgeon`,
-      });
-      surgeonPushed = result.sent > 0;
-      if (result.subscriptions === 0) {
+    // 3. Override message to selected staff roles — these are the
+    //    recipients that should bypass staff quiet-hours / off-shift
+    //    gates once those are built. Today the gates don't exist, so
+    //    this is a targeted push with an "URGENT" prefix.
+    const overrideRoles = actions.override_role_keys ?? [];
+    if (overrideRoles.length > 0) {
+      const { data: roleStaff } = await admin
+        .from("staff_users")
+        .select("id")
+        .eq("active", true)
+        .in("role", overrideRoles);
+      for (const s of roleStaff ?? []) overrideRecipients.add(s.id);
+    }
+
+    // 3b. Patient's surgeon — added to the override set IF the
+    //     dispatcher option is on AND the surgeon has opted in.
+    if (actions.include_surgeon_override && proc?.surgeon_id) {
+      const { data: surgeonRow } = await admin
+        .from("staff_users")
+        .select("id, notify_after_hours")
+        .eq("id", proc.surgeon_id)
+        .maybeSingle();
+      if (surgeonRow?.notify_after_hours) {
+        overrideRecipients.add(surgeonRow.id);
+        surgeonPushed = true;
+      } else if (surgeonRow && !surgeonRow.notify_after_hours) {
         errors.push(
-          "surgeon has no push subscription — they won't be notified until they enable notifications"
+          "patient's surgeon hasn't opted in to after-hours alerts — skipped"
         );
       }
     }
+
+    // Override recipients take priority — don't double-send to the same
+    // person from both paths.
+    for (const id of overrideRecipients) inappRecipients.delete(id);
+
+    const generalResults = await Promise.all(
+      Array.from(inappRecipients).map((id) =>
+        sendPush(id, {
+          title: `${zone} alert`,
+          body: summary,
+          url: `/patients/${opts.patientId}`,
+          tag: `alert-${opts.checkInId}`,
+        })
+      )
+    );
+    const overrideResults = await Promise.all(
+      Array.from(overrideRecipients).map((id) =>
+        sendPush(id, {
+          title: `🚨 URGENT · ${zone}: ${name}`,
+          body: `Day ${day} ${procLabel} · open the patient screen`,
+          url: `/staff-app/patients/${opts.patientId}`,
+          tag: `alert-${opts.checkInId}-override`,
+        })
+      )
+    );
+    inappPushed =
+      generalResults.reduce((n, r) => n + r.sent, 0) +
+      overrideResults.reduce((n, r) => n + r.sent, 0);
   } catch (err) {
     errors.push(`dispatcher: ${(err as Error).message}`);
     console.error("[alert] dispatcher failed", err);
