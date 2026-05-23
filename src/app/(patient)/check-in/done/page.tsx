@@ -92,10 +92,26 @@ export default async function CheckInDonePage({
       .maybeSingle(),
     supabase
       .from("clinic_profile")
-      .select("name, phone, after_hours_phone")
+      .select("name, phone")
       .limit(1)
       .maybeSingle(),
   ]);
+
+  // Patient's surgeon for the after-hours fallback message.
+  let surgeon: { name: string; phone: string | null } | null = null;
+  if (procedure?.surgeon_id) {
+    const { data: surgeonRow } = await supabase
+      .from("staff_users")
+      .select("name, display_name, phone")
+      .eq("id", procedure.surgeon_id)
+      .maybeSingle();
+    if (surgeonRow) {
+      surgeon = {
+        name: surgeonRow.display_name || surgeonRow.name,
+        phone: surgeonRow.phone,
+      };
+    }
+  }
 
   const content = await loadZoneContent(supabase, {
     zone: checkIn.patient_zone,
@@ -231,17 +247,32 @@ export default async function CheckInDonePage({
               Call the clinic now
             </a>
           ) : null}
-          {clinic?.after_hours_phone ? (
-            <p className="text-center text-sm text-fv-text-secondary">
-              After hours? Call{" "}
-              <a
-                href={`tel:${clinic.after_hours_phone.replace(/[^\d+]/g, "")}`}
-                className="font-semibold text-fv-text-primary underline"
-              >
-                {clinic.after_hours_phone}
-              </a>
-            </p>
-          ) : null}
+          <p className="text-center text-sm text-fv-text-secondary">
+            After hours? Please go to your nearest emergency department, or
+            contact your surgeon
+            {surgeon ? (
+              <>
+                ,{" "}
+                <span className="font-semibold text-fv-text-primary">
+                  {surgeon.name}
+                </span>
+                {surgeon.phone ? (
+                  <>
+                    {" "}on{" "}
+                    <a
+                      href={`tel:${surgeon.phone.replace(/[^\d+]/g, "")}`}
+                      className="font-semibold text-fv-text-primary underline"
+                    >
+                      {surgeon.phone}
+                    </a>
+                  </>
+                ) : null}
+                .
+              </>
+            ) : (
+              " directly."
+            )}
+          </p>
         </>
       ) : null}
 

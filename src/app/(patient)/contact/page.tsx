@@ -18,10 +18,36 @@ export default async function PatientContactPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/patient-sign-in");
 
-  const [{ data: clinic }, { data: optionRows }] = await Promise.all([
-    supabase.from("clinic_profile").select("*").limit(1).maybeSingle(),
-    supabase.from("contact_options").select("*"),
-  ]);
+  const [{ data: clinic }, { data: optionRows }, { data: procedure }] =
+    await Promise.all([
+      supabase.from("clinic_profile").select("*").limit(1).maybeSingle(),
+      supabase.from("contact_options").select("*"),
+      supabase
+        .from("procedures")
+        .select("surgeon_id")
+        .eq("patient_id", user.id)
+        .eq("status", "active")
+        .order("surgery_date", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+  // Look up the patient's surgeon so we can offer their direct number
+  // for after-hours emergencies instead of a clinic-wide on-call line.
+  let surgeon: { name: string; phone: string | null } | null = null;
+  if (procedure?.surgeon_id) {
+    const { data: surgeonRow } = await supabase
+      .from("staff_users")
+      .select("name, display_name, phone")
+      .eq("id", procedure.surgeon_id)
+      .maybeSingle();
+    if (surgeonRow) {
+      surgeon = {
+        name: surgeonRow.display_name || surgeonRow.name,
+        phone: surgeonRow.phone,
+      };
+    }
+  }
 
   const options = visibleContactOptions(
     (optionRows ?? []) as ContactOption[]
@@ -57,19 +83,31 @@ export default async function PatientContactPage() {
         ))
       )}
 
-      {/* After-hours emergency notice */}
-      {clinic ? (
-        <div className="rounded-r-2xl rounded-bl-2xl border-l-4 border-red-400 bg-red-50 p-4 text-sm font-medium leading-relaxed text-red-700">
-          After hours emergency? Call{" "}
-          <a
-            href={`tel:${clinic.after_hours_phone.replace(/[^\d+]/g, "")}`}
-            className="font-bold underline"
-          >
-            {clinic.after_hours_phone}
-          </a>
-          . {clinic.after_hours_message}
-        </div>
-      ) : null}
+      {/* After-hours emergency notice — go to ED, or contact your surgeon */}
+      <div className="rounded-r-2xl rounded-bl-2xl border-l-4 border-red-400 bg-red-50 p-4 text-sm font-medium leading-relaxed text-red-700">
+        After hours? Please go to your nearest emergency department, or
+        contact your surgeon
+        {surgeon ? (
+          <>
+            ,{" "}
+            <span className="font-semibold">{surgeon.name}</span>
+            {surgeon.phone ? (
+              <>
+                {" "}on{" "}
+                <a
+                  href={`tel:${surgeon.phone.replace(/[^\d+]/g, "")}`}
+                  className="font-bold underline"
+                >
+                  {surgeon.phone}
+                </a>
+              </>
+            ) : null}
+            .
+          </>
+        ) : (
+          " directly."
+        )}
+      </div>
     </main>
   );
 }
