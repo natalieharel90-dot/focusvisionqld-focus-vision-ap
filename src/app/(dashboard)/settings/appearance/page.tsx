@@ -6,6 +6,8 @@ import { StaffThemePicker } from "@/components/dashboard/StaffThemePicker";
 import type { ThemePreference } from "@/lib/theme";
 import { updateStaffTextSizeAction } from "./actions";
 import { AfterHoursToggle } from "./AfterHoursToggle";
+import { OnShiftToggle } from "./OnShiftToggle";
+import { updateStaffQuietHoursAction } from "./shift-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +28,7 @@ export default async function AppearanceSettingsPage() {
   const { data: staff } = await supabase
     .from("staff_users")
     .select(
-      "theme, dark_mode, sparkle, bonus_pack_unlocked, text_size, role, notify_after_hours"
+      "theme, dark_mode, sparkle, bonus_pack_unlocked, text_size, role, notify_after_hours, on_shift, quiet_hours, quiet_hours_start, quiet_hours_end"
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -34,6 +36,10 @@ export default async function AppearanceSettingsPage() {
   const textSize = staff?.text_size ?? "normal";
   const isSurgeon = staff?.role === "surgeon";
   const notifyAfterHours = staff?.notify_after_hours ?? false;
+  const onShift = staff?.on_shift ?? false;
+  const quietHoursOn = staff?.quiet_hours ?? false;
+  const quietHoursStart = staff?.quiet_hours_start ?? "22:00";
+  const quietHoursEnd = staff?.quiet_hours_end ?? "07:00";
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-6">
@@ -55,6 +61,80 @@ export default async function AppearanceSettingsPage() {
         </section>
 
         <StaffPushOptIn />
+
+        <section className="rounded-2xl border border-fv-bg-soft bg-fv-bg-card p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-fv-text-primary">
+            On shift
+          </h2>
+          <p className="mt-1 text-sm text-fv-text-secondary">
+            Flip on when you start your shift and off when you leave.
+            General in-app alerts (the &quot;In-app alert to all staff&quot;
+            action) only reach staff who are currently on shift. Urgent
+            override alerts for selected roles ignore this and reach you
+            either way.
+          </p>
+          <OnShiftToggle initial={onShift} />
+        </section>
+
+        <section className="rounded-2xl border border-fv-bg-soft bg-fv-bg-card p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-fv-text-primary">
+            Quiet hours
+          </h2>
+          <p className="mt-1 text-sm text-fv-text-secondary">
+            Pause general in-app alerts within this window. Urgent
+            override alerts for selected roles still come through.
+          </p>
+          <form
+            action={updateStaffQuietHoursAction}
+            className="mt-3 flex flex-col gap-3"
+          >
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-fv-text-primary">
+                Enabled
+              </span>
+              <span className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  name="quiet_hours"
+                  defaultChecked={quietHoursOn}
+                  className="peer sr-only"
+                />
+                <span className="h-6 w-11 rounded-full bg-fv-bg-soft transition-colors peer-checked:bg-fv-accent-strong" />
+                <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+              </span>
+            </label>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex flex-1 flex-col gap-1">
+                <span className="text-xs font-semibold text-fv-text-secondary">
+                  From
+                </span>
+                <input
+                  type="time"
+                  name="quiet_hours_start"
+                  defaultValue={quietHoursStart}
+                  className="rounded-lg border border-fv-border bg-fv-bg-app px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="flex flex-1 flex-col gap-1">
+                <span className="text-xs font-semibold text-fv-text-secondary">
+                  To
+                </span>
+                <input
+                  type="time"
+                  name="quiet_hours_end"
+                  defaultValue={quietHoursEnd}
+                  className="rounded-lg border border-fv-border bg-fv-bg-app px-3 py-2 text-sm"
+                />
+              </label>
+              <button
+                type="submit"
+                className="self-end rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+              >
+                Save quiet hours
+              </button>
+            </div>
+          </form>
+        </section>
 
         {isSurgeon ? (
           <section className="rounded-2xl border border-fv-bg-soft bg-fv-bg-card p-5 shadow-sm">

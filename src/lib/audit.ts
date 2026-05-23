@@ -46,6 +46,8 @@ export type StaffAuditEventType =
   | "staff.theme_changed"
   | "staff.bonus_pack_unlocked"
   | "staff.notify_after_hours_updated"
+  | "staff.on_shift_updated"
+  | "staff.quiet_hours_updated"
   | "bulkpush.sent"
   | "patient.document_uploaded"
   | "settings.contact_options_updated"

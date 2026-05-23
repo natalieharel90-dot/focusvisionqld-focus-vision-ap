@@ -11,6 +11,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import { sendEmail } from "./email";
 import { sendPush } from "./push";
+import { brisbaneNow, inQuietHours } from "./reminders";
 
 const CLINIC_EMAIL = process.env.CLINIC_ALERT_EMAIL ?? "hello@focusvision.com.au";
 
@@ -117,13 +118,28 @@ export async function dispatchAlert(opts: {
     const inappRecipients = new Set<string>();
     const overrideRecipients = new Set<string>();
 
-    // 2. In-app push to all active staff.
+    // 2. In-app push to all active staff who are on shift and not in
+    //    their personal quiet-hours window. Off-shift / quiet staff are
+    //    skipped here — they only get an alert if they're in the
+    //    override path below.
     if (actions.inapp_to_all) {
+      const { time: nowBrisbane } = brisbaneNow(new Date());
       const { data: staff } = await admin
         .from("staff_users")
-        .select("id")
+        .select(
+          "id, on_shift, quiet_hours, quiet_hours_start, quiet_hours_end"
+        )
         .eq("active", true);
-      for (const s of staff ?? []) inappRecipients.add(s.id);
+      for (const s of staff ?? []) {
+        if (!s.on_shift) continue;
+        if (
+          s.quiet_hours &&
+          inQuietHours(nowBrisbane, s.quiet_hours_start, s.quiet_hours_end)
+        ) {
+          continue;
+        }
+        inappRecipients.add(s.id);
+      }
     }
 
     // 3. Override message to selected staff roles — these are the

@@ -1891,8 +1891,12 @@ export type Database = {
           mfa_secret: string | null
           name: string
           notify_after_hours: boolean
+          on_shift: boolean
           phone: string | null
           photo_url: string | null
+          quiet_hours: boolean
+          quiet_hours_end: string
+          quiet_hours_start: string
           role: string
           sparkle: boolean
           text_size: string
@@ -1915,8 +1919,12 @@ export type Database = {
           mfa_secret?: string | null
           name: string
           notify_after_hours?: boolean
+          on_shift?: boolean
           phone?: string | null
           photo_url?: string | null
+          quiet_hours?: boolean
+          quiet_hours_end?: string
+          quiet_hours_start?: string
           role: string
           sparkle?: boolean
           text_size?: string
@@ -1939,8 +1947,12 @@ export type Database = {
           mfa_secret?: string | null
           name?: string
           notify_after_hours?: boolean
+          on_shift?: boolean
           phone?: string | null
           photo_url?: string | null
+          quiet_hours?: boolean
+          quiet_hours_end?: string
+          quiet_hours_start?: string
           role?: string
           sparkle?: boolean
           text_size?: string
@@ -2408,8 +2420,12 @@ export type Database = {
           mfa_secret: string | null
           name: string
           notify_after_hours: boolean
+          on_shift: boolean
           phone: string | null
           photo_url: string | null
+          quiet_hours: boolean
+          quiet_hours_end: string
+          quiet_hours_start: string
           role: string
           sparkle: boolean
           text_size: string
