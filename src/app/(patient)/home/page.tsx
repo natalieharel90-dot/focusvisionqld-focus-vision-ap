@@ -295,6 +295,17 @@ export default async function PatientHomePage({
       badge: dosesToday,
     },
     {
+      key: "messages",
+      icon: "chat",
+      title: "Messages",
+      sub:
+        unread > 0
+          ? `${unread} unread`
+          : "Chat with the Focus Vision team",
+      href: "/messages",
+      badge: unread,
+    },
+    {
       key: "videos",
       icon: "video",
       title: "Videos & info",
@@ -305,9 +316,8 @@ export default async function PatientHomePage({
       key: "contact",
       icon: "phone",
       title: "Contact clinic",
-      sub: "Call, message or book follow-up",
+      sub: "Phone numbers and clinic hours",
       href: "/contact",
-      badge: unread,
     },
     ...(features.feedback_tile
       ? [
