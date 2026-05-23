@@ -176,6 +176,7 @@ export async function addStaffAction(formData: FormData) {
   const name = str("name");
   const email = str("email").toLowerCase();
   const role = str("role").toLowerCase();
+  const phone = str("phone") || null;
   if (!name) back("doctors", "Name is required.");
   if (!email) back("doctors", "Email is required.");
 
@@ -202,6 +203,7 @@ export async function addStaffAction(formData: FormData) {
     name,
     display_name: name,
     role,
+    phone,
     is_invited_only: true,
     active: true,
   });

@@ -85,6 +85,18 @@ export function DoctorModal({ roles }: { roles: string[] }) {
                 ))}
               </select>
             </label>
+            <label>
+              <span className={labelClass}>
+                Phone (optional, surgeons: used for the after-hours patient
+                message)
+              </span>
+              <input
+                name="phone"
+                type="tel"
+                placeholder="+61400000000"
+                className={inputClass}
+              />
+            </label>
 
             <div className="flex items-center justify-end gap-2">
               <button

@@ -79,7 +79,6 @@ export function DoctorsTab({
               {/* Name / role — inline editable */}
               <form action={saveDoctorAction}>
                 <input type="hidden" name="id" value={doctor.id} />
-                <input type="hidden" name="phone" value={doctor.phone ?? ""} />
                 <input
                   type="hidden"
                   name="photo_url"
@@ -117,7 +116,7 @@ export function DoctorsTab({
                       />
                     ) : null}
                   </label>
-                  <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <label>
                       <span className={fieldLabel}>Name</span>
                       <input
@@ -149,6 +148,24 @@ export function DoctorsTab({
                         {doctor.email ?? "—"}
                       </div>
                     </div>
+                    <label>
+                      <span className={fieldLabel}>
+                        Phone
+                        {doctor.role === "surgeon" ? (
+                          <span className="ml-1 text-fv-text-secondary">
+                            (after-hours)
+                          </span>
+                        ) : null}
+                      </span>
+                      <input
+                        type="tel"
+                        name="phone"
+                        defaultValue={doctor.phone ?? ""}
+                        placeholder="+61400000000"
+                        disabled={!canEdit}
+                        className={fieldInput}
+                      />
+                    </label>
                   </div>
                   {canEdit ? (
                     <button
