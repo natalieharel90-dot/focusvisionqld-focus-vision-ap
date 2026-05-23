@@ -1364,6 +1364,7 @@ export type Database = {
           medicare_number: string | null
           name: string
           paired_clinic_record_id: string | null
+          password_set: boolean
           phone: string | null
           phone_verified: boolean
           updated_at: string
@@ -1383,6 +1384,7 @@ export type Database = {
           medicare_number?: string | null
           name?: string
           paired_clinic_record_id?: string | null
+          password_set?: boolean
           phone?: string | null
           phone_verified?: boolean
           updated_at?: string
@@ -1402,6 +1404,7 @@ export type Database = {
           medicare_number?: string | null
           name?: string
           paired_clinic_record_id?: string | null
+          password_set?: boolean
           phone?: string | null
           phone_verified?: boolean
           updated_at?: string

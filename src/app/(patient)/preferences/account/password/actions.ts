@@ -35,5 +35,14 @@ export async function setPatientPasswordAction(formData: FormData) {
     back("Couldn't update your password — please try again.");
   }
 
-  redirect("/preferences/account?password=updated");
+  // Flip the gate so middleware stops forcing the patient back here. If
+  // they were on the forced flow, send them home rather than to the
+  // Account screen — the welcome flow lands them on /home naturally.
+  await supabase
+    .from("patients")
+    .update({ password_set: true })
+    .eq("id", user.id);
+
+  const force = String(formData.get("force") ?? "") === "1";
+  redirect(force ? "/home" : "/preferences/account?password=updated");
 }

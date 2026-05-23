@@ -136,6 +136,29 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // First-sign-in gate: a patient still on the clinic-issued temporary
+  // password must replace it before they can use anything else. The
+  // forced flow lives at /preferences/account/password?force=1; let
+  // them stay on that page (and on the sign-out route).
+  if (isPatientProtectedPath(pathname)) {
+    const onPasswordPage =
+      pathname === "/preferences/account/password" ||
+      pathname.startsWith("/preferences/account/password/");
+    if (!onPasswordPage) {
+      const { data: patient } = await supabase
+        .from("patients")
+        .select("password_set")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (patient && patient.password_set === false) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/preferences/account/password";
+        url.search = "?force=1";
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
   // ── Staff routes ────────────────────────────────────────────────────
   // Everything protected that isn't a patient route is staff territory.
   // The signed-in user must be a staff member AND have completed MFA

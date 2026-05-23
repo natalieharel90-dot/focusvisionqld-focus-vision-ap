@@ -13,7 +13,7 @@ const inputClass =
 export default async function PatientPasswordPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; force?: string };
 }) {
   const supabase = createSupabaseServerClient();
   const {
@@ -21,22 +21,27 @@ export default async function PatientPasswordPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/patient-sign-in");
 
+  const forced = searchParams.force === "1";
+
   return (
     <main className="flex flex-col gap-4 px-5 py-6">
-      <Link
-        href="/preferences/account"
-        className="text-sm font-semibold text-fv-text-secondary"
-      >
-        ‹ Account
-      </Link>
+      {!forced ? (
+        <Link
+          href="/preferences/account"
+          className="text-sm font-semibold text-fv-text-secondary"
+        >
+          ‹ Account
+        </Link>
+      ) : null}
 
       <header>
         <h1 className="text-3xl font-bold text-fv-text-primary">
-          Set your password
+          {forced ? "Choose your password" : "Set your password"}
         </h1>
         <p className="mt-1 text-sm text-fv-text-secondary">
-          Choose a password only you know. If your clinic gave you a
-          temporary one in your welcome message, this replaces it.
+          {forced
+            ? "Welcome to Focus Vision. Before we get started, please replace the temporary password your clinic gave you with one only you know."
+            : "Choose a password only you know. If your clinic gave you a temporary one in your welcome message, this replaces it."}
         </p>
       </header>
 
@@ -44,6 +49,7 @@ export default async function PatientPasswordPage({
         action={setPatientPasswordAction}
         className="flex flex-col gap-4 rounded-2xl bg-fv-bg-card p-5 shadow-sm"
       >
+        {forced ? <input type="hidden" name="force" value="1" /> : null}
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-semibold text-fv-text-primary">
             New password
