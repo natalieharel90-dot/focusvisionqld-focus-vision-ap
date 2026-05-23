@@ -1494,14 +1494,6 @@ export default async function PatientDetailPage({
           {/* Quick actions */}
           <Panel title="Quick actions">
             <div className="flex flex-col gap-2 text-sm">
-              {patient.phone ? (
-                <a
-                  href={`tel:${patient.phone}`}
-                  className="rounded-md border border-fv-bg-soft px-3 py-2 text-left font-medium text-fv-text-primary hover:bg-fv-bg-soft/50"
-                >
-                  📞 Call patient
-                </a>
-              ) : null}
               <Link
                 href={
                   messageThreadId
@@ -1512,18 +1504,6 @@ export default async function PatientDetailPage({
               >
                 💬 Send in-app message
               </Link>
-              <a
-                href="#appointments"
-                className="rounded-md border border-fv-bg-soft px-3 py-2 text-left font-medium text-fv-text-primary hover:bg-fv-bg-soft/50"
-              >
-                📅 Schedule check-in
-              </a>
-              <a
-                href="#documents"
-                className="rounded-md border border-fv-bg-soft px-3 py-2 text-left font-medium text-fv-text-primary hover:bg-fv-bg-soft/50"
-              >
-                📄 Upload to their documents
-              </a>
               {isDischarged ? (
                 <form action={readmitPatientAction}>
                   <HiddenPatientId id={patient.id} />
