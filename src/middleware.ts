@@ -171,7 +171,25 @@ export async function middleware(request: NextRequest) {
       .maybeSingle();
 
     if (!staff) {
-      // A patient (or any non-staff account) reached a staff route.
+      // A non-staff user reached a staff route. If they're a patient,
+      // send them home. If they're NEITHER staff nor patient (orphaned
+      // session — e.g. their patient row was deleted), sign them out
+      // here to break the /home ↔ / redirect loop, otherwise /home
+      // would also reject them and bounce them back to / via the
+      // patient layout.
+      const { data: patientRow } = await supabase
+        .from("patients")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!patientRow) {
+        await supabase.auth.signOut();
+        const url = request.nextUrl.clone();
+        url.pathname = "/sign-in";
+        url.search =
+          "?error=Account+not+recognised+—+please+sign+in+again.";
+        return NextResponse.redirect(url);
+      }
       const url = request.nextUrl.clone();
       url.pathname = "/home";
       return NextResponse.redirect(url);

@@ -46,7 +46,11 @@ export default async function PatientLayout({
     .select("name")
     .eq("id", user.id)
     .maybeSingle();
-  if (!patient) redirect("/");
+  // Orphan session — signed in but no patient row. Don't redirect to
+  // "/" (which would just bounce back here and loop). Send to
+  // patient sign-in instead; middleware's orphan check will clear
+  // the session on the next round-trip.
+  if (!patient) redirect("/patient-sign-in?error=Please+sign+in+again.");
 
   const { data: prefs } = await supabase
     .from("user_preferences")
