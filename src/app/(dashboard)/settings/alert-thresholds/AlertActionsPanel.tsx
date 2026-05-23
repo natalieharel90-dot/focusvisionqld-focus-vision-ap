@@ -104,12 +104,13 @@ export function AlertActionsPanel({
         <br />
         <strong>Email</strong> goes to hello@focusvision.com.au.{" "}
         <strong>In-app alert to all staff</strong> raises a notification for
-        every active staff member with notifications on.{" "}
-        <strong>Override message</strong> pushes specifically to the roles you
-        select here — these will bypass staff quiet-hours / off-shift gates
-        once those are built. The patient&apos;s own surgeon can also be
-        added to the override, but only if the surgeon has opted in
-        (Settings → Appearance → After-hours alerts).
+        every active staff member who is on shift and not in their personal
+        quiet hours.{" "}
+        <strong>Override message</strong> pushes specifically to the roles
+        you select here, ignoring on-shift and quiet-hours status — so a
+        Manager still gets the alert at 2 AM. The patient&apos;s own
+        surgeon can also be added to the override, but only if the surgeon
+        has opted in (Settings → Appearance → After-hours alerts).
       </p>
 
       <div className="mt-4 flex flex-col gap-4">
@@ -209,9 +210,8 @@ function ZoneCard({
             Override message to selected roles
           </div>
           <div className="text-[11px] text-fv-text-secondary">
-            Push goes to anyone in these roles regardless of staff
-            quiet-hours / off-shift gating (once those are built). Leave
-            empty to send no override.
+            Push goes to anyone in these roles, ignoring on-shift status
+            and personal quiet hours. Leave empty to send no override.
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             {roleOptions.length === 0 ? (

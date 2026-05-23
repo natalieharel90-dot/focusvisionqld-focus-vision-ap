@@ -315,10 +315,6 @@ export function PreferencesForm({ initial, bonusUnlocked, account }: Props) {
           checked={prefs.reduce_motion}
           onChange={(v) => update({ reduce_motion: v })}
         />
-        <InfoNote icon={<InfoIcon />}>
-          Fully optimised for VoiceOver (iPhone) and TalkBack (Android). All
-          app features remain accessible with screen readers.
-        </InfoNote>
         <LinkCard
           title="Replay app tour"
           sub="See the welcome walkthrough again"
