@@ -24,6 +24,7 @@ export async function updateOnShiftAction(formData: FormData) {
   });
 
   revalidatePath("/settings/appearance");
+  revalidatePath("/staff-app/me");
 }
 
 // Per-staff personal quiet-hours window. Same semantics as patient
@@ -42,6 +43,9 @@ export async function updateStaffQuietHoursAction(formData: FormData) {
   const enabled = formData.get("quiet_hours") === "on";
   const start = String(formData.get("quiet_hours_start") ?? "22:00").trim();
   const end = String(formData.get("quiet_hours_end") ?? "07:00").trim();
+  const overrideOrange =
+    formData.get("quiet_hours_override_orange") === "on";
+  const overrideRed = formData.get("quiet_hours_override_red") === "on";
 
   if (!HHMM.test(start) || !HHMM.test(end)) back();
 
@@ -51,14 +55,23 @@ export async function updateStaffQuietHoursAction(formData: FormData) {
       quiet_hours: enabled,
       quiet_hours_start: start,
       quiet_hours_end: end,
+      quiet_hours_override_orange: overrideOrange,
+      quiet_hours_override_red: overrideRed,
     })
     .eq("id", userId);
 
   await recordStaffAudit(supabase, "staff.quiet_hours_updated", {
     entity_type: "staff_user",
     entity_id: userId,
-    new_value: { quiet_hours: enabled, start, end },
+    new_value: {
+      quiet_hours: enabled,
+      start,
+      end,
+      overrideOrange,
+      overrideRed,
+    },
   });
 
   revalidatePath("/settings/appearance");
+  revalidatePath("/staff-app/me");
 }

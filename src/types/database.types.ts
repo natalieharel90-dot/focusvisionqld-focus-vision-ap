@@ -1896,6 +1896,8 @@ export type Database = {
           photo_url: string | null
           quiet_hours: boolean
           quiet_hours_end: string
+          quiet_hours_override_orange: boolean
+          quiet_hours_override_red: boolean
           quiet_hours_start: string
           role: string
           sparkle: boolean
@@ -1924,6 +1926,8 @@ export type Database = {
           photo_url?: string | null
           quiet_hours?: boolean
           quiet_hours_end?: string
+          quiet_hours_override_orange?: boolean
+          quiet_hours_override_red?: boolean
           quiet_hours_start?: string
           role: string
           sparkle?: boolean
@@ -1952,6 +1956,8 @@ export type Database = {
           photo_url?: string | null
           quiet_hours?: boolean
           quiet_hours_end?: string
+          quiet_hours_override_orange?: boolean
+          quiet_hours_override_red?: boolean
           quiet_hours_start?: string
           role?: string
           sparkle?: boolean
@@ -2422,6 +2428,8 @@ export type Database = {
           photo_url: string | null
           quiet_hours: boolean
           quiet_hours_end: string
+          quiet_hours_override_orange: boolean
+          quiet_hours_override_red: boolean
           quiet_hours_start: string
           role: string
           sparkle: boolean

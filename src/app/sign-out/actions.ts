@@ -14,6 +14,14 @@ export async function signOutAction() {
 
   if (user) {
     await recordStaffAudit(supabase, "staff.signed_out");
+    // Going off shift on sign-out so a forgotten toggle doesn't leave
+    // the staff member receiving general alerts they're not actually
+    // working through. They'll re-toggle "On shift" next time they
+    // start a shift.
+    await supabase
+      .from("staff_users")
+      .update({ on_shift: false })
+      .eq("id", user.id);
   }
 
   await supabase.auth.signOut();

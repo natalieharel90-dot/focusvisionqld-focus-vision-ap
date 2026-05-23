@@ -119,15 +119,19 @@ export async function dispatchAlert(opts: {
     const overrideRecipients = new Set<string>();
 
     // 2. In-app push to all active staff who are on shift and not in
-    //    their personal quiet-hours window. Off-shift / quiet staff are
-    //    skipped here — they only get an alert if they're in the
-    //    override path below.
+    //    their personal quiet-hours window. A per-staff per-level
+    //    override lets the alert still ring through quiet hours when
+    //    the alert is orange or red, if the staff member has opted in
+    //    for that level.
+    //
+    //    Off-shift staff are always skipped here — they only get an
+    //    alert if they're in the override path below.
     if (actions.inapp_to_all) {
       const { time: nowBrisbane } = brisbaneNow(new Date());
       const { data: staff } = await admin
         .from("staff_users")
         .select(
-          "id, on_shift, quiet_hours, quiet_hours_start, quiet_hours_end"
+          "id, on_shift, quiet_hours, quiet_hours_start, quiet_hours_end, quiet_hours_override_orange, quiet_hours_override_red"
         )
         .eq("active", true);
       for (const s of staff ?? []) {
@@ -136,7 +140,10 @@ export async function dispatchAlert(opts: {
           s.quiet_hours &&
           inQuietHours(nowBrisbane, s.quiet_hours_start, s.quiet_hours_end)
         ) {
-          continue;
+          const overrides =
+            (opts.alertLevel === "orange" && s.quiet_hours_override_orange) ||
+            (opts.alertLevel === "red" && s.quiet_hours_override_red);
+          if (!overrides) continue;
         }
         inappRecipients.add(s.id);
       }

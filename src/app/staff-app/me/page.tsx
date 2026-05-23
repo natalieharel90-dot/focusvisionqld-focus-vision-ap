@@ -2,55 +2,14 @@ import Link from "next/link";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { initials } from "@/lib/bulk-push";
-import { toggleNotificationPrefAction } from "@/app/(dashboard)/inbox/actions";
 import { signOutAction } from "@/app/sign-out/actions";
+import {
+  NewMessageToggle,
+  OnShiftToggle,
+  QuietHoursCard,
+} from "./StaffMeForms";
 
 export const dynamic = "force-dynamic";
-
-type PrefKey =
-  | "notify_new_message"
-  | "notify_orange_flag"
-  | "notify_yellow_flag"
-  | "quiet_hours"
-  | "daily_digest_email";
-
-const NOTIFY_ROWS: ReadonlyArray<{
-  key: PrefKey;
-  title: string;
-  sub: string;
-  fallback: boolean;
-}> = [
-  {
-    key: "notify_new_message",
-    title: "New patient message",
-    sub: "Push notification on this phone",
-    fallback: true,
-  },
-  {
-    key: "notify_orange_flag",
-    title: "Orange zone flag",
-    sub: "Highest concern alerts",
-    fallback: true,
-  },
-  {
-    key: "notify_yellow_flag",
-    title: "Yellow zone flag",
-    sub: "Mid-concern alerts",
-    fallback: false,
-  },
-  {
-    key: "quiet_hours",
-    title: "Quiet hours",
-    sub: "No push 7 PM – 7 AM",
-    fallback: true,
-  },
-  {
-    key: "daily_digest_email",
-    title: "Daily digest email",
-    sub: "8 AM summary every morning",
-    fallback: true,
-  },
-];
 
 export default async function StaffAppMe() {
   const supabase = createSupabaseServerClient();
@@ -61,18 +20,27 @@ export default async function StaffAppMe() {
   const [staffRes, prefsRes] = await Promise.all([
     supabase
       .from("staff_users")
-      .select("name, display_name, role")
+      .select(
+        "name, display_name, role, on_shift, quiet_hours, quiet_hours_start, quiet_hours_end, quiet_hours_override_orange, quiet_hours_override_red"
+      )
       .eq("id", user?.id ?? "")
       .maybeSingle(),
     supabase
       .from("staff_notification_prefs")
-      .select("*")
+      .select("notify_new_message")
       .eq("staff_id", user?.id ?? "")
       .maybeSingle(),
   ]);
   const staff = staffRes.data;
-  const prefs = prefsRes.data;
   const name = staff?.display_name || staff?.name || "Staff";
+
+  const onShift = staff?.on_shift ?? false;
+  const quietHoursOn = staff?.quiet_hours ?? false;
+  const quietStart = staff?.quiet_hours_start ?? "22:00";
+  const quietEnd = staff?.quiet_hours_end ?? "07:00";
+  const overrideOrange = staff?.quiet_hours_override_orange ?? false;
+  const overrideRed = staff?.quiet_hours_override_red ?? true;
+  const newMessageOn = prefsRes.data?.notify_new_message ?? true;
 
   return (
     <div className="pb-4">
@@ -89,50 +57,57 @@ export default async function StaffAppMe() {
         </div>
       </div>
 
+      {/* Shift status */}
+      <div className="mt-2 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-fv-text-secondary">
+        Shift
+      </div>
+      <ul className="divide-y divide-fv-bg-soft border-y border-fv-bg-soft bg-fv-bg-card">
+        <li className="flex items-center justify-between gap-3 px-4 py-3.5">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-fv-text-primary">
+              {onShift ? "On shift" : "Off shift"}
+            </div>
+            <div className="text-xs text-fv-text-secondary">
+              {onShift
+                ? "Receiving the general in-app alerts."
+                : "Not receiving general alerts. Urgent override alerts still come through."}
+            </div>
+          </div>
+          <OnShiftToggle initial={onShift} />
+        </li>
+      </ul>
+
       {/* Notifications */}
       <div className="mt-2 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-fv-text-secondary">
         Notifications
       </div>
       <ul className="divide-y divide-fv-bg-soft border-y border-fv-bg-soft bg-fv-bg-card">
-        {NOTIFY_ROWS.map((row) => {
-          const on = (prefs?.[row.key] as boolean | undefined) ?? row.fallback;
-          return (
-            <li
-              key={row.key}
-              className="flex items-center justify-between gap-3 px-4 py-3.5"
-            >
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-fv-text-primary">
-                  {row.title}
-                </div>
-                <div className="text-xs text-fv-text-secondary">
-                  {row.sub}
-                </div>
-              </div>
-              <form action={toggleNotificationPrefAction}>
-                <input type="hidden" name="pref" value={row.key} />
-                <input
-                  type="hidden"
-                  name="enabled"
-                  value={(!on).toString()}
-                />
-                <button
-                  type="submit"
-                  role="switch"
-                  aria-checked={on}
-                  className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors ${
-                    on
-                      ? "justify-end bg-fv-accent-strong"
-                      : "justify-start bg-fv-bg-soft"
-                  }`}
-                >
-                  <span className="h-5 w-5 rounded-full bg-white shadow" />
-                </button>
-              </form>
-            </li>
-          );
-        })}
+        <li className="flex items-center justify-between gap-3 px-4 py-3.5">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-fv-text-primary">
+              New patient message
+            </div>
+            <div className="text-xs text-fv-text-secondary">
+              Push notification when a patient messages the clinic
+            </div>
+          </div>
+          <NewMessageToggle initial={newMessageOn} />
+        </li>
       </ul>
+
+      {/* Quiet hours */}
+      <div className="mt-2 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-fv-text-secondary">
+        Quiet hours
+      </div>
+      <div className="border-y border-fv-bg-soft bg-fv-bg-card">
+        <QuietHoursCard
+          enabled={quietHoursOn}
+          start={quietStart}
+          end={quietEnd}
+          overrideOrange={overrideOrange}
+          overrideRed={overrideRed}
+        />
+      </div>
 
       {/* Account */}
       <div className="mt-2 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-fv-text-secondary">
