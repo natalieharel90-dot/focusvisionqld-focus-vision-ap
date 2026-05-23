@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_dispatches: {
+        Row: {
+          alert_level: Database["public"]["Enums"]["staff_alert_level"]
+          check_in_id: string | null
+          created_at: string
+          email_sent: boolean
+          error: string | null
+          id: string
+          inapp_pushed: number
+          patient_id: string | null
+          surgeon_pushed: boolean
+        }
+        Insert: {
+          alert_level: Database["public"]["Enums"]["staff_alert_level"]
+          check_in_id?: string | null
+          created_at?: string
+          email_sent?: boolean
+          error?: string | null
+          id?: string
+          inapp_pushed?: number
+          patient_id?: string | null
+          surgeon_pushed?: boolean
+        }
+        Update: {
+          alert_level?: Database["public"]["Enums"]["staff_alert_level"]
+          check_in_id?: string | null
+          created_at?: string
+          email_sent?: boolean
+          error?: string | null
+          id?: string
+          inapp_pushed?: number
+          patient_id?: string | null
+          surgeon_pushed?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_dispatches_check_in_id_fkey"
+            columns: ["check_in_id"]
+            isOneToOne: false
+            referencedRelation: "check_ins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alert_dispatches_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analytics_targets: {
         Row: {
           checkin_completion_pct: number
@@ -1535,8 +1586,8 @@ export type Database = {
           endpoint: string
           id: string
           p256dh: string
-          patient_id: string
           user_agent: string | null
+          user_id: string
         }
         Insert: {
           auth: string
@@ -1544,8 +1595,8 @@ export type Database = {
           endpoint: string
           id?: string
           p256dh: string
-          patient_id: string
           user_agent?: string | null
+          user_id: string
         }
         Update: {
           auth?: string
@@ -1553,18 +1604,10 @@ export type Database = {
           endpoint?: string
           id?: string
           p256dh?: string
-          patient_id?: string
           user_agent?: string | null
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "push_subscriptions_patient_id_fkey"
-            columns: ["patient_id"]
-            isOneToOne: false
-            referencedRelation: "patients"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       reminder_log: {
         Row: {

@@ -47,11 +47,11 @@ export type PushResult = {
   failures: string[];
 };
 
-// Sends a push notification to every device the patient has registered.
-// Never throws — a failed push must not break the action that triggered
-// it. Dead subscriptions (404/410) are pruned.
+// Sends a push notification to every device the given user (patient OR
+// staff) has registered. Never throws — a failed push must not break the
+// action that triggered it. Dead subscriptions (404/410) are pruned.
 export async function sendPush(
-  patientId: string,
+  userId: string,
   payload: PushPayload
 ): Promise<PushResult> {
   if (!configure()) {
@@ -71,7 +71,7 @@ export async function sendPush(
   const { data: subs } = await admin
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth")
-    .eq("patient_id", patientId);
+    .eq("user_id", userId);
   const list = subs ?? [];
   if (list.length === 0) {
     return { configured: true, subscriptions: 0, sent: 0, failures: [] };

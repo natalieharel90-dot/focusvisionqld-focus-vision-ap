@@ -24,7 +24,7 @@ export async function savePushSubscriptionAction(sub: {
 
   const { error } = await supabase.from("push_subscriptions").upsert(
     {
-      patient_id: user.id,
+      user_id: user.id,
       endpoint: sub.endpoint,
       p256dh: sub.p256dh,
       auth: sub.auth,
@@ -49,7 +49,7 @@ export async function removePushSubscriptionAction(
     .from("push_subscriptions")
     .delete()
     .eq("endpoint", endpoint)
-    .eq("patient_id", user.id);
+    .eq("user_id", user.id);
   return { ok: true };
 }
 

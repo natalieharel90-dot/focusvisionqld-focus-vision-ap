@@ -7,6 +7,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { dispatchAlert } from "./alert-dispatch";
 import {
   loadRulesetIndex,
   routeCheckIn,
@@ -71,6 +72,18 @@ export async function submitCheckIn(
     .single();
 
   if (insertError) throw insertError;
+
+  // Fire the configured alert actions (email / in-app / surgeon push)
+  // when the routing engine put this check-in in a flagged zone. The
+  // dispatcher never throws — failures are logged to alert_dispatches
+  // and never block the patient's check-in flow.
+  if (result.staff_alert_level !== "none") {
+    await dispatchAlert({
+      checkInId: row.id,
+      patientId: input.patient_id,
+      alertLevel: result.staff_alert_level,
+    });
+  }
 
   return {
     ...result,

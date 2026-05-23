@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { StaffPushOptIn } from "@/components/StaffPushOptIn";
 import { StaffThemePicker } from "@/components/dashboard/StaffThemePicker";
 import type { ThemePreference } from "@/lib/theme";
 import { updateStaffTextSizeAction } from "./actions";
@@ -47,6 +48,8 @@ export default async function AppearanceSettingsPage() {
             />
           </div>
         </section>
+
+        <StaffPushOptIn />
 
         <section className="rounded-2xl border border-fv-bg-soft bg-fv-bg-card p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-fv-text-primary">
