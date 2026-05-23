@@ -126,7 +126,6 @@ function noteAvatarColor(seed: string): string {
 // Coloured icon tile per optional patient-app feature.
 const FEATURE_ICON: Record<string, { emoji: string; bg: string }> = {
   surgeon_spotlight: { emoji: "🎥", bg: "bg-emerald-600" },
-  eye_photo_prompt: { emoji: "📷", bg: "bg-orange-500" },
   checkin_nudge: { emoji: "🔔", bg: "bg-amber-500" },
   lockscreen_widget: { emoji: "🔒", bg: "bg-slate-600" },
   feedback_tile: { emoji: "⭐", bg: "bg-sky-600" },

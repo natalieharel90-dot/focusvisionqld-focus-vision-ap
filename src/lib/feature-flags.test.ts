@@ -51,9 +51,9 @@ describe("resolveFeatureByKey", () => {
     expect(
       resolveFeatureByKey("surgeon_spotlight", new Map(), new Map())
     ).toBe(false); // surgeon_spotlight schema default is OFF
-    expect(resolveFeatureByKey("eye_photo_prompt", new Map(), new Map())).toBe(
+    expect(resolveFeatureByKey("checkin_nudge", new Map(), new Map())).toBe(
       true
-    ); // eye_photo_prompt schema default is ON
+    ); // checkin_nudge schema default is ON
   });
 });
 
@@ -97,14 +97,14 @@ describe("bonus theme pack eligibility", () => {
 });
 
 describe("FEATURES metadata", () => {
-  it("defines the seven optional features", () => {
-    expect(FEATURES).toHaveLength(7);
+  it("defines the six optional features", () => {
+    expect(FEATURES).toHaveLength(6);
   });
 
-  it("surgeon spotlight is OFF by default, eye photo prompt is ON", () => {
+  it("surgeon spotlight is OFF by default, check-in nudge is ON", () => {
     const byKey = new Map(FEATURES.map((f) => [f.key, f]));
     expect(byKey.get("surgeon_spotlight")?.schemaDefault).toBe(false);
-    expect(byKey.get("eye_photo_prompt")?.schemaDefault).toBe(true);
+    expect(byKey.get("checkin_nudge")?.schemaDefault).toBe(true);
   });
 
   it("the bonus theme pack is OFF by default and carries a settings note", () => {

@@ -4,7 +4,6 @@
 
 export type FeatureKey =
   | "surgeon_spotlight"
-  | "eye_photo_prompt"
   | "checkin_nudge"
   | "lockscreen_widget"
   | "feedback_tile"
@@ -30,13 +29,6 @@ export const FEATURES: ReadonlyArray<FeatureMeta> = [
     description:
       "A personal welcome video on the patient's home screen. Opt-in per patient.",
     schemaDefault: false,
-    hasConfig: false,
-  },
-  {
-    key: "eye_photo_prompt",
-    label: "Eye photo prompt during check-in",
-    description: "Asks the patient to add an eye photo with their daily check-in.",
-    schemaDefault: true,
     hasConfig: false,
   },
   {
