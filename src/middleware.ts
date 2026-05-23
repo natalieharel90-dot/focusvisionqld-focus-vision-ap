@@ -117,6 +117,18 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
     if (user && pathname === "/patient-sign-in") {
+      // Before bouncing to /home, verify the session is actually a
+      // patient — otherwise the patient layout's "!patient" redirect
+      // bounces us right back here, looping forever.
+      const { data: patientRow } = await supabase
+        .from("patients")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!patientRow) {
+        await supabase.auth.signOut();
+        return response;
+      }
       const url = request.nextUrl.clone();
       url.pathname = "/home";
       return NextResponse.redirect(url);
