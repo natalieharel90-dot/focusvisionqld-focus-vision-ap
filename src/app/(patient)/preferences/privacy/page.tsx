@@ -5,7 +5,7 @@ export const dynamic = "force-static";
 const SECTIONS: ReadonlyArray<{ heading: string; body: string }> = [
   {
     heading: "What we collect",
-    body: "The Recovery Companion stores the information you give us during your recovery — daily check-ins, symptom photos, medication tracking, messages with your care team, feedback, and the documents your clinic shares with you.",
+    body: "The Recovery Companion stores the information you give us during your recovery — daily check-ins, medication tracking, messages with your care team, and any feedback you leave.",
   },
   {
     heading: "How it's stored",

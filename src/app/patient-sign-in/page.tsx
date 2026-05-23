@@ -103,8 +103,8 @@ export default function PatientSignInPage({
           </svg>
           <p className="leading-relaxed">
             Your information is encrypted and stored in Australia. New here?
-            Sign in with the details from your clinic welcome message, then
-            set your own password in Settings.
+            Sign in with the details from your clinic welcome message — we&apos;ll
+            ask you to choose your own password before you go further.
           </p>
         </div>
       </div>

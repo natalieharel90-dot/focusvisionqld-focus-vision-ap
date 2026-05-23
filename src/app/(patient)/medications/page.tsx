@@ -285,6 +285,19 @@ export default async function MedicationsPage({
         </section>
       ) : null}
 
+      {/* Empty state — no active medications yet. */}
+      {meds.length === 0 ? (
+        <section className="rounded-2xl bg-fv-bg-card p-6 text-center shadow-sm">
+          <p className="text-sm text-fv-text-primary">
+            You don&apos;t have any medications set up yet.
+          </p>
+          <p className="mt-1 text-xs text-fv-text-secondary">
+            Your care team adds these in the clinic — they&apos;ll appear
+            here as soon as they&apos;re ready.
+          </p>
+        </section>
+      ) : null}
+
       {/* Reminder schedule per medication */}
       {meds.length > 0 ? (
         <section>

@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { loadPatientFeatures } from "@/lib/patient-features-server";
@@ -90,34 +89,18 @@ export default async function SurgeonMessagePage() {
           </p>
         ) : null}
 
-        {/* Playback chrome — the video opens in the player on tap */}
-        <div className="mt-6">
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
-            <div className="h-full w-0 rounded-full bg-white" />
-          </div>
-          <div className="mt-1.5 flex justify-between text-xs text-white/55">
-            <span>0:00</span>
-            <span>0:00</span>
-          </div>
-        </div>
-
-        <div className="mt-4 flex items-center justify-center gap-5">
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white/60">
-            <SkipIcon dir="back" />
-          </span>
-          <a
-            href={videoUrl}
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Play the welcome video"
-            className="grid h-16 w-16 place-items-center rounded-full bg-white text-fv-accent-strong shadow-lg"
-          >
-            <PlayIcon big />
-          </a>
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white/60">
-            <SkipIcon dir="fwd" />
-          </span>
-        </div>
+        {/* The welcome video opens in the platform's native player on
+            tap — we don't render an inline player or seek controls. */}
+        <a
+          href={videoUrl}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Play the welcome video"
+          className="mx-auto mt-6 grid h-16 w-16 place-items-center rounded-full bg-white text-fv-accent-strong shadow-lg"
+        >
+          <PlayIcon big />
+        </a>
+        <p className="mt-3 text-xs text-white/55">Tap to play</p>
       </section>
     </main>
   );
@@ -135,14 +118,3 @@ function PlayIcon({ big = false }: { big?: boolean }) {
   );
 }
 
-function SkipIcon({ dir }: { dir: "back" | "fwd" }): ReactNode {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={`h-5 w-5 ${dir === "back" ? "rotate-180" : ""}`}
-    >
-      <path d="M5 5v14l8-7zM13 5v14l8-7z" />
-    </svg>
-  );
-}

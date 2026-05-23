@@ -38,7 +38,7 @@ const META: Record<
     blurb:
       "Feedback about Focus Vision — your consultations, follow-up care, communication, and overall experience with our staff.",
     hasStaffMention: true,
-    staffPlaceholder: "Optional — e.g. Dr Chen, Receptionist Hannah",
+    staffPlaceholder: "Optional — name or role of the staff member",
   },
   hospital: {
     tab: "Day Hospital",

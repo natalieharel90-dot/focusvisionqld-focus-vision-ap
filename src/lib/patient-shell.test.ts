@@ -36,18 +36,17 @@ describe("isTabActive — active-route highlighting", () => {
 });
 
 describe("HOME_TILES — home tile grid", () => {
-  it("renders the seven tiles", () => {
-    expect(HOME_TILES).toHaveLength(7);
+  it("renders the six tiles", () => {
+    expect(HOME_TILES).toHaveLength(6);
   });
 
-  it("includes the expected tiles with icons, Feedback below Documents", () => {
+  it("includes the expected tiles with icons", () => {
     const keys = HOME_TILES.map((t) => t.key);
     expect(keys).toEqual([
       "check-in",
       "medications",
       "messages",
-      "documents",
-      "feedback",
+      "videos",
       "contact",
       "settings",
     ]);
@@ -63,7 +62,7 @@ describe("HOME_TILES — home tile grid", () => {
     expect(byKey.get("medications")?.href).toBe("/medications");
     expect(byKey.get("messages")?.href).toBe("/messages");
     expect(byKey.get("settings")?.href).toBe("/preferences");
-    expect(byKey.get("documents")?.href).toBe("/documents");
+    expect(byKey.get("videos")?.href).toBe("/videos");
     expect(byKey.get("contact")?.href).toBe("/contact");
   });
 });

@@ -33,12 +33,15 @@ export type HomeTile = {
   href: string | null;
 };
 
+// Snapshot of the home tiles that ALWAYS render (the live home page
+// also conditionally adds Feedback when the feature flag is on). The
+// real /home page builds its tiles inline; this constant exists for
+// the patient-shell tests and for any future reuse.
 export const HOME_TILES: ReadonlyArray<HomeTile> = [
   { key: "check-in", title: "Daily check-in", icon: "✓", href: "/check-in" },
   { key: "medications", title: "Medications", icon: "💊", href: "/medications" },
   { key: "messages", title: "Messages", icon: "💬", href: "/messages" },
-  { key: "documents", title: "Documents", icon: "📄", href: "/documents" },
-  { key: "feedback", title: "Feedback", icon: "⭐", href: "/feedback" },
+  { key: "videos", title: "Videos & info", icon: "🎬", href: "/videos" },
   { key: "contact", title: "Contact clinic", icon: "📞", href: "/contact" },
   { key: "settings", title: "Settings", icon: "⚙️", href: "/preferences" },
 ];
