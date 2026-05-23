@@ -24,7 +24,6 @@ const DEFAULTS: PreferencesPayload = {
   quiet_hours_end: "07:00",
   lock_timezone: false,
   lock_screen_widget: false,
-  voice_control: false,
 };
 
 export default async function PatientPreferencesPage() {
@@ -66,7 +65,6 @@ export default async function PatientPreferencesPage() {
         quiet_hours_end: prefs.quiet_hours_end,
         lock_timezone: prefs.lock_timezone,
         lock_screen_widget: prefs.lock_screen_widget,
-        voice_control: prefs.voice_control,
       }
     : DEFAULTS;
 

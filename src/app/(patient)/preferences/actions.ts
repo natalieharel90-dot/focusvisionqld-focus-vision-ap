@@ -23,7 +23,6 @@ export type PreferencesPayload = {
   quiet_hours_end: string;
   lock_timezone: boolean;
   lock_screen_widget: boolean;
-  voice_control: boolean;
 };
 
 const VISIBLE_THEMES: string[] = [...THEME_IDS];
@@ -98,7 +97,6 @@ export async function savePreferencesAction(
       quiet_hours_end: payload.quiet_hours_end,
       lock_timezone: payload.lock_timezone,
       lock_screen_widget: payload.lock_screen_widget,
-      voice_control: payload.voice_control,
     },
     { onConflict: "patient_id" }
   );

@@ -173,7 +173,7 @@ export function PreferencesForm({ initial, bonusUnlocked, account }: Props) {
         <PushOptIn />
         <ToggleCard
           title="Medication reminders"
-          sub="Notifications + reminder sound"
+          sub="A notification when each dose is due"
           checked={prefs.notify_medication}
           onChange={(v) => update({ notify_medication: v })}
         />
@@ -314,12 +314,6 @@ export function PreferencesForm({ initial, bonusUnlocked, account }: Props) {
           sub="Minimise animations and transitions"
           checked={prefs.reduce_motion}
           onChange={(v) => update({ reduce_motion: v })}
-        />
-        <ToggleCard
-          title="Voice control"
-          sub="Hands-free check-ins and medication marking"
-          checked={prefs.voice_control}
-          onChange={(v) => update({ voice_control: v })}
         />
         <InfoNote icon={<InfoIcon />}>
           Fully optimised for VoiceOver (iPhone) and TalkBack (Android). All

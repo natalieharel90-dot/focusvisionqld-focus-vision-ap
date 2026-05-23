@@ -2023,7 +2023,6 @@ export type Database = {
           text_size: string
           theme: string
           updated_at: string
-          voice_control: boolean
         }
         Insert: {
           bonus_pack_unlocked?: boolean
@@ -2054,7 +2053,6 @@ export type Database = {
           text_size?: string
           theme?: string
           updated_at?: string
-          voice_control?: boolean
         }
         Update: {
           bonus_pack_unlocked?: boolean
@@ -2085,7 +2083,6 @@ export type Database = {
           text_size?: string
           theme?: string
           updated_at?: string
-          voice_control?: boolean
         }
         Relationships: [
           {
