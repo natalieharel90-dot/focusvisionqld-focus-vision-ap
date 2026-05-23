@@ -16,12 +16,10 @@ import {
   setPatientFeatureOverrideAction,
   stopMedicationAction,
   updatePatientDetailsAction,
-  uploadDocumentAction,
 } from "./actions";
 import { FlagPatientModal } from "./FlagPatientModal";
 import { NextAppointmentModal } from "./NextAppointmentModal";
 import { PushContentModal } from "./PushContentModal";
-import { DOCUMENT_CATEGORY_ORDER } from "@/lib/documents";
 import { CloseDetailsOnSubmit } from "@/components/CloseDetailsOnSubmit";
 import { FEATURES, resolveFeature } from "@/lib/feature-flags";
 import {
@@ -40,7 +38,6 @@ type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 type CheckIn = Database["public"]["Tables"]["check_ins"]["Row"];
 type StaffNote = Database["public"]["Tables"]["staff_notes"]["Row"];
 type ManualFlag = Database["public"]["Tables"]["manual_flags"]["Row"];
-type DocumentRow = Database["public"]["Tables"]["documents"]["Row"];
 type StaffUser = Database["public"]["Tables"]["staff_users"]["Row"];
 
 // 90-day post-op window — the recovery progress bar and the analytics
@@ -335,7 +332,6 @@ export default async function PatientDetailPage({
     checkInsResult,
     notesResult,
     flagsResult,
-    documentsResult,
     staffResult,
     featureFlagsResult,
     featureDefaultsResult,
@@ -375,11 +371,6 @@ export default async function PatientDetailPage({
       .select("*")
       .eq("patient_id", patientId)
       .order("created_at", { ascending: false }),
-    supabase
-      .from("documents")
-      .select("*")
-      .eq("patient_id", patientId)
-      .order("uploaded_at", { ascending: false }),
     supabase.from("staff_users").select("id, name, role").order("name"),
     supabase
       .from("patient_feature_flags")
@@ -420,7 +411,6 @@ export default async function PatientDetailPage({
   const checkIns = (checkInsResult.data ?? []) as CheckIn[];
   const notes = (notesResult.data ?? []) as StaffNote[];
   const flags = (flagsResult.data ?? []) as ManualFlag[];
-  const documents = (documentsResult.data ?? []) as DocumentRow[];
   const staff = (staffResult.data ?? []) as Pick<
     StaffUser,
     "id" | "name" | "role"
@@ -1537,88 +1527,6 @@ export default async function PatientDetailPage({
             </div>
           </Panel>
 
-          <SectionHeader label="Records" icon="doc" color="green" />
-
-          {/* Documents */}
-          <Panel
-            id="documents"
-            title="Documents"
-            badge={
-              <span className="rounded-full bg-fv-bg-soft px-2 py-0.5 text-xs font-medium text-fv-text-secondary">
-                {documents.length}
-              </span>
-            }
-            action={
-              <details className="relative">
-                <summary className={summaryBtn}>+ Upload</summary>
-                <form
-                  action={uploadDocumentAction}
-                  className="absolute right-0 z-10 mt-2 flex w-[300px] flex-col gap-3 rounded-xl border border-fv-bg-soft bg-fv-bg-card p-4 text-sm shadow-lg"
-                >
-                  <HiddenPatientId id={patient.id} />
-                  <CloseDetailsOnSubmit />
-                  <label className="flex flex-col gap-1">
-                    <span className={fieldLabel}>Category</span>
-                    <select name="category" required className={inputCls}>
-                      <option value="">Select…</option>
-                      {DOCUMENT_CATEGORY_ORDER.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className={fieldLabel}>Title (optional)</span>
-                    <input
-                      type="text"
-                      name="title"
-                      placeholder="Defaults to the filename"
-                      className={inputCls}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className={fieldLabel}>File</span>
-                    <input
-                      type="file"
-                      name="file"
-                      required
-                      className={inputCls}
-                    />
-                  </label>
-                  <button
-                    type="submit"
-                    className="rounded-md bg-fv-accent-strong px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-                  >
-                    Upload
-                  </button>
-                </form>
-              </details>
-            }
-          >
-            {documents.length === 0 ? (
-              <p className="text-sm text-fv-text-secondary">
-                No documents on file.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {documents.map((d) => (
-                  <li
-                    key={d.id}
-                    className="rounded-lg bg-fv-bg-soft px-3 py-2 text-sm"
-                  >
-                    <div className="font-medium text-fv-text-primary">
-                      {d.title ?? d.filename}
-                    </div>
-                    <div className="text-xs text-fv-text-secondary">
-                      {d.category} · {fmtDate(d.uploaded_at)} ·{" "}
-                      {staffById.get(d.uploaded_by ?? "")?.name ?? "—"}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
         </div>
       </div>
     </main>

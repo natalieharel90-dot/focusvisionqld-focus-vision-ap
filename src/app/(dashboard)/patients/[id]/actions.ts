@@ -462,60 +462,6 @@ export async function addNoteAction(formData: FormData) {
   revalidatePath(`/patients/${patientId}`);
 }
 
-// ───── Documents ──────────────────────────────────────────────────────────
-
-export async function uploadDocumentAction(formData: FormData) {
-  const patientId = readPatientId(formData);
-  const category = String(formData.get("category") ?? "").trim();
-  const title = String(formData.get("title") ?? "").trim() || null;
-  const file = formData.get("file");
-
-  if (!category) backWithError(patientId, "Pick a document category.");
-  if (!(file instanceof File) || file.size === 0) {
-    backWithError(patientId, "Choose a file to upload.");
-  }
-  const upload = file as File;
-
-  const { supabase, userId } = await requireStaff();
-
-  // Path must start with the patient's id — Storage RLS keys ownership
-  // off the first folder segment.
-  const safeName = upload.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const storagePath = `${patientId}/${Date.now()}-${safeName}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from("documents")
-    .upload(storagePath, upload, {
-      contentType: upload.type || undefined,
-      upsert: false,
-    });
-  if (uploadError) backWithError(patientId, uploadError.message);
-
-  const { data, error } = await supabase
-    .from("documents")
-    .insert({
-      patient_id: patientId,
-      category,
-      title,
-      filename: upload.name,
-      storage_path: storagePath,
-      uploaded_by: userId,
-    })
-    .select()
-    .single();
-
-  if (error) backWithError(patientId, error.message);
-
-  await recordStaffAudit(supabase, "patient.document_uploaded", {
-    patient_id: patientId,
-    entity_type: "document",
-    entity_id: data!.id,
-    new_value: { category, filename: upload.name, title },
-  });
-
-  revalidatePath(`/patients/${patientId}`);
-}
-
 // ───── Discharge ──────────────────────────────────────────────────────────
 
 // Discharges the patient — they drop out of the active-recovery lists.
