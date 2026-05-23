@@ -45,7 +45,6 @@ type TriageItem = {
   when: string;
   detail: string;
   threadId: string | null;
-  phone: string | null;
 };
 
 export default async function StaffAppTriage() {
@@ -64,7 +63,7 @@ export default async function StaffAppTriage() {
         .from("manual_flags")
         .select("patient_id, alert_level, reason, created_at")
         .is("resolved_at", null),
-      supabase.from("patients").select("id, name, phone"),
+      supabase.from("patients").select("id, name"),
       supabase
         .from("procedures")
         .select("patient_id, procedure_type, surgery_date")
@@ -109,7 +108,6 @@ export default async function StaffAppTriage() {
       when: relTime(c.created_at),
       detail: `Pain ${c.pain}/5 · Vision "${c.vision}" · light ${c.light_sensitivity}/5`,
       threadId: threadByPatient.get(c.patient_id) ?? null,
-      phone: p.phone,
     });
   }
   for (const f of flagsRes.data ?? []) {
@@ -126,7 +124,6 @@ export default async function StaffAppTriage() {
       when: relTime(f.created_at),
       detail: f.reason ?? "Manually flagged for review",
       threadId: threadByPatient.get(f.patient_id) ?? null,
-      phone: p.phone,
     });
   }
 
@@ -199,20 +196,12 @@ function TriageCard({ item, accent }: { item: TriageItem; accent: string }) {
         {item.detail}
       </p>
       <div className="mt-2 flex gap-2">
-        {item.phone ? (
-          <a
-            href={`tel:${item.phone.replace(/[^\d+]/g, "")}`}
-            className="flex-1 rounded-md border border-fv-border py-1.5 text-center text-xs font-semibold text-fv-text-primary"
-          >
-            📞 Call
-          </a>
-        ) : null}
         {item.threadId ? (
           <Link
             href={`/staff-app/messages/${item.threadId}`}
             className="flex-1 rounded-md border border-fv-border py-1.5 text-center text-xs font-semibold text-fv-text-primary"
           >
-            💬 Reply
+            💬 Message
           </Link>
         ) : null}
         <Link

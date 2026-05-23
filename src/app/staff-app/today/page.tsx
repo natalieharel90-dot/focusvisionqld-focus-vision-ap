@@ -60,8 +60,13 @@ export default async function StaffAppToday() {
   } = await supabase.auth.getUser();
   const me = user?.id ?? "";
 
-  const [threadsRes, apptsRes, flagsRes, patientsRes, proceduresRes] =
+  const [staffRes, threadsRes, apptsRes, flagsRes, patientsRes, proceduresRes] =
     await Promise.all([
+      supabase
+        .from("staff_users")
+        .select("on_shift")
+        .eq("id", me)
+        .maybeSingle(),
       supabase
         .from("message_threads")
         .select("id, patient_id, last_message_at, unread_for_staff")
@@ -79,6 +84,7 @@ export default async function StaffAppToday() {
         .select("patient_id, procedure_type, surgery_date")
         .eq("status", "active"),
     ]);
+  const onShift = staffRes.data?.on_shift ?? false;
 
   const myThreads = threadsRes.data ?? [];
   const patientName = new Map(
@@ -109,50 +115,60 @@ export default async function StaffAppToday() {
 
   return (
     <div>
-      {/* Shift card */}
-      <div className="px-4 pt-4">
-        <div className="flex items-center gap-3 rounded-xl bg-fv-bg-accent-soft p-3.5">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-fv-accent-strong text-white">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
-            >
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 7v5l3 2" />
-            </svg>
-          </span>
-          <div>
-            <div className="text-sm font-semibold text-fv-text-primary">
-              You&apos;re on shift
-            </div>
-            <div className="text-xs text-fv-text-secondary">
-              Push notifications on — manage them in Me
-            </div>
+      {/* Shift card — reads the real on_shift state, tappable to /me. */}
+      <Link
+        href="/staff-app/me"
+        className={`mx-4 mt-4 flex items-center gap-3 rounded-xl p-3.5 ${
+          onShift ? "bg-fv-bg-accent-soft" : "bg-fv-bg-soft"
+        }`}
+      >
+        <span
+          className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-white ${
+            onShift ? "bg-fv-accent-strong" : "bg-fv-text-secondary"
+          }`}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-5 w-5"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+        </span>
+        <div>
+          <div className="text-sm font-semibold text-fv-text-primary">
+            {onShift ? "You're on shift" : "You're off shift"}
+          </div>
+          <div className="text-xs text-fv-text-secondary">
+            {onShift
+              ? "Receiving general alerts. Tap to change."
+              : "General alerts paused — tap to clock on."}
           </div>
         </div>
-      </div>
+      </Link>
 
-      {/* Stat tiles */}
+      {/* Stat tiles — each one jumps to the relevant tab. */}
       <div className="mt-3 grid grid-cols-3 gap-2 px-4">
         {[
-          { n: myThreads.length, label: "My threads" },
-          { n: myApptsToday.length, label: "My appts" },
-          { n: flaggedSet.size, label: "Flagged" },
+          { n: myThreads.length, label: "My threads", href: "/staff-app/messages" },
+          { n: myApptsToday.length, label: "My appts", href: "/staff-app/today" },
+          { n: flaggedSet.size, label: "Flagged", href: "/staff-app/triage" },
         ].map((s) => (
-          <div
+          <Link
             key={s.label}
-            className="rounded-xl border border-fv-bg-soft bg-fv-bg-card px-3 py-3 text-center"
+            href={s.href}
+            className="rounded-xl border border-fv-bg-soft bg-fv-bg-card px-3 py-3 text-center hover:bg-fv-bg-soft"
           >
             <div className="text-2xl font-bold text-fv-text-primary">
               {s.n}
             </div>
             <div className="text-xs text-fv-text-secondary">{s.label}</div>
-          </div>
+          </Link>
         ))}
       </div>
 

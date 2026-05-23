@@ -295,7 +295,9 @@ export default async function StaffAppPatientPage({
                   >
                     <div>
                       <div className="font-semibold text-fv-text-primary">
-                        Day {c.recovery_day}
+                        {c.recovery_day != null
+                          ? `Day ${c.recovery_day}`
+                          : "Check-in"}
                       </div>
                       <div className="text-xs text-fv-text-secondary">
                         Pain {c.pain}/5 · Light {c.light_sensitivity}/5
