@@ -14,7 +14,6 @@ import { MessageAttachments } from "@/components/chat/MessageAttachments";
 import { ScrollToLatest } from "@/components/chat/ScrollToLatest";
 import { StaffComposer } from "./StaffComposer";
 import { InboxFilter } from "./InboxFilter";
-import { ComingSoonButton } from "./ComingSoonButton";
 import { NewMessageButton } from "./NewMessageButton";
 import { resolveThreadAction, toggleNotificationPrefAction } from "./actions";
 
@@ -333,10 +332,6 @@ export default async function StaffInboxPage({
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
-          <ComingSoonButton
-            label="Templates"
-            hint="The clinic message-templates editor lands in its own session. The quick-reply chips below already use the existing templates."
-          />
           <NewMessageButton patients={allPatients} />
         </div>
       </div>

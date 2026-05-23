@@ -15,10 +15,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { PatientZone } from "./zones";
 
-// Banner shown at the top of the Recovery guidance editor, mirroring the
-// prototype's reminder. Exported so it has a single source of truth.
+// Editor hint shown at the top of the Recovery guidance editor.
+// The per-procedure rows have been populated from the clinic's
+// post-op instruction documents (migration 081); the default
+// wildcard rows underneath each zone are clinic-wide fallbacks
+// for procedures we haven't profiled yet.
 export const PLACEHOLDER_WARNING =
-  "The text in these fields is placeholder content written during prototyping. Before any real patient sees the app, your clinical team needs to replace it with content the surgeons and optometrists have signed off — run a one-hour content workshop to capture the actual wording.";
+  "The default wildcard rows at the bottom of each zone are the clinic-wide fallback shown when no procedure-specific row matches — patients with a procedure we've profiled (LASIK / PRK / CLEAR / RLE / Cataract / ICL / Pterygium) already see the procedure-specific copy.";
 
 export type ZoneContentFields = {
   headline: string | null;

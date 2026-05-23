@@ -67,7 +67,7 @@ export function DoctorModal({ roles }: { roles: string[] }) {
                 name="email"
                 type="email"
                 required
-                placeholder="name@focusvision.com.au"
+                placeholder="staff@focusvision.com.au"
                 className={inputClass}
               />
             </label>

@@ -53,7 +53,7 @@ export default async function HelpArticlePage({
         <HelpPrintButton />
       </div>
 
-      {/* Video slot — placeholder until walkthroughs are recorded. */}
+      {/* Video walkthrough — only shown when one has been recorded. */}
       {article.video_url ? (
         <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black">
           <iframe
@@ -63,29 +63,7 @@ export default async function HelpArticlePage({
             className="h-full w-full"
           />
         </div>
-      ) : (
-        <div className="print:hidden flex items-center gap-3 rounded-2xl border border-dashed border-fv-border bg-fv-bg-soft/50 px-4 py-3 text-sm text-fv-text-secondary">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-5 w-5 shrink-0 text-fv-accent-strong"
-          >
-            <path d="m23 7-7 5 7 5z" />
-            <rect x="1" y="5" width="15" height="14" rx="2" />
-          </svg>
-          <span>
-            Video walkthrough coming soon
-            {article.video_duration_seconds
-              ? ` (${article.video_duration_seconds}s)`
-              : ""}
-            .
-          </span>
-        </div>
-      )}
+      ) : null}
 
       <HelpMarkdown body={article.body} />
 

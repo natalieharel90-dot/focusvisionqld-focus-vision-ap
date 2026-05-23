@@ -234,10 +234,9 @@ describe("computeZoneContentDiff — save only what differs from parent", () => 
   });
 });
 
-describe("placeholder warning", () => {
-  it("exists and mentions placeholder content + clinical sign-off", () => {
+describe("editor hint", () => {
+  it("explains the fallback hierarchy", () => {
     expect(PLACEHOLDER_WARNING.length).toBeGreaterThan(0);
-    expect(PLACEHOLDER_WARNING.toLowerCase()).toContain("placeholder");
-    expect(PLACEHOLDER_WARNING.toLowerCase()).toContain("signed off");
+    expect(PLACEHOLDER_WARNING.toLowerCase()).toContain("fallback");
   });
 });

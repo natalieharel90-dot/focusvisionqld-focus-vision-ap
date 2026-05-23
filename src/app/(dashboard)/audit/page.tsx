@@ -138,7 +138,6 @@ export default async function AuditPage({
       value: String(patientAccess),
       sub: "Views & reviews",
     },
-    { label: "Anomalies", value: "0", sub: "None flagged" },
   ];
 
   // ── Category + search filter ── (shared with the CSV export)
